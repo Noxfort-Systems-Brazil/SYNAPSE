@@ -117,15 +117,15 @@ class OptimizationPhase(QObject):
             self.optimization_finished.emit()
             return True
 
-        # 2. Mandatory Check: Historical Parquet Data
+        # 2. Mandatory Check: Parquet Dataset for Phase 0 Optimization
         parquet_path = self._resolve_parquet_path()
         if not parquet_path or not os.path.exists(parquet_path):
-            error_msg = "❌ Optimization Aborted: A Historical Parquet Dataset (.parquet) is MANDATORY for AutoML optimization. Please import a Parquet dataset in Step 2 of the Setup Wizard."
+            error_msg = "❌ Optimization Aborted: A Parquet Dataset (.parquet) is MANDATORY for AutoML optimization. Please import a Parquet dataset in Step 2 of the Setup Wizard."
             self.log_message.emit(error_msg)
             self.error_occurred.emit(error_msg)
             return False
 
-        self.log_message.emit(f"📊 Historical Parquet Dataset resolved: {parquet_path}")
+        self.log_message.emit(f"📊 Parquet Dataset resolved for Phase 0 Optimization: {parquet_path}")
 
         # 3. Initialize Service
         self.optimizer_service = self._OptimizerService()
@@ -142,20 +142,10 @@ class OptimizationPhase(QObject):
 
     def _resolve_parquet_path(self) -> Optional[str]:
         """
-        Resolves the historical Parquet dataset path using multi-tier fallback:
-        1. AppState registered data sources (with .parquet connection string)
-        2. Data Lake Base directory (~/Documentos/Synapse/datalake/base/*.parquet)
-        3. Data Lake Golden directory (~/Documentos/Synapse/datalake/golden/*.parquet)
+        Resolves the Parquet dataset path for Phase 0 Optimization:
+        1. Data Lake Base directory (~/Documentos/Synapse/datalake/base/*.parquet)
+        2. Data Lake Golden directory (~/Documentos/Synapse/datalake/golden/*.parquet)
         """
-        # 1. Check in AppState data sources
-        for src in self.app_state.get_all_data_sources():
-            conn_str = src.connection_string
-            if isinstance(conn_str, str) and conn_str.endswith(".parquet"):
-                expanded = os.path.expanduser(conn_str)
-                if os.path.exists(expanded):
-                    return expanded
-
-        # 2. Check in Data Lake Base storage
         try:
             from src.managers.storage_manager import StorageManager
             sm = StorageManager()
@@ -167,7 +157,6 @@ class OptimizationPhase(QObject):
                     base_files.sort(key=os.path.getmtime, reverse=True)
                     return base_files[0]
             
-            # 3. Check in Data Lake Golden storage
             golden_dir = os.path.expanduser(sm.get_datalake_golden_path())
             if os.path.exists(golden_dir):
                 import glob

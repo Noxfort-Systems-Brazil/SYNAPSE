@@ -70,10 +70,20 @@ class SystemCommandHandler:
             else:
                 recommended_phase = "IDLE_OPTIMIZATION"
 
+        has_dataset = False
+        storage = getattr(self.controller, "storage", None)
+        if storage and hasattr(storage, "has_historical_dataset"):
+            has_dataset = storage.has_historical_dataset()
+        elif storage:
+            base_dir = getattr(storage, "base_dir", None)
+            if base_dir and hasattr(base_dir, "glob"):
+                has_dataset = len(list(base_dir.glob("*.parquet"))) > 0
+
         return {
             "status": "ok",
             "phase": recommended_phase,
             "completed_phases": completed_phases,
+            "has_dataset": has_dataset,
         }
 
     def handle_ping(self, msg: IpcMessage) -> Dict[str, Any]:
@@ -194,6 +204,77 @@ class SystemCommandHandler:
             "success": True,
             "report": report_output["report"],
             "formatted_markdown": report_output["formatted_markdown"],
+        }
+
+    def handle_reset_workspace(self, msg: IpcMessage) -> Dict[str, Any]:
+        """Completely wipes in-memory AppState, disk sources.json, datalake, and PostgreSQL vault."""
+        self.logger.info("🧹 [SystemCommandHandler] Solicitando reset completo do espaço de trabalho...")
+
+        # 1. Reset in-memory AppState if available
+        app_state = getattr(self.controller, "app_state", None)
+        if app_state and hasattr(app_state, "clear"):
+            app_state.clear()
+
+        # 2. Reset project controller if available
+        project_ctrl = getattr(self.controller, "project_ctrl", None)
+        if project_ctrl and hasattr(project_ctrl, "create_new_project"):
+            try:
+                project_ctrl.create_new_project()
+            except Exception as pe:
+                self.logger.warning(f"Aviso ao chamar create_new_project: {pe}")
+
+        # 3. Reset disk files (sources.json, datalake, checkpoints)
+        try:
+            import json
+            from pathlib import Path
+            home = Path.home()
+            docs = home / "Documentos"
+            if not docs.exists():
+                docs = home / "Documents"
+            synapse_dir = docs / "Synapse"
+            sources_json = synapse_dir / "config" / "sources.json"
+            if sources_json.parent.exists():
+                with open(sources_json, "w", encoding="utf-8") as f:
+                    json.dump({"map_path": None, "sources": [], "associations": {}}, f, indent=2)
+            for folder in [synapse_dir / "datalake" / "base", synapse_dir / "datalake" / "golden", synapse_dir / "Checkpoint", synapse_dir / "data" / "config"]:
+                if folder.exists():
+                    for item in folder.glob("*"):
+                        if item.is_file():
+                            try:
+                                item.unlink()
+                            except Exception:
+                                pass
+        except Exception as fe:
+            self.logger.warning(f"Aviso ao limpar arquivos locais: {fe}")
+
+        # 4. Clear database schema tables
+        try:
+            from src.database.db_engine import DatabaseEngine
+            engine = DatabaseEngine()
+            conn = engine.get_connection()
+            if conn:
+                cursor = conn.cursor()
+                schema = getattr(engine, "schema", "schema_synapse") or "schema_synapse"
+                for t in ["cloud_file_vault", "sensor_dictionary", "synapse_sensor_telemetry_raw", "synapse_sensor_hourly_summary", "synapse_golden_history", "audit_physics_episodes", "operation_sessions"]:
+                    try:
+                        cursor.execute(f"DELETE FROM {schema}.{t};")
+                    except Exception:
+                        pass
+                conn.commit()
+                conn.close()
+        except Exception as de:
+            self.logger.warning(f"Aviso ao limpar tabelas do banco: {de}")
+
+        if self.audit_logger:
+            self.audit_logger.log_action(
+                self._get_current_user(),
+                "RESET_WORKSPACE",
+                "Espaço de trabalho, mapa e fontes de dados resetados para o estado inicial zero.",
+            )
+
+        return {
+            "success": True,
+            "message": "Espaço de trabalho zerado com sucesso. Nenhum mapa ou sensor carregado.",
         }
 
     def handle_shutdown(self, msg: IpcMessage, responder: Responder) -> None:

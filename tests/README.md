@@ -4,6 +4,11 @@
 
 ---
 
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [📚 Developer Guide](../docs/06_developer_guide.md) • [🧠 Neural Models](../docs/03_neural_models.md) • [⚡ HFT-Link](../proto/README.md) • [🤝 Contributing](../CONTRIBUTING.md)
+
+---
+
 ## 🧪 Overview
 
 The `tests/` directory contains an enterprise test harness designed to guarantee mathematical accuracy, zero-trust security boundaries, real-time throughput, and fault tolerance across **SYNAPSE CORE**.
@@ -105,9 +110,11 @@ python tests/mock_sensors.py 25
 1. **Use Standard Fixtures**: Import `mock_app_state`, `sample_map_topology`, or `torch_device` from `tests/conftest.py`.
 2. **Deterministic Tensor Tests**: Always set `torch.manual_seed(42)` and `numpy.random.seed(42)` when verifying loss convergence or model gradients.
 3. **CPU Fallback Validation**: Ensure tests execute correctly both on CUDA devices and in CI environments without dedicated GPUs.
+4. **Mock External Networks**: Never connect to live external servers in unit tests; use `mock_grpc_server.py` or synthetic sensor fixtures.
 
 ---
 
 <p align="center">
-  <sub>SYNAPSE Testing & QA — Noxfort Systems Reliability Engineering</sub>
+  <sub>SYNAPSE Testing & QA — Noxfort Systems Reliability Engineering</sub><br/>
+  <sub><a href="#synapse-testing--quality-assurance-suite">Back to top ↑</a></sub>
 </p>

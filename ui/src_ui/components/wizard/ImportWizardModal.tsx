@@ -48,12 +48,10 @@ export const ImportWizardModal: React.FC<ImportWizardModalProps> = ({
 
   const mapLoaded = useTopologyStore((s) => s.mapLoaded);
   const { importProgress, resetEtlState } = useEtlStore();
+  const hasDataset = useEtlStore((s) => s.hasDataset);
   const sources = useSensorsStore((s) => s.sources);
 
-  const hasParquetSource = sources.some(
-    (s) => s.connection_string?.toLowerCase().endsWith('.parquet') || s.source_type === 'Parquet' || s.id === 'historical_base'
-  );
-  const isParquetDone = importProgress.progress === 100 || hasParquetSource;
+  const isParquetDone = importProgress.progress === 100 || hasDataset;
   const hasLiveSensors = sources.some(
     (s) => s.source_type !== 'SUMO Network' && s.id !== 'map_main'
   );

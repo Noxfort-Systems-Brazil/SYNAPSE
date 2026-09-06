@@ -58,18 +58,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const [activeMenuSourceId, setActiveMenuSourceId] = useState<string | null>(null);
 
+  // Live IoT sensors (excluding map elements)
+  const liveSensors = sources.filter(
+    (s) =>
+      s.source_type !== 'SUMO Network' &&
+      s.id !== 'map_main' &&
+      s.source_type !== 'Parquet' &&
+      s.id !== 'historical_base'
+  );
+
   // Prerequisites for starting Phase 0 (Optimization): Map, Parquet, and Sensors
   const hasMap = mapLoaded;
-  const hasParquet = importProgress.progress === 100 || sources.some(
-    (s) => s.connection_string?.toLowerCase().endsWith('.parquet') || s.source_type === 'Parquet' || s.id === 'historical_base'
-  );
-  const hasSensors = sources.some(
-    (s) =>
-      s.source_type === 'Parquet' ||
-      s.connection_string?.toLowerCase().endsWith('.parquet') ||
-      s.id === 'historical_base' ||
-      (s.source_type !== 'SUMO Network' && s.id !== 'map_main')
-  );
+  const hasDataset = useEtlStore((s) => s.hasDataset);
+  const hasParquet = importProgress.progress === 100 || hasDataset;
+  const hasSensors = liveSensors.length > 0;
 
   const isOptPrerequisitesMet = hasMap && hasParquet && hasSensors;
   const isStartOptLocked = phase === 'IDLE_OPTIMIZATION' && !isOptPrerequisitesMet;
@@ -301,7 +303,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {t('controls.sourcesTitle')} ({sources.length})
+              {t('controls.sourcesTitle')} ({liveSensors.length})
             </span>
             <button
               onClick={() => openImportWizard(3)}
@@ -312,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {sources.length === 0 ? (
+          {liveSensors.length === 0 ? (
             <div 
               onClick={() => openImportWizard(1)}
               className="p-4 border border-dashed border-border rounded-xl text-center text-xs text-slate-500 dark:text-slate-400 hover:border-primary-500/40 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer transition-all"
@@ -321,7 +323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ) : (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {sources.map((src) => (
+              {liveSensors.map((src) => (
                 <div
                   key={src.id}
                   className="p-2.5 rounded-lg bg-background/80 border border-border flex items-center justify-between group hover:border-slate-400 dark:hover:border-slate-700 transition-all relative"

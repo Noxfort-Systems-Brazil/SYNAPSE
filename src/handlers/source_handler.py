@@ -89,8 +89,6 @@ class SourceCommandHandler:
             stype = SourceType[raw_stype.upper()]
         elif raw_stype and any(raw_stype.lower() == st.value.lower() for st in SourceType):
             stype = next(st for st in SourceType if raw_stype.lower() == st.value.lower())
-        elif conn.lower().endswith(".parquet"):
-            stype = SourceType.PARQUET
         else:
             stype = SourceType.API if not is_local else SourceType.MQTT
         src_id = payload.get("id") or f"src_{int(os.urandom(4).hex(), 16)}"
@@ -101,7 +99,7 @@ class SourceCommandHandler:
             is_local=is_local,
             source_type=stype,
             connection_string=conn,
-            status=SourceStatus.ACTIVE if stype == SourceType.PARQUET else SourceStatus.QUARANTINE,
+            status=SourceStatus.QUARANTINE,
         )
         self.app_state.add_data_source(src)
         if self.audit_logger:

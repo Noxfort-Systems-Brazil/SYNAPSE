@@ -41,6 +41,7 @@ export interface IStateHydratorSink {
   setSources(sources: any[]): void;
   setDbStatus(status: { connected: boolean; message: string }): void;
   setMonitorStatus(status: { connected: boolean; ip: string; host: string; port: number; message: string }): void;
+  setHasDataset?(has: boolean): void;
   addLog(level: LogLevel, message: string): void;
 }
 

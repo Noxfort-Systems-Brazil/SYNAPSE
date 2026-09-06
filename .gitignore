@@ -63,8 +63,14 @@ venv.bak/
 *.swo
 
 # Project specific ignores
-Model_Vault/
+Model_Vault/*
+!Model_Vault/README.md
+!Model_Vault/**/README.md
 *.gguf
+*.safetensors
+*.bin
+*.pt
+*.onnx
 logs/
 results/
 *.log

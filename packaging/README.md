@@ -4,6 +4,11 @@
 
 ---
 
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [📚 Deployment Guide](../docs/07_deployment_guide.md) • [🐳 Observability](../observability/README.md) • [📄 License](../LICENSE)
+
+---
+
 ## 📦 Overview
 
 The `packaging/` directory contains tools and build scripts to produce standalone, self-contained distribution bundles for **SYNAPSE CORE**, including native Debian `.deb` packages, Docker images, and system service configurations.
@@ -33,7 +38,7 @@ The generated package contains:
 
 ```bash
 # Install the .deb package
-sudo dpkg -i synapse_1.0_amd64.deb
+sudo dpkg -i synapse_2.0_amd64.deb
 
 # Resolve any missing system dependencies if needed
 sudo apt-get install -f
@@ -111,8 +116,11 @@ sudo systemctl start synapse.service
 journalctl -u synapse.service -f
 ```
 
+For more details on production deployments, refer to [`docs/07_deployment_guide.md`](../docs/07_deployment_guide.md).
+
 ---
 
 <p align="center">
-  <sub>SYNAPSE Packaging — Noxfort Systems Release Engineering</sub>
+  <sub>SYNAPSE Packaging — Noxfort Systems Release Engineering</sub><br/>
+  <sub><a href="#synapse-packaging--distribution">Back to top ↑</a></sub>
 </p>

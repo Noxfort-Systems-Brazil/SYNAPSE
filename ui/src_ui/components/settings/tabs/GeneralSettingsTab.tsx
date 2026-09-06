@@ -20,12 +20,15 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Sun, Moon, Palette } from 'lucide-react';
-import { useSystemStore } from '../../../stores';
+import { Globe, Sun, Moon, Palette, Trash2, RotateCcw } from 'lucide-react';
+import { useSystemStore, useTopologyStore, useSensorsStore, useEtlStore } from '../../../stores';
+import { systemService } from '../../../services/api';
 
 export const GeneralSettingsTab: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useSystemStore();
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
   const [logLevel, setLogLevel] = useState(() => {
     try {
       return localStorage.getItem('synapse_log_level') || 'INFO';
@@ -39,6 +42,27 @@ export const GeneralSettingsTab: React.FC = () => {
     try {
       localStorage.setItem('synapse_log_level', newLevel);
     } catch {}
+  };
+
+  const handleResetWorkspace = async () => {
+    if (!window.confirm('Tem certeza que deseja limpar todas as fontes de dados e o mapa para testar do zero?')) {
+      return;
+    }
+    setIsResetting(true);
+    setResetNotice(null);
+    try {
+      await systemService.resetWorkspace();
+      useTopologyStore.getState().clearTopology();
+      useSensorsStore.getState().setSources([]);
+      useSensorsStore.getState().setSelectedSourceId(null);
+      useEtlStore.getState().resetEtlState();
+      setResetNotice('✅ Espaço de trabalho zerado com sucesso! A interface agora está vazia.');
+      setTimeout(() => setResetNotice(null), 6000);
+    } catch (err: any) {
+      setResetNotice(`❌ Erro ao resetar: ${err?.message || err}`);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -118,6 +142,34 @@ export const GeneralSettingsTab: React.FC = () => {
           <option value="WARNING">WARNING (Avisos)</option>
           <option value="ERROR">ERROR (Erros Críticos)</option>
         </select>
+      </div>
+
+      {/* Workspace Maintenance / Reset */}
+      <div className="pt-4 border-t border-border space-y-3">
+        <div>
+          <label className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5">
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Zona de Manutenção: Reset do Espaço de Trabalho</span>
+          </label>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Limpa todas as fontes de dados, rede viária/mapa em memória e no disco, e esvazia o vault de arquivos para testar o sistema do zero.
+          </p>
+        </div>
+
+        <button
+          onClick={handleResetWorkspace}
+          disabled={isResetting}
+          className="w-full py-2.5 px-4 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+        >
+          <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+          <span>{isResetting ? 'Resetando Espaço de Trabalho...' : 'Limpar Fontes e Resetar Espaço (Testar do Zero)'}</span>
+        </button>
+
+        {resetNotice && (
+          <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+            {resetNotice}
+          </div>
+        )}
       </div>
     </div>
   );

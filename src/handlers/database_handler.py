@@ -95,27 +95,6 @@ class DatabaseCommandHandler:
             self.event_emitter("log_message", {"message": m, "level": "INFO"})
 
         def _on_finished(ok: bool, m: str):
-            if ok:
-                try:
-                    app_state = getattr(self.controller, "app_state", None)
-                    if app_state is not None:
-                        from src.domain.entities import DataSource, SourceType, SourceStatus
-                        from src.managers.storage_manager import StorageManager
-                        sm = storage or StorageManager()
-                        target_file = os.path.join(sm.get_datalake_base_path(), "base_v1.parquet")
-                        final_path = target_file if os.path.exists(target_file) else path
-                        
-                        src = DataSource(
-                            id="historical_base",
-                            name="Base Histórica Parquet",
-                            source_type=SourceType.PARQUET,
-                            connection_string=final_path,
-                            is_local=False,
-                            status=SourceStatus.ACTIVE,
-                        )
-                        app_state.add_data_source(src)
-                except Exception:
-                    pass
             self.event_emitter("import_finished", {"success": ok, "message": m})
 
         importer.on_progress = _on_progress

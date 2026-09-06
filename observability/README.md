@@ -4,6 +4,11 @@
 
 ---
 
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [📚 Docs Index](../docs/README.md) • [🚀 Deployment Guide](../docs/07_deployment_guide.md#5-observability-stack-prometheus--grafana) • [🧪 Testing](../tests/README.md)
+
+---
+
 ## 📊 Overview
 
 The `observability/` directory contains containerized infrastructure to monitor **SYNAPSE CORE** in real time. It enables traffic engineers and DevOps teams to track sensor health, neural inference jitter, gRPC transmission throughput, memory utilization, and model convergence.
@@ -49,12 +54,12 @@ SYNAPSE Core exports key performance and telemetry metrics:
 ### 1. High-Frequency Transport (HFT) Metrics
 - `synapse_hft_fps`: Number of traffic frames transmitted per second over gRPC.
 - `synapse_hft_latency_ms`: Round-trip transmission latency from snapshot creation to gRPC ACK.
-- `synapse_hft_bytes_sent_total`: Total network bytes streamed to downstream controllers (CARINA).
+- `synapse_hft_bytes_sent_total`: Total network bytes streamed to downstream controllers ([CARINA](../docs/05_data_ingestion_and_hft.md)).
 - `synapse_hft_reconnections_total`: Number of auto-recovery reconnection events.
 
 ### 2. Neural Inference & Execution Pipeline
-- `synapse_cycle_duration_ms`: Total execution time of a single ADAGIO perception cycle.
-- `synapse_model_latency_ms{model="pino"}`: Individual execution latency per MARKVART™ model.
+- `synapse_cycle_duration_ms`: Total execution time of a single [ADAGIO](../docs/04_execution_phases.md) perception cycle.
+- `synapse_model_latency_ms{model="pino"}`: Individual execution latency per [MARKVART™](../docs/03_neural_models.md) model.
 - `synapse_kse_dead_reckoning_count`: Number of sensors currently evaluated via kinematic dead reckoning.
 - `synapse_anomalies_detected_total`: Counter of out-of-distribution events flagged by WaveletAE-OCC.
 
@@ -62,7 +67,7 @@ SYNAPSE Core exports key performance and telemetry metrics:
 - `synapse_sensors_count{status="active"}`: Number of sensors in `ACTIVE` inference mode.
 - `synapse_sensors_count{status="quarantine"}`: Sensors undergoing zero-trust validation.
 - `synapse_sensors_count{status="fallback"}`: Failing sensors serviced via MEH/AFB historical fallback.
-- `synapse_sensor_trust_score{source_id="..."}`: Current Bayesian confidence score per sensor ($0.0 \dots 1.0$).
+- `synapse_sensor_trust_score{source_id="..."}`: Current [Bayesian confidence score](../docs/01_domain_entities.md#%EF%B8%8F-bayesian-trust-hierarchy) per sensor ($0.0 \dots 1.0$).
 
 ### 4. Hardware & System Resources
 - `synapse_cpu_percent`: Process CPU utilization across all worker threads.
@@ -95,5 +100,6 @@ If using custom subnets or firewall rules, ensure port `8000` (telemetry endpoin
 ---
 
 <p align="center">
-  <sub>SYNAPSE Observability — Noxfort Systems Operations & SRE</sub>
+  <sub>SYNAPSE Observability — Noxfort Systems Operations & SRE</sub><br/>
+  <sub><a href="#synapse-observability--metrics-dashboards--telemetry">Back to top ↑</a></sub>
 </p>

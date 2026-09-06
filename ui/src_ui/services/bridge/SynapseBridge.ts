@@ -102,6 +102,7 @@ export class SynapseBridge implements ISynapseBridge {
       setSources: (srcs) => useSensorsStore.getState().setSources(srcs),
       setDbStatus: (st) => useSystemStore.getState().setDbStatus(st),
       setMonitorStatus: (st) => useSystemStore.getState().setMonitorStatus(st),
+      setHasDataset: (has) => useEtlStore.getState().setHasDataset(has),
       addLog: (lvl, msg) => useSystemStore.getState().addLog(lvl, msg),
     };
 

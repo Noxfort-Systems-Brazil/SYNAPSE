@@ -29,7 +29,15 @@ export const LiveDashboard: React.FC = () => {
   const latencyMs = useSystemStore((s) => s.latencyMs);
   const { sources, selectedSourceId, setSelectedSourceId, lossHistory, driftHistory } = useSensorsStore();
 
-  const activeSource = sources.find((s) => s.id === selectedSourceId) || sources[0];
+  const liveSensors = sources.filter(
+    (s) =>
+      s.source_type !== 'SUMO Network' &&
+      s.id !== 'map_main' &&
+      s.source_type !== 'Parquet' &&
+      s.id !== 'historical_base'
+  );
+
+  const activeSource = liveSensors.find((s) => s.id === selectedSourceId) || liveSensors[0];
   const activeLossPoints = activeSource
     ? lossHistory[activeSource.id] || lossHistory[activeSource.name] || Object.values(lossHistory)[0] || []
     : Object.values(lossHistory)[0] || [];
@@ -50,14 +58,14 @@ export const LiveDashboard: React.FC = () => {
       {/* 1. Header Summary Cards */}
       <DashboardKpiCards
         phase={phase}
-        sensorCount={sources.length}
+        sensorCount={liveSensors.length}
         avgPsi={avgPsi}
         latencyMs={latencyMs > 0 ? latencyMs.toFixed(2) : '--'}
       />
 
       {/* 2. Zero-Trust Data Sources Health Table */}
       <SensorHealthTable
-        sources={sources}
+        sources={liveSensors}
         selectedSourceId={activeSource?.id || null}
         onSelectSource={setSelectedSourceId}
       />

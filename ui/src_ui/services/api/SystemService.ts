@@ -53,6 +53,10 @@ export class SystemService {
     return await this.transport.invoke('stop_online_operation');
   }
 
+  async resetWorkspace(): Promise<{ success: boolean; message: string }> {
+    return await this.transport.invoke('reset_workspace');
+  }
+
   async testDbConnection(config: DatabaseConfig): Promise<{ success: boolean; message: string }> {
     return await this.transport.invoke('test_db_connection', { config });
   }

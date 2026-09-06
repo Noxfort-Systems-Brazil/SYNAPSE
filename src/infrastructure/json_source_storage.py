@@ -113,6 +113,22 @@ class JsonSourceStorage(ISourceStorage):
             metadata=data.get("metadata", {}),
         )
 
+    @staticmethod
+    def _is_historical_source(s: Any) -> bool:
+        """Determines if a DataSource represents an offline historical dataset rather than a live sensor."""
+        if getattr(s, "id", None) == "historical_base":
+            return True
+        stype = getattr(s, "source_type", None)
+        if stype == SourceType.PARQUET or str(stype) == "SourceType.PARQUET" or str(stype).lower() == "parquet":
+            return True
+        name_lower = str(getattr(s, "name", "") or "").lower()
+        if "historical" in name_lower or "histórica" in name_lower or "historica" in name_lower:
+            return True
+        conn = str(getattr(s, "connection_string", "") or "").lower()
+        if conn.endswith(".parquet"):
+            return True
+        return False
+
     def save(
         self,
         data_sources: Dict[str, DataSource],
@@ -126,7 +142,7 @@ class JsonSourceStorage(ISourceStorage):
                 "map_path": map_path,
                 "sources": [
                     self.serialize_source(s) for s in data_sources.values()
-                    if "Historical" not in s.name
+                    if not self._is_historical_source(s)
                 ],
                 "associations": associations,
             }
@@ -154,16 +170,17 @@ class JsonSourceStorage(ISourceStorage):
         associations: Dict[str, List[str]] = {}
         map_path: Optional[str] = None
 
-        # If file missing on disk, try to restore from PostgreSQL cloud vault
+        # If file missing on disk, try to restore from PostgreSQL cloud vault (only for legitimate Synapse configs)
         if not os.path.exists(self.file_path) and self.engine:
             try:
-                from src.repositories.cloud_vault_repo import CloudVaultRepository
-                repo = CloudVaultRepository(self.engine)
                 base_dir = self._resolve_base_dir()
                 rel_path = os.path.relpath(self.file_path, base_dir)
-                if repo.has_file(rel_path):
-                    if repo.restore_file_from_vault(rel_path, self.file_path):
-                        logger.info(f"[JsonSourceStorage] 🌟 Restored '{rel_path}' from PostgreSQL cloud vault.")
+                if rel_path in ("config/sources.json", "config\\sources.json"):
+                    from src.repositories.cloud_vault_repo import CloudVaultRepository
+                    repo = CloudVaultRepository(self.engine)
+                    if repo.has_file(rel_path):
+                        if repo.restore_file_from_vault(rel_path, self.file_path):
+                            logger.info(f"[JsonSourceStorage] 🌟 Restored '{rel_path}' from PostgreSQL cloud vault.")
             except Exception as ve:
                 logger.debug(f"[JsonSourceStorage] Cloud vault restore notice: {ve}")
 
@@ -183,6 +200,8 @@ class JsonSourceStorage(ISourceStorage):
                     continue
 
                 source = self.deserialize_source(src_data)
+                if self._is_historical_source(source):
+                    continue
                 sources[source.id] = source
                 loaded_count += 1
 

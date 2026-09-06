@@ -4,6 +4,11 @@
 
 ---
 
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [📚 Ingestion & HFT Guide](../docs/05_data_ingestion_and_hft.md) • [💻 Developer Guide](../docs/06_developer_guide.md#2-modifying-the-hft-link-protocol-buffers) • [🧪 Testing](../tests/README.md#2-mock-carina-controller-testsmock_grpc_serverpy)
+
+---
+
 ## ⚡ Overview
 
 The `proto/` directory contains the official **Protocol Buffers v3** schema defining the **HFT-Link (High-Frequency Transport Link)** between **SYNAPSE CORE** (the perception brain) and downstream traffic controllers like **CARINA** (the macroscopic signal controller).
@@ -64,7 +69,7 @@ message EdgeState {
 
 ## 🛠️ Compiling Protobuf Definitions
 
-To recompile the Python gRPC stubs from `synapse_hft.proto`:
+To recompile the Python gRPC stubs from `proto/synapse_hft.proto`:
 
 ```bash
 # Ensure virtual environment is active
@@ -86,7 +91,7 @@ This updates:
 
 ## 🚀 Performance & Network Tuning
 
-1. **Max Message Size**: gRPC channels in `src/infrastructure/grpc_connector.py` are initialized with:
+1. **Max Message Size**: gRPC channels in [`src/infrastructure/grpc_connector.py`](../src/infrastructure/grpc_connector.py) are initialized with:
    ```python
    options = [
        ('grpc.max_send_message_length', 50 * 1024 * 1024),    # 50 MB Send Limit
@@ -96,10 +101,11 @@ This updates:
        ('grpc.http2.max_pings_without_data', 0),              # Continuous Keepalive
    ]
    ```
-2. **Auto-Recovery**: If the downstream controller restarts, `src/infrastructure/hft_recovery.py` intercepts `grpc.RpcError`, re-establishes the HTTP/2 channel, and automatically re-invokes `LoadScenario` before re-opening `StreamTraffic`.
+2. **Auto-Recovery**: If the downstream controller restarts, [`src/infrastructure/hft_recovery.py`](../src/infrastructure/hft_recovery.py) intercepts `grpc.RpcError`, re-establishes the HTTP/2 channel, and automatically re-invokes `LoadScenario` before re-opening `StreamTraffic`.
 
 ---
 
 <p align="center">
-  <sub>SYNAPSE HFT-Link — Noxfort Systems Transport Protocols</sub>
+  <sub>SYNAPSE HFT-Link — Noxfort Systems Transport Protocols</sub><br/>
+  <sub><a href="#synapse-hft-link--protocol-buffers--grpc-specification">Back to top ↑</a></sub>
 </p>

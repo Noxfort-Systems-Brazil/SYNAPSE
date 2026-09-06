@@ -1,20 +1,29 @@
 ---
 name: Feature request
-about: Suggest an architectural idea or a new neural model for MARKVART
+about: Propose an architectural enhancement, new neural operator, or ingestion adapter
 title: '[FEATURE] '
 labels: 'enhancement'
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**Feature Description**
+A clear and concise description of the capability or architectural enhancement you are proposing.
 
-**Describe the architecture/solution you'd like**
-A clear and concise description of the PyTorch model or UI component you want to add.
+**Proposed Subsystem**
+- [ ] MARKVART™ Neural Model (`src/models/` or `src/agents/`)
+- [ ] Ingestion Protocol Adapter (`src/adapters/`)
+- [ ] ADAGIO™ Lifecycle / Calibration Phase (`src/phases/` or `src/optimization/`)
+- [ ] Desktop UI Component or Visualizer (`ui/src_ui/`)
+- [ ] HFT-Link Protocol / Serializer (`proto/` or `src/infrastructure/`)
+- [ ] Resilience / F.E.N.I.X. Diagnostic Engine (`src/fenix/`)
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or models you've considered.
+**Architectural Rationale & Implementation Details**
+Explain how this feature fits into the Domain-Driven Design (DDD) and SOLID principles of SYNAPSE. What interfaces (`src/interfaces/`) will it implement?
 
-**Mathematical/Scientific Justification**
-If proposing a new Neural Network, please link to the relevant paper (e.g. arXiv link) and explain why it fits the SYNAPSE macroscopic fluid dynamic approach.
+**Mathematical & Scientific Justification (if ML-related)**
+- Reference paper or standard (e.g. arXiv link, IEEE paper, NTCIP/SUMO standard).
+- Explain how the proposed operator behaves under high frequency ($<250\text{ ms}$) and how physical constraints (e.g. conservation of vehicle mass, non-negative velocity) will be preserved.
+
+**Alternatives Considered**
+Describe any alternative implementations or existing models you considered and why this approach is superior.

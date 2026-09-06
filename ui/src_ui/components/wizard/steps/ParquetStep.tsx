@@ -45,9 +45,9 @@ export const ParquetStep: React.FC = () => {
     setError(null);
     try {
       const res = await systemService.pickFile({
-        title: 'Selecionar Base Histórica Parquet (.parquet)',
-        filter: 'Base Parquet (*.parquet) | *.parquet',
-        filterName: 'Base Parquet (*.parquet)',
+        title: 'Selecionar Arquivo Parquet (.parquet)',
+        filter: 'Arquivo Parquet (*.parquet) | *.parquet',
+        filterName: 'Arquivo Parquet (*.parquet)',
         extensions: ['parquet'],
       });
       if (res && res.path && !res.cancelled) {
@@ -143,11 +143,11 @@ export const ParquetStep: React.FC = () => {
       {subStep === 'SELECT' && (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <label className="text-slate-700 dark:text-slate-300 font-semibold">Caminho da Base Parquet (.parquet):</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold">Caminho do Arquivo Parquet (.parquet):</label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="/caminho/para/dados_historicos.parquet"
+                placeholder="/caminho/para/dados_trafego.parquet"
                 value={parquetPath}
                 onChange={(e) => setParquetPath(e.target.value)}
                 className="flex-1 h-10 px-3 bg-surface dark:bg-background border border-border rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-500 font-mono text-xs"

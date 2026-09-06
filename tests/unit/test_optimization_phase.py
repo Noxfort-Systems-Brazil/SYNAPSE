@@ -127,11 +127,11 @@ def test_optimization_phase_missing_parquet(mock_app_state):
         success = phase.start()
         assert success is False
         assert len(errors) == 1
-        assert "Historical Parquet Dataset (.parquet) is MANDATORY" in errors[0]
+        assert "Parquet Dataset (.parquet) is MANDATORY" in errors[0]
 
 
-def test_optimization_phase_resolves_parquet_from_app_state(mock_app_state, sample_parquet):
-    # Add parquet as a data source
+def test_optimization_phase_does_not_resolve_parquet_from_sensors(mock_app_state, sample_parquet):
+    # Parquet in app_state sensors should NOT be considered as the optimization dataset
     parquet_src = DataSource(
         id="hist_base",
         name="Parquet Base",
@@ -142,9 +142,11 @@ def test_optimization_phase_resolves_parquet_from_app_state(mock_app_state, samp
     )
     mock_app_state.add_data_source(parquet_src)
     
-    phase = OptimizationPhase(mock_app_state)
-    resolved = phase._resolve_parquet_path()
-    assert resolved == sample_parquet
+    with patch("src.managers.storage_manager.StorageManager.get_datalake_base_path", return_value="/nonexistent/path"), \
+         patch("src.managers.storage_manager.StorageManager.get_datalake_golden_path", return_value="/nonexistent/path"):
+        phase = OptimizationPhase(mock_app_state)
+        resolved = phase._resolve_parquet_path()
+        assert resolved is None
 
 
 def test_optimization_phase_resolves_parquet_from_storage_manager(mock_app_state, sample_parquet, tmp_path):
@@ -163,7 +165,7 @@ def test_optimizer_service_raises_on_missing_parquet():
             service.run(map_file_path=None, history_file_path=None)
 
 
-def test_database_handler_registers_datasource_on_import(mock_app_state, sample_parquet):
+def test_database_handler_does_not_register_datasource_on_import(mock_app_state, sample_parquet):
     mock_controller = MagicMock()
     mock_controller.app_state = mock_app_state
     
@@ -187,6 +189,7 @@ def test_database_handler_registers_datasource_on_import(mock_app_state, sample_
         importer_factory=lambda storage: MockImporter(storage)
     )
     
+    initial_count = len(mock_app_state.get_all_data_sources())
     responses = []
     msg = IpcMessage(action="import_parquet", payload={"path": sample_parquet}, id="req-1")
     handler.handle_import_parquet(msg, lambda ok, res=None, error=None: responses.append((ok, res, error)))
@@ -194,16 +197,12 @@ def test_database_handler_registers_datasource_on_import(mock_app_state, sample_
     assert len(responses) == 1
     assert responses[0][0] is True
     
-    # Wait for async import thread to complete
+    # Wait for any async threads
     import time
-    for _ in range(50):
-        if any(s.source_type == SourceType.PARQUET for s in mock_app_state.get_all_data_sources()):
-            break
-        time.sleep(0.02)
+    time.sleep(0.05)
 
-    # Verify DataSource was registered in app_state
+    # Verify NO Parquet DataSource was registered in app_state
     sources = mock_app_state.get_all_data_sources()
-    parquet_sources = [s for s in sources if s.source_type == SourceType.PARQUET]
-    assert len(parquet_sources) == 1
-    assert parquet_sources[0].id == "historical_base"
+    assert len(sources) == initial_count
+    assert not any(s.id == "historical_base" or s.source_type == SourceType.PARQUET for s in sources)
 

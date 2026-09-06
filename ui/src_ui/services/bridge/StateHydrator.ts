@@ -60,6 +60,10 @@ export class StateHydrator implements IStateHydrator {
           );
         }
       }
+      if (sysStatus?.has_dataset) {
+        this.sink.setHasDataset?.(true);
+        this.sink.addLog('INFO', '📦 Dataset Parquet histórico detectado no Data Lake.');
+      }
 
       // 2. Sync Topology & Road Network
       const topo = await this.topologyService.getTopology();

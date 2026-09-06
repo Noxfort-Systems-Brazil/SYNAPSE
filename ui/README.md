@@ -4,6 +4,11 @@
 
 ---
 
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [📚 UI Guide](../docs/02_ui_architecture.md) • [⚡ Stdio IPC](../src/README.md#-core-subsystems-in-detail) • [🧪 Testing](../tests/README.md) • [📄 License](../LICENSE)
+
+---
+
 ## 🖥️ Overview
 
 The **SYNAPSE UI** is an enterprise-grade desktop application engineered for municipal traffic control rooms and Smart City operators. It provides a real-time, hardware-accelerated dashboard to inspect the urban road topology, monitor the 11 MARKVART™ neural models, audit XAI decisions, and manage heterogeneous sensor ingestion feeds.
@@ -19,7 +24,7 @@ The **SYNAPSE UI** is an enterprise-grade desktop application engineered for mun
 - **Styling**: [Tailwind CSS 3](https://tailwindcss.com/) + PostCSS + Custom Themes
 - **Telemetry Visualizations**: [Apache ECharts 5](https://echarts.apache.org/) + `echarts-for-react`
 - **Typography & Icons**: [Lucide React](https://lucide.dev/) + [KaTeX](https://katex.org/) (for mathematical formula rendering)
-- **Internationalization**: [i18next](https://www.i18next.com/) (English, Portuguese, Spanish, French, Chinese, Russian)
+- **Internationalization**: [i18next](https://www.i18next.com/) (Native `pt_BR` and `en_US`)
 - **IPC Transport**: Zero-Network-Port JSON-RPC over Standard I/O (`stdin`/`stdout`)
 
 ---
@@ -50,6 +55,8 @@ The **SYNAPSE UI** is an enterprise-grade desktop application engineered for mun
 │  - SignalBridge, CommandRouter, AppState, PyTorch Inference Loop       │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+For complete architectural details, see [`docs/02_ui_architecture.md`](../docs/02_ui_architecture.md).
 
 ---
 
@@ -111,15 +118,15 @@ ui/
    - Dispatches structured JSON-RPC commands (`start_system`, `pause_system`, `add_sensor`, `load_map`).
 
 2. **`useSensorsStore`**:
-   - Maintains the live state machine for all connected data sources (`QUARANTINE`, `VALIDATING`, `ACTIVE`, `FALLBACK`, `PROBATION`, `REJECTED`).
+   - Maintains the live state machine for all connected data sources ([`QUARANTINE`, `VALIDATING`, `ACTIVE`, `FALLBACK`, `PROBATION`, `REJECTED`](../docs/01_domain_entities.md#sourcestatus-state-machine)).
    - Tracks live velocity, flow, confidence scores, and historical time-series buffers.
 
 3. **`useTopologyStore`**:
-   - Stores the active SUMO `.net.xml` road geometry, intersections (`MapNode`), and road edges (`MapEdge`).
+   - Stores the active SUMO `.net.xml` road geometry, intersections ([`MapNode`](../docs/01_domain_entities.md#1-mapnode)), and road edges ([`MapEdge`](../docs/01_domain_entities.md#2-mapedge)).
    - Powers the interactive canvas rendering engine.
 
 4. **`useXaiStore`**:
-   - Holds legal explanations produced by the Qwen3 Jurist agent.
+   - Holds legal explanations produced by the [`Qwen3 Jurist Agent`](../docs/03_neural_models.md#11-qwen3-explainable-ai--legal-jurist).
    - Renders KaTeX mathematical formulas explaining why a specific traffic phase was prioritized.
 
 ---
@@ -139,10 +146,8 @@ ui/
 
 ### Scripts & Commands
 
+From the repository root:
 ```bash
-# Navigate to ui directory
-cd ui
-
 # 1. Install Dependencies
 npm install
 
@@ -154,8 +159,15 @@ npm run tauri dev
 
 # 4. Type-Check and Build Production Web Bundle
 npm run build
+```
 
-# 5. Compile Native Desktop Release Binary (.deb, AppImage, Binary)
+Or from the `ui/` directory:
+```bash
+cd ui
+npm install
+npm run dev
+npm run tauri dev
+npm run build
 npm run tauri build
 ```
 
@@ -163,18 +175,15 @@ npm run tauri build
 
 ## 🌐 Localization (i18n)
 
-The interface supports 6 municipal operational languages located in `src_ui/i18n/locales/`:
-- 🇬🇧 English (`en`)
-- 🇧🇷 Portuguese (`pt_BR`)
-- 🇪🇸 Spanish (`es`)
-- 🇫🇷 French (`fr`)
-- 🇨🇳 Chinese (`zh`)
-- 🇷🇺 Russian (`ru`)
+The interface supports municipal operational languages located in `src_ui/i18n/locales/`:
+- 🇧🇷 Portuguese (`pt_BR` / `pt`) — Default municipal locale
+- 🇬🇧 English (`en_US` / `en`) — International telemetry locale
 
-Users can switch languages on-the-fly via the Settings view without reloading the application.
+Users can switch languages on-the-fly via the Settings view without reloading the application. The architecture uses `i18next` and is ready for additional language dictionaries.
 
 ---
 
 <p align="center">
-  <sub>SYNAPSE Desktop UI — Noxfort Systems Frontend Engineering</sub>
+  <sub>SYNAPSE Desktop UI — Noxfort Systems Frontend Engineering</sub><br/>
+  <sub><a href="#synapse-desktop-ui--modern-desktop-frontend">Back to top ↑</a></sub>
 </p>

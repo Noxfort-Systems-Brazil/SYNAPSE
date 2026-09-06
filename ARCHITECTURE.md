@@ -1,56 +1,162 @@
 # SYNAPSE Core Architecture (Low Level)
 
-This document provides a low-level dissection of the SYNAPSE intelligent perception platform. For high-level overviews, refer to the `README.md`.
+> **Low-Level Architectural Dissection of the Intelligent Perception & Neural Fusion Gateway**
+
+---
+
+> 🧭 **Navigation**:
+> [🏠 Synapse Core](README.md) • [🏗️ Architecture](ARCHITECTURE.md) • [📚 Docs Index](docs/README.md) • [🧠 Neural Models](docs/03_neural_models.md) • [⚡ HFT-Link](proto/README.md) • [🖥️ Desktop UI](ui/README.md) • [🧪 Testing](tests/README.md) • [📜 License](LICENSE)
+
+---
 
 ## 1. Annotated Directory Structure
 
-The SYNAPSE repository is structured strictly around Domain-Driven Design (DDD) and MVC.
+The SYNAPSE repository is structured strictly around **Domain-Driven Design (DDD)**, **Clean Architecture**, and **Hexagonal / Onion Architecture** principles. The backend PyTorch cognitive engine is completely decoupled from the modern native desktop interface.
 
 ```text
-SYNAPSE_CORE/
-├── src/                      # Backend (Python Core)
-│   ├── domain/               # Core business logic entities and State (AppState, MapNode, MapEdge)
-│   ├── models/               # Pure PyTorch neural network definitions (.py equivalents of the math)
-│   ├── agents/               # Wrappers around models that handle instantiation, training loops, and scaling
-│   ├── controllers/          # Business logic handlers (SystemController, ProjectController)
-│   ├── phases/               # The ADAGIO Execution phases (Optimization, Bootstrap, Runtime)
-│   ├── infrastructure/       # Network, IO, and external APIs (GrpcConnector, PostgresManager)
-│   ├── engine/               # Real-time Execution Loop (InferenceEngine, CycleProcessor)
-│   └── kse/                  # Kinematic State Estimation (Dead Reckoning for dropped packets)
-├── ui/                       # Frontend (PyQt6)
-│   ├── components/           # Reusable UI parts (MainMenu, DockManager)
-│   ├── controllers/          # View Controllers (MapController)
-│   ├── styles/               # ThemeManager and QSS stylesheets
-│   └── main_window.py        # The primary Application Window
-├── proto/                    # Protobuf definitions for HFT-Link
-└── docs/                     # Comprehensive Technical Library
+Synapse/
+├── [src/](src/README.md)                      # Python Core Backend (Inference, Domain, IPC)
+│   ├── [domain/](docs/01_domain_entities.md)      # Core entities, repositories, AppState facade
+│   ├── [models/](docs/03_neural_models.md)      # Pure PyTorch neural network definitions (PINO, DeepONet, iTransformer)
+│   ├── agents/               # MARKVART™ autonomous agents managing models & training loops
+│   ├── blocks/               # Modular DL blocks (Graph, Spectral, Temporal)
+│   ├── controllers/          # Application controllers (System, Project, View)
+│   ├── engine/               # Real-time inference engine, cycle runner, and routing
+│   ├── fenix/                # F.E.N.I.X. self-healing drift monitor & out-of-process watchdog
+│   ├── infrastructure/       # gRPC HFT-Link connector, Postgres Data Lake, SafeTensors IO
+│   ├── [ipc/](src/README.md#-core-subsystems-in-detail)                 # StdioDaemon, JSON-RPC protocol, and EventBridge
+│   ├── kse/                  # Kinematic State Estimation (Kalman Dead Reckoning)
+│   ├── [phases/](docs/04_execution_phases.md)              # ADAGIO™ execution phases (Phase 0, Phase 1, Phase 2)
+│   ├── physics/              # LWR continuum conservation equations, Fundamental Diagrams
+│   ├── pipeline/             # Multi-agent execution pipelines (Fusion, Specialist)
+│   └── services/             # Domain and infrastructure services
+├── [ui/](ui/README.md)                       # Frontend Desktop Application (Tauri v2 + React 18)
+│   ├── src-tauri/            # Rust native backend, process manager, and Stdio pipes
+│   └── src_ui/               # React 18, TypeScript, Tailwind CSS, Zustand stores, ECharts
+├── [proto/](proto/README.md)                    # Protocol Buffers v3 definitions for HFT-Link gRPC
+├── [Model_Vault/](Model_Vault/README.md)              # Pre-trained weights (SafeTensors, GGUF tokenizers)
+├── [observability/](observability/README.md)            # Prometheus, Grafana, TensorBoard docker orchestration
+├── [packaging/](packaging/README.md)                # Native Debian (.deb) builder & Dockerfile
+├── [tests/](tests/README.md)                    # Test suites, mocks, benchmarks, and fixtures
+└── [docs/](docs/README.md)                     # Comprehensive 7-chapter technical library
 ```
+
+---
 
 ## 2. Design Patterns Applied
 
-SYNAPSE strictly adheres to SOLID principles by leveraging several established design patterns:
+SYNAPSE strictly adheres to **SOLID** principles by leveraging well-defined architectural patterns:
 
 ### The Facade Pattern
-- **`AppState` (`src/domain/app_state.py`)**: Acts as a strict facade protecting the `TopologyRepository` and `SourceRepository`. UI components never modify repositories directly; they pass through `AppState` which ensures Zero-Trust synchronization.
-- **`MainController` (`src/main_controller.py`)**: The central entry point that wires all signals between the Domain and the UI. It delegates heavy lifting to `SystemController` and `ProjectController`.
+- **`AppState` (`src/domain/app_state.py`)**: Acts as a thread-safe facade protecting the `TopologyRepository` and `SourceRepository`. External services never modify in-memory repositories directly; all state transitions flow through `AppState` to guarantee Zero-Trust validation.
+- **`StdioDaemon` (`src/ipc/stdio_daemon.py`)**: A headless facade coordinating standard I/O streams, command routing, and domain event bridging without opening TCP/HTTP server ports on the host system.
 
 ### The Strategy & State Patterns
-- **`SourceStatus`**: Sensors move through a strict State Machine (`QUARANTINE` $\rightarrow$ `VALIDATING` $\rightarrow$ `ACTIVE` $\rightarrow$ `FALLBACK`). 
-- **Graceful Degradation**: Depending on the state, the `CycleProcessor` uses a Strategy pattern to decide how to extract data (Neural Inference for `ACTIVE` sensors vs. Historical MEH lookups for `FALLBACK` sensors).
+- **`SourceStatus` State Machine**: Data sources transition strictly through:
+  $$\text{QUARANTINE} \longrightarrow \text{VALIDATING} \longrightarrow \text{ACTIVE} \rightleftharpoons \text{FALLBACK} \longrightarrow \text{PROBATION} \lor \text{REJECTED}$$
+- **Graceful Degradation (Gating Policy)**: When a sensor drops packets or fails physical checks, the `gating_policy.py` strategy selects between Neural Inference (`ACTIVE`), Kinematic Dead Reckoning (`KSE`), or Micro-Estimation History (`MEH/AFB`).
 
-### Dependency Injection (DIP)
-High-level orchestrators (`InferenceEngine`, `RuntimeLauncher`) do not instantiate their own database connections or ML models. They expect `AppState` and `GraphManager` to be injected via constructors, allowing for full unit testing without spinning up PostgreSQL or CUDA.
+### Dependency Injection (DIP) & IoC Containers
+High-level orchestrators (`InferenceEngine`, `RuntimeLauncher`, `CycleProcessor`) never hardcode model instantiations or database connectors. Dependencies are injected via constructors (`ServiceContainer` and `ControllerFactory`), allowing full testing with mocks on CPU without spinning up PostgreSQL or CUDA runtimes.
 
-## 3. The Data Flow Pipeline (End-to-End)
+### Process Supervision (Watchdog Pattern)
+- **`FenixProcessSupervisor` (`src/fenix/process_supervisor.py`)**: Executes as an independent watchdog process (`python synapse.py --supervisor`), monitoring the neural core's health, memory ceilings, and auto-resurrecting it upon fatal crashes.
 
-Understanding how a single speed reading from a camera becomes a global traffic adjustment:
+---
 
-1. **Ingestion (`api_ingestor.py`)**: A JSON packet arrives via HTTP. It is mapped to a `DataSource` entity.
-2. **State Validation (`app_state.py`)**: If the `DataSource` is `QUARANTINE`, the `payload` is routed to the `Linguist Standby Thread` where `NeuroSymbolic` checks for semantic physics (e.g. Speed cannot be negative).
-3. **Graph Memory (`traffic_node.py`)**: Upon validation, the payload updates the `latest_value` of its associated `MapNode` in memory.
-4. **Local Feature Extraction (`specialist_agent.py`)**: During the `tick()`, the node pushes the reading through its local TCN to generate a temporal embedding.
-5. **Snapshot Build (`snapshot_builder.py`)**: At cycle end, all node embeddings are concatenated into a `sensor_snapshot` tensor matrix.
-6. **Global Fusion (`fuser_agent.py`)**: The `iTransformer` receives the snapshot and outputs the "Perfect Present State".
-7. **Transport (`grpc_connector.py`)**: The state is serialized via Protobuf and fired over the `HFT-Link` to CARINA in under 250ms.
+## 3. Desktop UI & IPC Architecture
 
-For deeper technical breakdowns of these steps, please consult the `docs/` library.
+Rather than opening localhost HTTP or WebSocket sockets that introduce security vulnerabilities in municipal control rooms, SYNAPSE implements **Zero-Network-Port IPC**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        TAURI v2 DESKTOP HOST                           │
+│                                                                        │
+│   ┌──────────────────────────────────────────────────────────────┐     │
+│   │                      REACT 18 WEBVIEW                        │     │
+│   │  - Zustand Reactive Stores (Sensors, System, Topology, XAI)  │     │
+│   │  - ECharts Telemetry & Interactive Map Canvas                │     │
+│   │  - KaTeX Mathematical Proofs & Jurist Reports                │     │
+│   └──────────────────────────────┬───────────────────────────────┘     │
+│                                  │ Tauri Invoke / Event Bridge         │
+│   ┌──────────────────────────────▼───────────────────────────────┐     │
+│   │                      RUST CORE (src-tauri)                   │     │
+│   │  - Sidecar Process Manager (spawns Python StdioDaemon)       │     │
+│   │  - Non-blocking async Stdio Pipe Interceptor                 │     │
+│   └──────────────────────────────┬───────────────────────────────┘     │
+└──────────────────────────────────┼─────────────────────────────────────┘
+                                   │ STDIN / STDOUT (Newline JSON-RPC)
+┌──────────────────────────────────▼─────────────────────────────────────┐
+│                       PYTHON BACKEND (StdioDaemon)                     │
+│  - CommandRouter, IpcEventBridge, AppState, PyTorch Inference Loop     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+For complete implementation specifics, see [`docs/02_ui_architecture.md`](docs/02_ui_architecture.md) and [`ui/README.md`](ui/README.md).
+
+---
+
+## 4. The Data Flow Pipeline (End-to-End)
+
+Understanding how a single speed reading from an inductive loop or traffic camera becomes a macroscopic network state optimization:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor FieldSensor as Municipal Sensor / Cloud API
+    participant Ingestion as IngestionHub (HTTP/MQTT/WS)
+    participant Linguist as Linguist Agent (Zero-Trust)
+    participant Memory as Spatial Graph Memory (AppState)
+    participant KSE as KSE Kinematic Filter
+    participant MARKVART as MARKVART Neural Core
+    participant Streamer as HFT-Link gRPC Streamer
+    participant CARINA as CARINA Traffic Controller
+    participant UI as Tauri Desktop Interface
+
+    FieldSensor->>Ingestion: Push Raw Telemetry Payload
+    Ingestion->>Linguist: Route Payload (QUARANTINE state)
+    alt Payload Violates Physical Constraints
+        Linguist-->>Memory: Mark REJECTED & Alert Auditor
+    else Validated Semantic Schema
+        Linguist->>Memory: Promote to ACTIVE & update latest_value
+    end
+    Note over Memory,KSE: Real-time Cycle Tick (1.0s)
+    opt Sensor Packet Dropped
+        KSE->>Memory: Apply Newtonian Dead Reckoning (ghost_step)
+    end
+    Memory->>MARKVART: Concatenate Node Features into Sensor Snapshot
+    MARKVART->>MARKVART: Local TCN-AE + GATv2 Attention + iTransformer Fusion
+    MARKVART->>Streamer: Emit Fused "Perfect Present State" Matrix
+    Streamer->>CARINA: Transmit TrafficFrame (<250ms via HTTP/2 gRPC)
+    Streamer->>UI: Stream Telemetry & Alerts via Stdio JSON-RPC
+```
+
+1. **Ingestion (`src/adapters/`)**: A telemetry packet arrives via HTTP push/poll, MQTT stream, or WebSocket feed.
+2. **Zero-Trust Validation (`src/agents/linguist_agent.py`)**: If the sensor is in `QUARANTINE`, the `Standby Linguist Thread` processes the schema through `DistilRoBERTa` and symbolic physics rules.
+3. **Graph State Memory (`src/domain/app_state.py`)**: Upon validation, the reading updates the corresponding `MapNode` state in memory.
+4. **Local Feature Extraction (`src/agents/specialist_agent.py`)**: Each node executes its local `TCNAE` autoencoder to generate temporal representations.
+5. **Kinematic Protection (`src/kse/`)**: If packets are dropped, the `Extended Kalman Filter` extrapolates the speed and density vectors to avoid `NaN` tensors.
+6. **Topological Aggregation (`src/agents/coordinator_agent.py`)**: `GATv2 Lite` propagates attention across road edges (`MapEdge`).
+7. **Global Neural Fusion (`src/agents/fuser_agent.py`)**: `iTransformer` and `PINO` fuse temporal tokens into a single snapshot matrix.
+8. **Transport (`src/infrastructure/grpc_connector.py`)**: The snapshot is serialized into `TrafficFrame` protobufs and streamed to CARINA over the `HFT-Link` in $< 250\text{ ms}$.
+9. **Desktop Telemetry (`src/ipc/event_bridge.py`)**: Real-time metrics are streamed over standard I/O pipes to the Tauri interface at 60 FPS.
+
+---
+
+## 5. Subsystem Reference Links
+
+For granular mathematical formulations, data schemas, and deployment instructions:
+- [01. Domain Entities & Core Structures](docs/01_domain_entities.md)
+- [02. UI Architecture & Frontend](docs/02_ui_architecture.md)
+- [03. Neural Models & PyTorch Implementations](docs/03_neural_models.md)
+- [04. Execution Phases & Lifecycle](docs/04_execution_phases.md)
+- [05. Data Ingestion & HFT Network](docs/05_data_ingestion_and_hft.md)
+- [06. Developer Guide (Protobuf & Testing)](docs/06_developer_guide.md)
+- [07. Production Deployment Guide](docs/07_deployment_guide.md)
+
+---
+
+<p align="center">
+  <sub>SYNAPSE Core Architecture — Noxfort Systems Engineering</sub><br/>
+  <sub><a href="#synapse-core-architecture-low-level">Back to top ↑</a></sub>
+</p>

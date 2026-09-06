@@ -1,14 +1,19 @@
 # SYNAPSE CORE
 > **An Intelligent Perception & Neural Fusion Gateway for Smart City Traffic Management**
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Ubuntu%2022.04%2B-lightgrey)]()
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)]()
 [![CUDA](https://img.shields.io/badge/CUDA-12.x-76B900?logo=nvidia&logoColor=white)]()
-[![Frontend](https://img.shields.io/badge/Frontend-Tauri%20v2%20%2B%20React%2018-24C8D8?logo=tauri&logoColor=white)]()
-[![IPC](https://img.shields.io/badge/IPC-Stdio%20JSON--RPC%20(Zero--Port)-blueviolet)]()
-[![gRPC](https://img.shields.io/badge/gRPC-HFT--Link%20%3C250ms-244c5a?logo=grpc&logoColor=white)]()
+[![Frontend](https://img.shields.io/badge/Frontend-Tauri%20v2%20%2B%20React%2018-24C8D8?logo=tauri&logoColor=white)](ui/README.md)
+[![IPC](https://img.shields.io/badge/IPC-Stdio%20JSON--RPC%20(Zero--Port)-blueviolet)](src/README.md)
+[![gRPC](https://img.shields.io/badge/gRPC-HFT--Link%20%3C250ms-244c5a?logo=grpc&logoColor=white)](proto/README.md)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-green)]()
+
+---
+
+> 🧭 **Quick Navigation**:
+> [📖 Summary](#-executive-summary) • [🏗️ Architecture](ARCHITECTURE.md) • [🧠 Neural Models](docs/03_neural_models.md) • [⏱️ Execution Phases](docs/04_execution_phases.md) • [⚡ HFT-Link](proto/README.md) • [🖥️ Desktop UI](ui/README.md) • [🧪 Testing](tests/README.md) • [📚 Docs Library](docs/README.md) • [🤝 Contributing](CONTRIBUTING.md) • [📜 License](LICENSE)
 
 ---
 
@@ -143,7 +148,7 @@ The frontend is a dedicated, native desktop application engineered with **Tauri 
 
 - **Zero-Port IPC Security**: Frontend communicates with the Python core exclusively through standard streams (`stdin`/`stdout`) via the `StdioDaemon` JSON-RPC protocol, eliminating local network port vulnerabilities.
 - **Dynamic Theming**: Full Dark/Light theme switching powered by Tailwind CSS.
-- **Multi-Language Localization**: Full i18n support in English (`en`), Portuguese (`pt_BR`), Spanish (`es`), French (`fr`), Chinese (`zh`), and Russian (`ru`).
+- **Multi-Language Localization**: Native Portuguese (`pt_BR`) and English (`en_US`) locales, architected for effortless multi-lingual expansion.
 - **High-Rate Telemetry**: Hardware-accelerated Echarts render live queue lengths, occupancy graphs, and sensor confidence metrics.
 - **Decoupled Event Bridge**: The core PyTorch inference cycle is completely isolated from GUI rendering threads.
 
@@ -167,8 +172,8 @@ The frontend is a dedicated, native desktop application engineered with **Tauri 
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/noxfort/SYNAPSE_CORE.git
-cd SYNAPSE_CORE
+git clone https://github.com/Noxfort/Synapse.git
+cd Synapse
 ```
 
 #### 2. Configure Python Virtual Environment
@@ -186,10 +191,10 @@ If you wish to build or develop the Tauri v2 desktop application:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
-# Install UI npm packages
-cd ui
+# Install UI npm packages (from repository root)
 npm install
-cd ..
+# or from ui/ directory
+cd ui && npm install && cd ..
 ```
 
 #### 4. Configure Pre-Trained Weights (Model Vault)
@@ -204,8 +209,11 @@ SYNAPSE relies on foundational language and transformer weights stored in `Model
 
 ### 1. Launch Modern Desktop Interface
 ```bash
-# Automatically detects Rust/Tauri or falls back to headless mode
+# Option A: From root using Python (auto-detects Tauri release/dev or launches daemon)
 python synapse.py
+
+# Option B: Launch native Tauri v2 desktop frontend with live hot-reload
+npm run tauri dev
 ```
 
 ### 2. Launch in Headless Daemon Mode (Servers & Production)
@@ -219,19 +227,26 @@ python synapse.py --headless
 SYNAPSE_HEADLESS=1 python synapse.py
 ```
 
-### 3. Run Observability Stack (Prometheus + Grafana + TensorBoard)
+### 3. Launch Out-of-Process Watchdog Supervisor (F.E.N.I.X.)
+For high-availability mission-critical deployments where the neural core process must be auto-resurrected upon unexpected faults:
+```bash
+python synapse.py --supervisor
+```
+
+### 4. Run Observability Stack (Prometheus + Grafana + TensorBoard)
 ```bash
 docker compose -f observability/docker-compose.yml up -d
 ```
 - **Grafana**: [http://localhost:3000](http://localhost:3000) (User: `admin` | Password: `synapse123`)
 - **Prometheus**: [http://localhost:9090](http://localhost:9090)
 - **TensorBoard**: [http://localhost:6006](http://localhost:6006)
+- Complete details in [`observability/README.md`](observability/README.md).
 
 ---
 
 ## 🧪 Testing & Validation
 
-SYNAPSE includes a comprehensive test suite of 70+ test suites covering unit logic, integration pipelines, and hardware stress benchmarks:
+SYNAPSE includes a comprehensive test suite covering unit logic, integration pipelines, and hardware stress benchmarks:
 
 ```bash
 # Run all unit and integration tests
@@ -240,7 +255,7 @@ pytest tests/ -v
 # Run with coverage report
 pytest --cov=src tests/
 
-# Run sensor stress benchmark (simulate 100 sensors under full load)
+# Run sensor stress benchmark (simulate sensors under full load)
 python tests/benchmark.py
 ```
 
@@ -251,45 +266,46 @@ For complete details on testing mocks and fixtures, see [`tests/README.md`](test
 ## 📂 Repository Directory Map
 
 ```text
-SYNAPSE_CORE/
-├── Model_Vault/              # Foundation neural weights (SafeTensors, GGUF, tokenizers)
-├── docs/                     # Technical documentation library (01 to 07)
-├── observability/            # Prometheus, Grafana, TensorBoard docker orchestration
-├── packaging/                # Native Debian (.deb) builder & Dockerfile
-├── proto/                    # Protobuf schemas for HFT-Link gRPC
-├── src/                      # Python Core Backend (Clean Architecture / DDD)
-│   ├── adapters/             # Ingestion adapters (HTTP push/poll, MQTT, WS, Replay)
-│   ├── afb/                  # Adaptive Fallback Engine & SensorGuard
-│   ├── agents/               # Autonomous MARKVART™ agents (Specialist, Fuser, Jurist, etc.)
-│   ├── blocks/               # Neural building blocks (Graph, Spectral, Temporal)
-│   ├── controllers/          # Business logic controllers (System, Project, View)
-│   ├── domain/               # Core entities, repositories, and AppState facade
-│   ├── engine/               # Real-time inference engine, cycle runner, and routers
-│   ├── factories/            # Factory patterns for agents, models, nodes, phases
-│   ├── fenix/                # Self-healing, drift evaluation, and maintenance
-│   ├── handlers/             # Command and database handlers
-│   ├── infrastructure/       # gRPC client, Postgres manager, SafeTensors storage
-│   ├── interfaces/           # Formal typing contracts and Abstract Base Classes (ABCs)
-│   ├── ipc/                  # StdioDaemon, JSON-RPC protocol, and EventBridge
-│   ├── kse/                  # Kinematic State Estimation (Kalman Dead Reckoning)
-│   ├── logging/              # Interceptor-based logging and log facades
-│   ├── managers/             # Graph, Node, Storage, Source, and XAI managers
-│   ├── meh/                  # Micro-Estimation History & Golden Dataset loader
-│   ├── memory/               # Episodic, Semantic, Spatial, Spatiotemporal memory
-│   ├── models/               # PyTorch models (PINO, DeepONet, iTransformer, GATv2)
-│   ├── optimization/         # Optuna AutoML and Population-Based Training (PBT)
-│   ├── phases/               # ADAGIO™ execution phases (0, 1, 2)
-│   ├── physics/              # LWR continuum physics, fundamental diagrams, physical losses
-│   ├── pipeline/             # Agent orchestration pipelines (Fusion, Specialist, etc.)
-│   ├── services/             # Domain and infrastructure services
-│   ├── strategies/           # Validation, imputation, and clustering strategies
-│   └── utils/                # Hardware acceleration, geometry, normalization helpers
-├── tests/                    # PyTest test suites, mocks, and stress benchmarks
-├── ui/                       # Modern Desktop Frontend (Tauri v2 + React 18 + Vite)
-│   ├── src-tauri/            # Rust native backend & sidecar manager
-│   └── src_ui/               # React 18 components, Zustand stores, Echarts, Tailwind
-├── synapse.py                # Main application launcher
-└── synapse.spec              # PyInstaller binary packaging specification
+Synapse/
+├── [Model_Vault/](Model_Vault/README.md)       # Foundation neural weights (SafeTensors, GGUF, tokenizers)
+├── [docs/](docs/README.md)              # Technical documentation library (01 to 07)
+├── [observability/](observability/README.md)     # Prometheus, Grafana, TensorBoard docker orchestration
+├── [packaging/](packaging/README.md)         # Native Debian (.deb) builder & Dockerfile
+├── [proto/](proto/README.md)             # Protobuf schemas for HFT-Link gRPC
+├── [src/](src/README.md)               # Python Core Backend (Clean Architecture / DDD)
+│   ├── adapters/          # Ingestion adapters (HTTP push/poll, MQTT, WS, Replay)
+│   ├── afb/               # Adaptive Fallback Engine & SensorGuard
+│   ├── agents/            # Autonomous MARKVART™ agents (Specialist, Fuser, Jurist, etc.)
+│   ├── blocks/            # Neural building blocks (Graph, Spectral, Temporal)
+│   ├── controllers/       # Business logic controllers (System, Project, View)
+│   ├── domain/            # Core entities, repositories, and AppState facade
+│   ├── engine/            # Real-time inference engine, cycle runner, and routers
+│   ├── factories/         # Factory patterns for agents, models, nodes, phases
+│   ├── fenix/             # Self-healing, drift evaluation, and supervisor watchdog
+│   ├── handlers/          # Command and database handlers
+│   ├── infrastructure/    # gRPC client, Postgres manager, SafeTensors storage
+│   ├── interfaces/        # Formal typing contracts and Abstract Base Classes (ABCs)
+│   ├── ipc/               # StdioDaemon, JSON-RPC protocol, and EventBridge
+│   ├── kse/               # Kinematic State Estimation (Kalman Dead Reckoning)
+│   ├── logging/           # Interceptor-based logging and log facades
+│   ├── managers/          # Graph, Node, Storage, Source, and XAI managers
+│   ├── meh/               # Micro-Estimation History & Golden Dataset loader
+│   ├── memory/            # Episodic, Semantic, Spatial, Spatiotemporal memory
+│   ├── models/            # PyTorch models (PINO, DeepONet, iTransformer, GATv2)
+│   ├── optimization/      # Optuna AutoML and Population-Based Training (PBT)
+│   ├── phases/            # ADAGIO™ execution phases (0, 1, 2)
+│   ├── physics/           # LWR continuum physics, fundamental diagrams, physical losses
+│   ├── pipeline/          # Agent orchestration pipelines (Fusion, Specialist, etc.)
+│   ├── services/          # Domain and infrastructure services
+│   ├── strategies/        # Validation, imputation, and clustering strategies
+│   └── utils/             # Hardware acceleration, geometry, normalization helpers
+├── [tests/](tests/README.md)             # PyTest test suites, mocks, and stress benchmarks
+├── [ui/](ui/README.md)                # Modern Desktop Frontend (Tauri v2 + React 18 + Vite)
+│   ├── src-tauri/         # Rust native backend & sidecar manager
+│   └── src_ui/            # React 18 components, Zustand stores, Echarts, Tailwind
+├── synapse.py             # Main application launcher
+├── synapse.spec           # PyInstaller binary packaging specification
+└── [LICENSE](LICENSE)               # GNU AGPL v3.0 license definition
 ```
 
 ---
@@ -298,13 +314,14 @@ SYNAPSE_CORE/
 
 For granular mathematical, architectural, and operational manuals, explore the `docs/` library:
 
-1. [Domain Entities & Core Structures](docs/01_domain_entities.md)
-2. [UI Architecture & Frontend](docs/02_ui_architecture.md)
-3. [Neural Models & PyTorch Implementations](docs/03_neural_models.md)
-4. [Execution Phases & Lifecycle](docs/04_execution_phases.md)
-5. [Data Ingestion & HFT Network](docs/05_data_ingestion_and_hft.md)
-6. [Developer Guide (Protobuf & Testing)](docs/06_developer_guide.md)
-7. [Production Deployment Guide](docs/07_deployment_guide.md)
+1. [01. Domain Entities & Core Structures](docs/01_domain_entities.md)
+2. [02. UI Architecture & Frontend](docs/02_ui_architecture.md)
+3. [03. Neural Models & PyTorch Implementations](docs/03_neural_models.md)
+4. [04. Execution Phases & Lifecycle](docs/04_execution_phases.md)
+5. [05. Data Ingestion & HFT Network](docs/05_data_ingestion_and_hft.md)
+6. [06. Developer Guide (Protobuf & Testing)](docs/06_developer_guide.md)
+7. [07. Production Deployment Guide](docs/07_deployment_guide.md)
+8. [Comprehensive Documentation Index](docs/README.md)
 
 ---
 
@@ -325,5 +342,6 @@ This software is licensed under the **GNU Affero General Public License v3.0 (AG
 ---
 
 <p align="center">
-  <sub>Built with precision by <strong>Noxfort Systems</strong></sub>
+  <sub>Built with precision by <strong>Noxfort Systems</strong></sub><br/>
+  <sub><a href="#synapse-core">Back to top ↑</a></sub>
 </p>

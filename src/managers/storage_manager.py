@@ -290,6 +290,28 @@ class StorageManager:
         except Exception as e:
             logging.warning(f"[StorageManager] Error checking Phase 1 artifacts: {e}")
             return False
+
+    def has_historical_dataset(self) -> bool:
+        """Verifies if the historical Parquet dataset exists in the datalake for Phase 0 optimization."""
+        try:
+            base_dir = Path(self.get_datalake_base_path())
+            if base_dir.exists():
+                parquets = [p for p in base_dir.glob("*.parquet") if p.stat().st_size > 0]
+                if parquets:
+                    return True
+                target = base_dir / "base_v1.parquet"
+                if self.restore_file_from_vault("datalake/base/base_v1.parquet", str(target)):
+                    if target.exists() and target.stat().st_size > 0:
+                        return True
+            golden_dir = Path(self.get_datalake_golden_path())
+            if golden_dir.exists():
+                goldens = [p for p in golden_dir.glob("*.parquet") if p.stat().st_size > 0]
+                if goldens:
+                    return True
+            return False
+        except Exception as e:
+            logging.warning(f"[StorageManager] Error checking historical dataset: {e}")
+            return False
     # =========================================================================
     #  CONNECTION LIFECYCLE (Simplified)
     # =========================================================================

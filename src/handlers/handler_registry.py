@@ -117,6 +117,7 @@ def register_default_command_handlers(
     router.register("generate_official_report", system_handler.handle_generate_official_report)
     router.register("hot_swap_model", system_handler.handle_hot_swap_model)
     router.register("get_process_health", system_handler.handle_get_process_health)
+    router.register("reset_workspace", system_handler.handle_reset_workspace)
     router.register("shutdown", system_handler.handle_shutdown)
 
 
