@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/interfaces/reports.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Domain Contracts & Protocols for Traffic Engineering Reports (SOLID: DIP & ISP).
@@ -47,6 +30,16 @@ class ITrafficReportService(Protocol):
         result_id: Optional[str] = None,
         municipal_config: Optional[Dict[str, Any]] = None,
         xai_result: Optional[Dict[str, Any]] = None,
+        typography_options: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Synthesizes structured report data and delegates to injected formatter."""
+        ...
+
+    def export_docx(
+        self,
+        report_data: Dict[str, Any],
+        output_path: str,
+        typography_options: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Exports report to native Microsoft Word (.docx) file."""
         ...

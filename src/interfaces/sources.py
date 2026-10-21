@@ -1,24 +1,7 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/interfaces/sources.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
-from typing import Dict, List, Optional, Tuple, Protocol, runtime_checkable
+from typing import Dict, List, Optional, Tuple, Protocol, runtime_checkable, Any
 from src.domain.entities import DataSource
 
 
@@ -90,6 +73,17 @@ class ISourceRepository(Protocol):
         """Update the latest telemetry value of a DataSource."""
         ...
 
+    def update_source(
+        self,
+        source_id: str,
+        name: Optional[str] = None,
+        is_local: Optional[bool] = None,
+        source_type: Optional[Any] = None,
+        connection_string: Optional[str] = None,
+    ) -> Optional[DataSource]:
+        """Update configurable properties of an existing DataSource."""
+        ...
+
     def associate(self, source_id: str, element_id: str) -> None:
         """Associate a source with a map element (node or edge)."""
         ...
@@ -100,6 +94,10 @@ class ISourceRepository(Protocol):
 
     def get_element_for_source(self, source_id: str) -> Optional[str]:
         """Find the map element ID associated with a given source ID."""
+        ...
+
+    def get_elements_for_source(self, source_id: str) -> List[str]:
+        """Find all map element IDs associated with a given source ID."""
         ...
 
     def toggle_origin(self, source_id: str) -> Optional[bool]:
@@ -113,3 +111,20 @@ class ISourceRepository(Protocol):
     def clear(self) -> None:
         """Clear all registered sources and associations."""
         ...
+
+    def set_map_path(self, map_path: Optional[str]) -> None:
+        """Set the active map file path."""
+        ...
+
+    def get_map_path(self) -> Optional[str]:
+        """Get the active map file path."""
+        ...
+
+    def save(self) -> None:
+        """Persist current state to storage."""
+        ...
+
+    def notify_source_updated(self, source: DataSource) -> None:
+        """Notify and persist updates to a data source."""
+        ...
+

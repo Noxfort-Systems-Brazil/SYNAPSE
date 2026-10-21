@@ -1,27 +1,11 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/interfaces/app_state.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, List, Optional, Protocol, runtime_checkable
 from src.domain.entities import MapNode, MapEdge, DataSource
-from src.interfaces.topology import ITopologyReader
+from src.interfaces.topology import ITopologyReader, ITopologyRepository
 from src.interfaces.sources import ISourceRepository
+from src.interfaces.interaction import IInteractionManager
 
 
 @runtime_checkable
@@ -39,6 +23,10 @@ class IAppState(Protocol):
     High-level facade contract for application state coordination.
     """
 
+    topology: ITopologyRepository
+    sources: ISourceRepository
+    interaction: IInteractionManager
+
     def set_map_data(self, nodes_data: List[dict], edges_data: List[dict]) -> None: ...
     def set_map_source_path(self, path: str) -> None: ...
     def get_map_source_path(self) -> Optional[str]: ...
@@ -54,10 +42,14 @@ class IAppState(Protocol):
     def get_data_source(self, source_id: str) -> Optional[DataSource]: ...
     def get_all_data_sources(self) -> List[DataSource]: ...
     def update_source_value(self, source_id: str, value: float) -> None: ...
+    def notify_source_updated(self, source: DataSource) -> None: ...
 
     def enter_association_mode(self, source_id: str) -> None: ...
     def exit_association_mode(self) -> None: ...
     def is_in_association_mode(self) -> bool: ...
+    def associate(self, source_id: str, element_id: str) -> None: ...
     def associate_selected_source_to_element(self, element_id: str) -> None: ...
     def get_sources_associated_with_element(self, element_id: str) -> List[str]: ...
     def get_element_for_source(self, source_id: str) -> Optional[str]: ...
+    def get_elements_for_source(self, source_id: str) -> List[str]: ...
+
