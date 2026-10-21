@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/auditor_agent.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 from typing import Dict, Any, Union, Optional
@@ -88,9 +71,60 @@ class AuditorAgent(BaseAgent):
 
     def reset_history(self):
         """Delegates anomaly history reset to AuditorPipeline."""
-        if hasattr(self.pipeline, "reset_history"):
-            self.pipeline.reset_history()
+        reset_fn = getattr(self.pipeline, "reset_history", None)
+        if callable(reset_fn):
+            reset_fn()
 
     def train_step(self, input_data: Any) -> float:
         """Delegates optimization and adaptive threshold updates to AuditorTrainer."""
         return self.trainer.train_step(input_data)
+
+    def apply_calibration(
+        self,
+        model_state_dict: Optional[Dict[str, Any]] = None,
+        threshold: Optional[Union[float, torch.Tensor]] = None,
+        center: Optional[torch.Tensor] = None,
+        center_initialized: Optional[bool] = None,
+    ) -> None:
+        """
+        Applies calibrated offline parameters (weights, threshold, center)
+        directly to the agent's model, pipeline, and trainer.
+        Encapsulates internal calibrator topology (Law of Demeter).
+        """
+        if model_state_dict is not None and self.model is not None:
+            self.model.load_state_dict(model_state_dict)
+
+        if threshold is not None:
+            raw_val = float(threshold.item() if isinstance(threshold, torch.Tensor) else threshold)
+            thresh_val = max(0.75, raw_val * 1.35 if raw_val < 0.60 else raw_val)
+            if self.model is not None:
+                self.model.threshold = torch.tensor(thresh_val)
+
+            for target in (getattr(self.pipeline, "calibrator", None), getattr(self.trainer, "calibrator", None)):
+                if target is not None:
+                    load_cal_fn = getattr(target, "load_calibrated_state", None)
+                    if callable(load_cal_fn):
+                        load_cal_fn(thresh_val)
+                    else:
+                        target.threshold = thresh_val
+
+        if center is not None:
+            c = center.float() if isinstance(center, torch.Tensor) else center
+            c_init = True if center_initialized is None else center_initialized
+            if self.model is not None:
+                self.model.center = c
+                self.model.center_initialized = c_init
+
+            for target in (getattr(self.pipeline, "calibrator", None), getattr(self.trainer, "calibrator", None)):
+                if target is not None:
+                    target.center = c
+                    target.center_initialized = c_init
+
+    def set_default_threshold(self, safe_floor: float = 0.85) -> None:
+        """Sets the fallback baseline floor threshold."""
+        if self.model is not None:
+            self.model.threshold = torch.tensor(safe_floor)
+        cal = getattr(self.pipeline, "calibrator", None)
+        if cal is not None:
+            cal.threshold = safe_floor
+

@@ -1,41 +1,24 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/specialist_agent.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
+import torch.nn as nn
 import numpy as np
 from typing import List, Any, Optional
 
 from src.agents.base_agent import BaseAgent
-from src.mixins.pbt_mixin import PBTMixin
 from src.interfaces.pipelines import ISpecialistPipeline
 from src.interfaces.trainers import ISpecialistTrainer
 from src.pipeline.specialist_pipeline import SpecialistPipeline
 from src.trainer.specialist_trainer import SpecialistTrainer
 
 
-class SpecialistAgent(BaseAgent, PBTMixin):
+class SpecialistAgent(BaseAgent):
     """
     The Specialist Agent ('O Tático').
     
     Pure Orchestrator Architecture (SOLID Compliant):
-    - Single Responsibility: Manages temporal feature extraction and PBT population lifecycle.
+    - Single Responsibility: Manages temporal feature extraction and local TCN model inference.
     - Delegations:
       -> TCN Execution & Embeddings: ISpecialistPipeline (src/pipeline/specialist_pipeline.py)
       -> TCN Training Routines: ISpecialistTrainer (src/trainer/specialist_trainer.py)
@@ -99,7 +82,7 @@ class SpecialistAgent(BaseAgent, PBTMixin):
         self.target_edge_id: Optional[str] = None
         self.channel_key: Optional[str] = None
 
-        # PBT Metrics
+        # Training Metrics
         self.running_loss = 0.0
         self.steps = 0
 
@@ -136,27 +119,26 @@ class SpecialistAgent(BaseAgent, PBTMixin):
     @property
     def optimizer(self):
         """Delegates optimizer access to the underlying trainer."""
-        if hasattr(self.trainer, "optimizer"):
-            return self.trainer.optimizer
-        return getattr(self, "_optimizer", None)
+        opt = getattr(self.trainer, "optimizer", None)
+        return opt if opt is not None else getattr(self, "_optimizer", None)
 
     def freeze(self) -> 'SpecialistAgent':
         """Freezes specialist weights for drift-safe real-time inference (Freeze phase)."""
-        if hasattr(self.pipeline, "freeze"):
-            self.pipeline.freeze()
+        freeze_fn = getattr(self.pipeline, "freeze", None)
+        if callable(freeze_fn):
+            freeze_fn()
         return self
 
     def unfreeze(self) -> 'SpecialistAgent':
         """Unfreezes specialist weights for dynamic recalibration."""
-        if hasattr(self.pipeline, "unfreeze"):
-            self.pipeline.unfreeze()
+        unfreeze_fn = getattr(self.pipeline, "unfreeze", None)
+        if callable(unfreeze_fn):
+            unfreeze_fn()
         return self
 
     @property
     def is_frozen(self) -> bool:
-        if hasattr(self.pipeline, "is_frozen"):
-            return self.pipeline.is_frozen
-        return False
+        return bool(getattr(self.pipeline, "is_frozen", False))
 
     def inference(self, input_data: Any) -> Any:
         """
@@ -181,16 +163,36 @@ class SpecialistAgent(BaseAgent, PBTMixin):
 
         return self.pipeline.predict(input_sequence)
 
+    def compute_loss(self, input_sequence: Any) -> float:
+        """Evaluates reconstruction loss via fast forward-pass without backpropagation."""
+        loss_fn = getattr(self.pipeline, "compute_loss", None)
+        if callable(loss_fn):
+            return loss_fn(input_sequence)
+        return 0.02
+
     def train_step(self, batch_data: Any) -> float:
         """Delegates training step to SpecialistTrainer."""
         return self.trainer.train_step(batch_data)
 
     def train(self, inputs: torch.Tensor, targets: torch.Tensor, epochs: int = 1, batch_size: int = 32) -> float:
-        """Delegates training loop to SpecialistTrainer and tracks PBT running loss."""
+        """Delegates training loop to SpecialistTrainer and tracks running loss."""
         avg_loss = self.trainer.train(inputs, targets, epochs=epochs, batch_size=batch_size)
         self.running_loss = 0.9 * self.running_loss + 0.1 * avg_loss if self.steps > 0 else avg_loss
         self.steps += 1
         return avg_loss
+
+    def _update_dropout_layers(self):
+        """Updates all dropout layers in the model to the current rate."""
+        if isinstance(self.model, nn.Module):
+            for m in self.model.modules():
+                if isinstance(m, (nn.Dropout, nn.Dropout1d, nn.Dropout2d)):
+                    m.p = self.dropout
+        elif isinstance(self.model, dict):
+            for sub_mod in self.model.values():
+                if isinstance(sub_mod, nn.Module):
+                    for m in sub_mod.modules():
+                        if isinstance(m, (nn.Dropout, nn.Dropout1d, nn.Dropout2d)):
+                            m.p = self.dropout
 
     # --- Persistence Primitives ---
 
@@ -199,23 +201,36 @@ class SpecialistAgent(BaseAgent, PBTMixin):
         state = {
             "agent_weights": {
                 "tcn": self.tcn.state_dict(),
+            },
+            "agent_config": {
+                "lr": self.learning_rate,
+                "dropout": self.dropout,
             }
         }
-        if self.decoder is not None and hasattr(self.decoder, "state_dict"):
+        if isinstance(self.decoder, nn.Module):
             state["agent_weights"]["decoder"] = self.decoder.state_dict()
-        if self.reconstruction_head is not None and hasattr(self.reconstruction_head, "state_dict"):
+        if isinstance(self.reconstruction_head, nn.Module):
             state["agent_weights"]["head"] = self.reconstruction_head.state_dict()
-        state.update(self.get_pbt_state())
         return state
 
     def set_state(self, state: dict):
-        """Loads weights safely into components."""
+        """Loads weights and configuration safely into components."""
         weights = state.get("agent_weights", {})
         if "tcn" in weights:
             self.tcn.load_state_dict(weights["tcn"])
-        if self.decoder is not None and "decoder" in weights and hasattr(self.decoder, "load_state_dict"):
+        if isinstance(self.decoder, nn.Module) and "decoder" in weights:
             self.decoder.load_state_dict(weights["decoder"])
-        if self.reconstruction_head is not None and "head" in weights and hasattr(self.reconstruction_head, "load_state_dict"):
+        if isinstance(self.reconstruction_head, nn.Module) and "head" in weights:
             self.reconstruction_head.load_state_dict(weights["head"])
 
-        self.set_pbt_state(state)
+        conf = state.get("agent_config", {})
+        if "lr" in conf:
+            self.learning_rate = conf["lr"]
+            opt = self.optimizer
+            if opt is not None:
+                for param_group in opt.param_groups:
+                    param_group['lr'] = self.learning_rate
+        if "dropout" in conf:
+            self.dropout = conf["dropout"]
+            self._update_dropout_layers()
+

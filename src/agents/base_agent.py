@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/base_agent.py
-# Author: Gabriel Moraes
-# Date: 2025-12-25
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
@@ -29,9 +12,9 @@ from src.utils.logging_setup import get_logger
 
 logger = get_logger("BaseAgent")
 
-# FIX V3: BaseAgent agora herda de nn.Module.
-# Isso unifica a interface de 'to()', 'cuda()', 'cpu()', 'state_dict()'
-# e resolve conflitos de MRO (Method Resolution Order) e dispositivos.
+# FIX V3: BaseAgent now inherits from nn.Module.
+# This unifies the interface for 'to()', 'cuda()', 'cpu()', 'state_dict()'
+# and resolves MRO (Method Resolution Order) and device placement conflicts.
 class BaseAgent(nn.Module, ABC, IAgent):
     """
     Abstract Base Class for Neural Inference Agents in SYNAPSE.
@@ -44,17 +27,17 @@ class BaseAgent(nn.Module, ABC, IAgent):
     """
 
     def __init__(self, model: nn.Module = None, name: str = "UnknownAgent"):
-        # Inicializa o nn.Module primeiro (Crucial para registro de parâmetros)
+        # Initialize nn.Module first (crucial for parameter registration)
         super().__init__()
         
         self.name = name
         self.device = torch.device("cpu")
         
-        # Gestão de Modelo (Herança vs Composição)
-        # Se um modelo externo for passado e não for nós mesmos, armazenamos.
+        # Model Management (Inheritance vs Composition)
+        # If an external model is passed and is not self, store it.
         if model is not None and model is not self:
             self._external_model = model
-            # Registra como submódulo para que .to() funcione automaticamente
+            # Register as submodule so that .to() propagates automatically
             if isinstance(model, nn.Module):
                 self.add_module("_external_model_ref", model)
         else:
@@ -63,7 +46,7 @@ class BaseAgent(nn.Module, ABC, IAgent):
     @property
     def model(self) -> nn.Module:
         """
-        Retorna o modelo ativo.
+        Returns the active model.
         """
         if self._external_model:
             return self._external_model
@@ -71,10 +54,10 @@ class BaseAgent(nn.Module, ABC, IAgent):
 
     def to(self, *args, **kwargs):
         """
-        Sobrescreve .to() nativo do PyTorch para garantir que 'self.device' 
-        seja atualizado em cascata tanto para herança quanto para composição.
+        Overrides native PyTorch .to() to ensure 'self.device'
+        is cascaded properly across both inheritance and composition.
         """
-        # Extrai o device do args/kwargs se presente
+        # Extract device from args/kwargs if present
         device = None
         for arg in args:
             if isinstance(arg, (torch.device, str)):
@@ -86,10 +69,10 @@ class BaseAgent(nn.Module, ABC, IAgent):
         if device is not None:
             self.device = device
         
-        # 1. Move a própria estrutura (nn.Module base)
+        # 1. Move base structure (base nn.Module)
         super().to(*args, **kwargs)
         
-        # 2. Se houver composição (modelo externo), move ele também
+        # 2. If composition is used (external model), move it as well
         if self._external_model:
             self._external_model.to(*args, **kwargs)
             
@@ -98,12 +81,11 @@ class BaseAgent(nn.Module, ABC, IAgent):
     def load_weights(self, path: str):
         """Standard interface for loading model state."""
         try:
-            # Carrega no dispositivo configurado
+            # Load into configured device
             checkpoint = torch.load(path, map_location=self.device)
             self.model.load_state_dict(checkpoint)
-        except Exception:
-            # Otimização: Evitar print excessivo em loops de optuna
-            pass
+        except Exception as e:
+            logger.warning(f"[{self.name}] Failed to load weights from '{path}': {e}")
 
     def save_weights(self, path: str):
         """Standard interface for saving model state."""

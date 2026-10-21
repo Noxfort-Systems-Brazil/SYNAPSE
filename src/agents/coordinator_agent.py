@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/coordinator_agent.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import logging
@@ -52,16 +35,19 @@ class CoordinatorAgent(BaseAgent):
         heads: int = 2,
         dropout: float = 0.1,
         learning_rate: float = 0.001,
+        device: Optional[torch.device] = None,
         name: str = "CoordinatorAgent",
         **kwargs: Any
     ):
+        target_device = device or (getattr(pipeline, "device", None) if pipeline else None) or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if pipeline is None:
             pipeline = CoordinatorPipeline(
                 in_channels=in_channels,
                 hidden_channels=hidden_channels,
                 out_channels=out_channels,
                 heads=heads,
-                dropout=dropout
+                dropout=dropout,
+                device=target_device
             )
 
         model = getattr(pipeline, "model", None)
@@ -71,8 +57,23 @@ class CoordinatorAgent(BaseAgent):
         self.trainer: ICoordinatorTrainer = trainer or CoordinatorTrainer(
             model=self.model,
             learning_rate=learning_rate,
-            device=getattr(self.pipeline, "device", None)
+            device=target_device
         )
+
+    def to(self, *args, **kwargs) -> 'CoordinatorAgent':
+        super().to(*args, **kwargs)
+        device = None
+        if args:
+            device = args[0]
+        elif "device" in kwargs:
+            device = kwargs["device"]
+        if device is not None:
+            trainer_to = getattr(self.trainer, "to", None)
+            if callable(trainer_to):
+                trainer_to(device)
+            if getattr(self.pipeline, "device", None) is not None:
+                self.pipeline.device = torch.device(device) if isinstance(device, str) else device
+        return self
 
     @property
     def cached_edge_index(self) -> Optional[torch.Tensor]:
@@ -80,7 +81,7 @@ class CoordinatorAgent(BaseAgent):
 
     @cached_edge_index.setter
     def cached_edge_index(self, edge_index: Optional[torch.Tensor]):
-        if hasattr(self.pipeline, "cached_edge_index"):
+        if self.pipeline is not None:
             self.pipeline.cached_edge_index = edge_index
 
     def set_topology(self, edge_index: torch.Tensor):

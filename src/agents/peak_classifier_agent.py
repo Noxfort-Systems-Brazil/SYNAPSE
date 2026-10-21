@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/peak_classifier_agent.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import logging
 import numpy as np
@@ -24,9 +7,9 @@ import torch
 import torch.nn as nn
 from torch.amp import autocast, GradScaler
 
-# SYNAPSE Local Models
+# SYNAPSE Local Models & Blocks
 from src.models.itransformer_lite import iTransformerLite
-from src.models.pino_traffic import SpectralFeatureExtractor
+from src.blocks.feature_blocks import SpectralFeatureBlock, SpectralFeatureExtractor
 
 # SYNAPSE Pipelines (SRP Extraction)
 from src.pipeline.peak_pipeline import ColumnDiscovery, PeakPipeline
@@ -67,7 +50,7 @@ class PeakClassifierAgent(nn.Module):
         self.itransformer.eval()
         
         timesnet_config.pop("num_kernels", None)
-        self.timesnet = SpectralFeatureExtractor(**timesnet_config).to(self.device)
+        self.timesnet = SpectralFeatureBlock(**timesnet_config).to(self.device)
         
         # Auxiliary Classifier Head for HPO Tuning
         self.hpo_classifier = nn.Linear(timesnet_config.get('enc_in', 1), 1).to(self.device)
@@ -128,16 +111,20 @@ class PeakClassifierAgent(nn.Module):
     def process_and_classify(self, historical_df):
         """
         Main pipeline execution (Orchestration Only).
-        Delegates column discovery and pipeline execution to services.
+        Directly targets canonical Golden Parquet columns ('flow_val', 'speed_val')
+        or delegates discovery to ColumnDiscovery without ModernBERT.
         """
-        logger.info("Starting Peak Classification Pipeline...")
+        logger.info("Starting Peak Classification Pipeline on Golden Parquet...")
         
-        # 1. Semantic Column Discovery (Delegated)
-        available_cols = historical_df.columns.tolist()
-        vol_col, spd_col = self._column_discovery.discover(available_cols)
+        # 1. Column Discovery (Fast Golden Parquet prioritization)
+        if "flow_val" in historical_df.columns and "speed_val" in historical_df.columns:
+            vol_col, spd_col = "flow_val", "speed_val"
+        else:
+            numeric_cols = historical_df.select_dtypes(include=[np.number]).columns.tolist()
+            candidate_cols = numeric_cols if numeric_cols else historical_df.columns.tolist()
+            vol_col, spd_col = self._column_discovery.discover(candidate_cols)
         
-        logger.info(f"🧠 Semantic NLP identified '{vol_col}' as Volume/Flow.")
-        logger.info(f"🧠 Semantic NLP identified '{spd_col}' as Speed/Velocity.")
+        logger.info(f"📊 Using '{vol_col}' as Volume/Flow and '{spd_col}' as Speed/Velocity.")
         
         # 2. Pipeline Execution (Delegated)
         return self._pipeline.run(historical_df, vol_col, spd_col, self.output_path)

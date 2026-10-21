@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/agents/linguist_agent.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import logging
 from typing import Dict, Any, List, Optional
@@ -28,7 +11,7 @@ from src.interfaces.pipelines import ILinguistPipeline
 from src.interfaces.trainers import ILinguistTrainer
 from src.pipeline.linguist_pipeline import LinguistPipeline
 from src.trainer.linguist_trainer import LinguistTrainer
-from src.utils.model_paths import get_distilroberta_base_path
+from src.utils.model_paths import get_modernbert_path
 
 logger = logging.getLogger("Synapse.Agents.Linguist")
 
@@ -49,13 +32,19 @@ class LinguistAgent(BaseAgent):
         pipeline: Optional[ILinguistPipeline] = None,
         trainer: Optional[ILinguistTrainer] = None,
         model_name: Optional[str] = None,
+        latent_dim: int = 64,
+        kernel_size: int = 3,
         learning_rate: float = 1e-4,
         name: str = "LinguistAgent",
         **kwargs: Any
     ):
-        resolved_name = model_name or get_distilroberta_base_path()
+        resolved_name = model_name or get_modernbert_path()
         if pipeline is None:
-            pipeline = LinguistPipeline(model_name=resolved_name)
+            pipeline = LinguistPipeline(
+                model_name=resolved_name,
+                latent_dim=latent_dim,
+                kernel_size=kernel_size
+            )
 
         model = getattr(pipeline, "model", None)
         super().__init__(model=model, name=name)
@@ -79,27 +68,29 @@ class LinguistAgent(BaseAgent):
 
     @anomaly_threshold.setter
     def anomaly_threshold(self, value: float):
-        if hasattr(self.pipeline, "anomaly_threshold"):
+        if self.pipeline is not None:
             self.pipeline.anomaly_threshold = value
 
     def inference(self, input_data: Any, semantic_type: Optional[str] = None) -> Dict[str, Any]:
         """Delegates semantic-physical anomaly detection to LinguistPipeline."""
         if isinstance(input_data, dict) and "semantic_type" not in input_data and semantic_type:
             input_data["semantic_type"] = semantic_type
-        if hasattr(self.pipeline, "validate"):
+        validate_fn = getattr(self.pipeline, "validate", None)
+        if callable(validate_fn):
             try:
-                return self.pipeline.validate(input_data, semantic_type=semantic_type)
+                return validate_fn(input_data, semantic_type=semantic_type)
             except TypeError:
-                return self.pipeline.validate(input_data)
+                return validate_fn(input_data)
         return self.pipeline.validate(input_data)
 
     def train_step(self, batch_data: Any, epochs: int = 10, semantic_type: Optional[str] = None) -> float:
         """Delegates training step to LinguistTrainer with local convergence loop."""
-        if hasattr(self.trainer, "train_step"):
+        train_fn = getattr(self.trainer, "train_step", None)
+        if callable(train_fn):
             try:
-                return self.trainer.train_step(batch_data, epochs=epochs, semantic_type=semantic_type)
+                return train_fn(batch_data, epochs=epochs, semantic_type=semantic_type)
             except TypeError:
-                return self.trainer.train_step(batch_data)
+                return train_fn(batch_data)
         return self.trainer.train_step(batch_data)
 
     def calibrate_threshold(self, validation_texts: List[str]):
