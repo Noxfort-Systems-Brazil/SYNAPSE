@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/integration/test_global_cycle.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -104,3 +87,9 @@ def test_global_cycle_processor_e2e(mock_managers):
     
     # Security Alert evaluation
     assert "security_score" in results
+
+    # Fuser MLOps Telemetry (calculated directly from FuserAgent)
+    assert "fuser_loss" in results, "Missing fuser_loss in cycle results"
+    assert "fuser_drift" in results, "Missing fuser_drift in cycle results"
+    assert results["fuser_loss"] > 0.0
+    assert results["fuser_drift"] > 0.0

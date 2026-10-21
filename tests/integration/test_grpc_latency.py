@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/integration/test_grpc_latency.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import asyncio
@@ -48,7 +31,7 @@ async def test_grpc_network_latency_benchmark(qtbot, run_loop):
     # Note: Because QThread blocks without a full Qt UI loop, we run its internal
     # asyncio loop _process_commands() MANUALLY here in the test wrapper.
     worker = HFTBootstrapper(endpoint="localhost:50055")
-    worker.connector = worker.connector or __import__('src.infrastructure.grpc_connector', fromlist=['']).GrpcConnector("localhost:50055")
+    worker.connector = worker.connector or __import__('src.hft.grpc_connector', fromlist=['']).GrpcConnector("localhost:50055")
     
     # Bypass QThread.run() and create its internal queue directly
     worker._loop = asyncio.get_running_loop()

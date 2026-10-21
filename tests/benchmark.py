@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/benchmark.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import sys
@@ -70,9 +53,9 @@ def run_benchmark(num_sensors, duration=60):
     
     env = os.environ.copy()
     env["SYNAPSE_TEST_MODE"] = "1"
-    env["QT_QPA_PLATFORM"] = "offscreen" # Tenta rodar em background sem abrir UI física
+    env["QT_QPA_PLATFORM"] = "offscreen" # Try running in background without opening physical UI
     
-    # O mock_sensors.py agora inicializa todo o MainController e chama start_online_operation()
+    # mock_sensors.py now initializes entire MainController and calls start_online_operation()
     core_process = subprocess.Popen([sys.executable, core_script, str(num_sensors)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     peak_cpu_percent = 0.0
@@ -150,7 +133,7 @@ def get_next_tier(value, tiers):
 def gerar_relatorio(os_info, base_cores, base_ram_mb, base_vram_mb, folder_size_mb, peak_cpu_percent, num_sensors):
     os_ram_reserve_mb = 2048 
     
-    # Fatores de stress para o gateway de percepção
+    # Stress factors for perception gateway
     stress_ram_factor = 1.8
     stress_cpu_factor = 1.5
     stress_vram_factor = 1.2
@@ -235,7 +218,7 @@ if __name__ == "__main__":
         user_input = input("Quantos sensores deseja simular no teste base? [Padrão: 50]: ").strip()
         num_sensors = int(user_input) if user_input else 50
         
-        duracao_teste = 60 # Tempo tabelado fixado
+        duracao_teste = 60 # Fixed benchmark test duration
     except ValueError:
         print("Entrada inválida. Usando valores padrão (50 sensores, 60 segundos).")
         num_sensors = 50
