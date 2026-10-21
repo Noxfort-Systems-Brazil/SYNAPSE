@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/forecast_imputer.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, Optional
 import numpy as np
@@ -38,6 +21,27 @@ class ForecastImputer(IForecastImputer):
       or subclassed without modifying the InferenceEngine orchestrator.
     """
 
+    @staticmethod
+    def _apply_node_prediction(t_node: Any, pred_val: float, update_kse: bool = False) -> None:
+        if t_node is None:
+            return
+        state_obj = getattr(t_node, "state", None)
+        if state_obj is not None and getattr(state_obj, "last_value", None) is not None:
+            state_obj.last_value = pred_val
+        elif getattr(t_node, "last_value", None) is not None:
+            try:
+                t_node.last_value = pred_val
+            except AttributeError:
+                pass
+        if update_kse:
+            kse_obj = getattr(t_node, "kse", None)
+            kse_x = getattr(kse_obj, "x", None)
+            if kse_x is not None:
+                try:
+                    kse_x[0, 0] = pred_val
+                except Exception:
+                    pass
+
     def impute(
         self,
         forecast: Optional[Any],
@@ -47,10 +51,11 @@ class ForecastImputer(IForecastImputer):
         """
         Extracts forecast values and fills in zero/missing values in snapshot and graph nodes.
         """
-        if forecast is None or not hasattr(graph_manager, "get_ordered_node_ids"):
+        get_ordered_fn = getattr(graph_manager, "get_ordered_node_ids", None)
+        if forecast is None or not callable(get_ordered_fn):
             return
 
-        ordered_nodes = graph_manager.get_ordered_node_ids()
+        ordered_nodes = get_ordered_fn()
         if not ordered_nodes:
             return
 
@@ -73,17 +78,27 @@ class ForecastImputer(IForecastImputer):
                 break
 
             pred_val = float(forecast_flat[i])
-            if nid in snapshot:
+            t_node = graph_manager.get_node(nid)
+
+            if nid not in snapshot:
+                # Node has no physical sensor; populate as virtual extrapolated node
+                snapshot[nid] = {
+                    "value": pred_val if pred_val > 0.0 else 0.0,
+                    "type": "virtual",
+                    "status": "Extrapolated"
+                }
+                self._apply_node_prediction(t_node, pred_val, update_kse=False)
+            else:
                 curr_val = float(snapshot[nid].get("value", 0.0))
-                # If current sensor is unobserved (<= 0) and model predicted a valid value (> 0)
-                if curr_val <= 0.0 and pred_val > 0.0:
+                node_type = snapshot[nid].get("type")
+                node_status = snapshot[nid].get("status")
+                is_unobserved = (
+                    curr_val <= 0.0
+                    or node_type in ("synthetic", "virtual")
+                    or node_status in ("Ghost", "Extrapolated", "Synthesized")
+                )
+                # If current sensor is unobserved and model predicted a valid value (> 0)
+                min_valid_pred = 0.0 if curr_val <= 0.0 else 1.0
+                if is_unobserved and pred_val > min_valid_pred:
                     snapshot[nid]["value"] = pred_val
-                    t_node = graph_manager.get_node(nid)
-                    if t_node:
-                        if hasattr(t_node, "state") and hasattr(t_node.state, "last_value"):
-                            t_node.state.last_value = pred_val
-                        elif hasattr(t_node, "last_value"):
-                            try:
-                                t_node.last_value = pred_val
-                            except AttributeError:
-                                pass
+                    self._apply_node_prediction(t_node, pred_val, update_kse=True)

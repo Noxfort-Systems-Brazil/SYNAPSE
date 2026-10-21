@@ -1,18 +1,3 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
-"""
-Transmission Subsystem — Process-isolated HFT communication gateway with CARINA.
-"""
-
-from src.transmission.transmitter_process import (
-    run_transmitter_worker,
-    start_transmitter_process,
-)
-
-__all__ = ["run_transmitter_worker", "start_transmitter_process"]

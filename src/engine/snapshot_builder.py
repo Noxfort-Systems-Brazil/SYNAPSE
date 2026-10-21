@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/snapshot_builder.py
-# Author: Gabriel Moraes
-# Date: 2026-02-14
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import numpy as np
 import logging
@@ -61,11 +44,22 @@ class SnapshotBuilder:
             # Retrieve the RUNTIME TrafficNode from GraphManager using ID
             traffic_node = self.graph_manager.get_node(map_node.id)
             
-            # Prepare default payload (Zero vector)
+            # Determine whether this node has active physical sensor reality
+            is_node_real = False
+            if traffic_node:
+                is_node_real = bool(
+                    (traffic_node.is_validated or traffic_node.steps_processed > 0)
+                    and getattr(traffic_node, "fallback_steps", 0) <= 75
+                    and traffic_node.last_value > 0.0
+                )
+
+            # Prepare default payload
             payload = {
                 "embedding": np.zeros(self.embedding_dim),
                 "value": 0.0,
-                "timestamp": 0.0
+                "timestamp": 0.0,
+                "type": "real" if is_node_real else "synthetic",
+                "status": "Active" if is_node_real else "Ghost"
             }
             
             # If GraphManager hasn't initialized this node yet, use the default
@@ -92,8 +86,9 @@ class SnapshotBuilder:
                 snapshot[traffic_node.source_id] = payload
 
         # Inject direct edge telemetry from associated sensors if available
-        if hasattr(self.graph_manager, "direct_edge_metrics") and self.graph_manager.direct_edge_metrics:
-            for edge_id, edge_metric in self.graph_manager.direct_edge_metrics.items():
+        direct_metrics = getattr(self.graph_manager, "direct_edge_metrics", None)
+        if isinstance(direct_metrics, dict) and direct_metrics:
+            for edge_id, edge_metric in direct_metrics.items():
                 snapshot[edge_id] = edge_metric
                 
         return snapshot

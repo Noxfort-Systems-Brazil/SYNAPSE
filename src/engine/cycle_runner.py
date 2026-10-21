@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/cycle_runner.py
-# Author: Gabriel Moraes
-# Date: 2025-12-24
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import numpy as np
 import torch
@@ -26,7 +9,6 @@ from src.interfaces.node import INodeManager
 # Import Managers and Agents for type hinting
 from src.managers.node_manager import NodeManager
 from src.managers.graph_manager import GraphManager
-from src.managers.pbt_manager import PBTManager
 from src.managers.kse_manager import KSEManager
 from src.agents.coordinator_agent import CoordinatorAgent
 from src.agents.fuser_agent import FuserAgent
@@ -38,7 +20,7 @@ class CycleRunner:
     
     Responsibility:
     - Executes the synchronous control loop (~1Hz).
-    - Coordinates the interaction between PBT, GAT (Spatial), Fuser (Temporal), and KSE (Physics).
+    - Coordinates the interaction between GAT (Spatial), Fuser (Temporal), and KSE (Physics).
     - Returns a results dictionary for the Engine to emit/log.
     
     This separation allows the InferenceEngine to focus on Event Orchestration 
@@ -52,7 +34,6 @@ class CycleRunner:
         self,
         node_manager: Optional[Union[INodeManager, NodeManager]],
         graph_manager: Optional[GraphManager],
-        pbt_manager: PBTManager,
         kse_manager: Optional[KSEManager],
         coordinator: Optional[CoordinatorAgent],
         fuser: Optional[FuserAgent],
@@ -64,7 +45,6 @@ class CycleRunner:
         Args:
             node_manager: Holds the state of all traffic nodes.
             graph_manager: Manages the spatial graph topology.
-            pbt_manager: Handles Population Based Training logic.
             kse_manager: The Kinetic State Engine for physics synchronization.
             coordinator: The GATv2 agent for spatial reasoning.
             fuser: The Transformer agent for temporal forecasting.
@@ -78,13 +58,7 @@ class CycleRunner:
         if not node_manager:
             return self.results
 
-        # 1. Evolutionary Logic (PBT)
-        # Optimizes hyperparameters dynamically based on recent performance
-        population = node_manager.get_agents_for_pbt()
-        if population:
-            pbt_manager.step(population)
-
-        # 2. Spatial Logic (Coordinator Agent / GAT)
+        # 1. Spatial Logic (Coordinator Agent / GAT)
         # Processes the graph to understand intersection dependencies
         if graph_manager and coordinator:
             x, edge_index = graph_manager.get_graph_snapshot()
@@ -93,12 +67,12 @@ class CycleRunner:
                 # Coordinator updates the latent state of nodes in place or via manager
                 coordinator.process_region(x, edge_index)
 
-        # 3. Temporal Logic & Physics Sync (Fuser + KSE)
+        # 2. Temporal Logic & Physics Sync (Fuser + KSE)
         if fuser:
             active_ids = node_manager.get_ready_nodes_ids()
             nodes_dict = node_manager.get_all_nodes()
             
-            # 3a. Prepare Reality Snapshot for KSE (Physics Engine)
+            # 2a. Prepare Reality Snapshot for KSE (Physics Engine)
             reality_snapshot = {}
             active_histories = []
             
@@ -115,11 +89,11 @@ class CycleRunner:
                     "velocity": 0.0 
                 }
             
-            # 3b. Sync KSE with this new Reality Frame
+            # 2b. Sync KSE with this new Reality Frame
             if kse_manager and reality_snapshot:
                 kse_manager.sync_with_reality(reality_snapshot)
 
-            # 3c. Run Fuser Forecast (The Future Prediction)
+            # 2c. Run Fuser Forecast (The Future Prediction)
             if active_histories:
                 try:
                     # Stack histories: [Batch, Seq_Len]
@@ -131,7 +105,7 @@ class CycleRunner:
                     # Log shape for debugging/dashboard
                     self.results["fuser_forecast_shape"] = list(forecast.shape)
                     
-                    # 3d. Audit the Prediction (Safety Check)
+                    # 2d. Audit the Prediction (Safety Check)
                     if auditor_worker:
                         # Take the first prediction step of the first batch for quick audit
                         # In a full system, we would audit the whole tensor.

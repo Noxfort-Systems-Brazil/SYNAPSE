@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/neural_factory.py
-# Author: Gabriel Moraes
-# Date: 2026-02-15
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import torch
@@ -28,25 +11,27 @@ from typing import Dict, Any, List
 from src.agents.coordinator_agent import CoordinatorAgent # GATv2 Lite
 from src.agents.fuser_agent import FuserAgent             # iTransformer
 from src.agents.auditor_agent import AuditorAgent         # Wavelet + AE + OCC
-from src.agents.linguist_agent import LinguistAgent       # Neuro-symbolic (DistilRoBERTa + TCN-AE)
+from src.agents.linguist_agent import LinguistAgent       # Neuro-symbolic (ModernBERT + TCN-AE)
 from src.agents.jurist_agent import JuristAgent           # Qwen 2.5 1.5B
 from src.agents.specialist_agent import SpecialistAgent   # TCN (The Analyst)
+
+from src.engine.calibration.auditor_checkpoint_loader import AuditorCheckpointLoader
+
 
 class NeuralFactory:
     """
     Factory class responsible for instantiating Neural Agents for PHASE 2 (Online).
     
-    Refactored V9 (Device Placement Fix):
-    - Corrected the device placement logic loop.
-    - Now prioritizes calling agent.to(device) for nn.Module instances.
-    - This ensures 'self.device' inside agents is correctly updated to CUDA,
-      preventing Input(CPU) vs Weight(GPU) conflicts.
+    Adheres strictly to SOLID (SRP & DIP):
+    - Instantiates and wires runtime neural agents.
+    - Delegates checkpoint loading and calibration restoration to AuditorCheckpointLoader.
     """
 
     def __init__(self, weights_dir: str = "checkpoints/"):
         self.logger = logging.getLogger(__name__)
         self.weights_dir = weights_dir
         self.device = self._setup_device()
+        self.checkpoint_loader = AuditorCheckpointLoader(weights_dir=self.weights_dir)
         self.agents: Dict[str, Any] = {}
 
     def _setup_device(self) -> torch.device:
@@ -73,8 +58,16 @@ class NeuralFactory:
         """
         candidate_paths = [
             os.path.join(self.weights_dir, "best_hparams.pth"),
-            os.path.join(os.path.expanduser("~"), "Documentos", "Synapse", "Checkpoint", "best_hparams.pth")
         ]
+        env_dir = os.environ.get("SYNAPSE_CHECKPOINTS_DIR")
+        if env_dir:
+            candidate_paths.insert(0, os.path.join(env_dir, "best_hparams.pth"))
+
+        from src.storage.path_scaffolder import PathScaffolder
+        candidate_paths.extend([
+            os.path.join("config", "best_hparams.pth"),
+            PathScaffolder().get_checkpoint_file("best_hparams.pth"),
+        ])
         
         for hparams_path in candidate_paths:
             if os.path.exists(hparams_path):
@@ -106,45 +99,71 @@ class NeuralFactory:
             # === PHASE 2 AGENTS ===
 
             # 1. Specialist Agent (The Analyst - TCN)
+            spec_cfg = hparams.get('specialist', {}) if isinstance(hparams.get('specialist'), dict) else {}
+            spec_hidden = spec_cfg.get('hidden_dim', 64)
+            default_spec_channels = [16, 32, int(spec_hidden)] if spec_hidden else [16, 32, 64]
             self.agents['specialist'] = SpecialistAgent(
                 input_dim=4,  # [Occupancy, Speed, Queue, Density]
-                output_dim=hparams.get('specialist_out', 16),
-                num_channels=hparams.get('specialist_channels', [16, 32, 64]),
-                kernel_size=hparams.get('specialist_kernel', 3),
-                dropout=hparams.get('specialist_dropout', 0.2)
+                output_dim=spec_cfg.get('output_dim', hparams.get('specialist_out', 16)),
+                num_channels=spec_cfg.get('num_channels', hparams.get('specialist_channels', default_spec_channels)),
+                kernel_size=spec_cfg.get('kernel_size', hparams.get('specialist_kernel', 3)),
+                dropout=spec_cfg.get('dropout', hparams.get('specialist_dropout', 0.2))
             )
 
             # 2. Coordinator Agent (GATv2 Lite)
+            coord_cfg = hparams.get('coordinator', {}) if isinstance(hparams.get('coordinator'), dict) else {}
             self.agents['coordinator'] = CoordinatorAgent(
                 in_channels=32,   # FIX: TCN outputs 32-dim latent embedding, not 4-dim raw
-                hidden_channels=hparams.get('coordinator_hidden', 32),
-                out_channels=hparams.get('coordinator_out', 32),
-                heads=hparams.get('coordinator_heads', 2),
-                dropout=hparams.get('coordinator_dropout', 0.1)
+                hidden_channels=coord_cfg.get('hidden_channels', hparams.get('coordinator_hidden', 32)),
+                out_channels=coord_cfg.get('out_channels', hparams.get('coordinator_out', 32)),
+                heads=coord_cfg.get('heads', hparams.get('coordinator_heads', 2)),
+                dropout=coord_cfg.get('dropout', hparams.get('coordinator_dropout', 0.1))
             )
 
             # 3. Fuser Agent (iTransformer)
-            self.agents['fuser'] = FuserAgent(
-                seq_len=hparams.get('seq_len', 60),
-                pred_len=hparams.get('pred_len', 12),
+            fuser_cfg = hparams.get('fuser', {}) if isinstance(hparams.get('fuser'), dict) else {}
+            fuser = FuserAgent(
+                seq_len=fuser_cfg.get('seq_len', hparams.get('seq_len', 60)),
+                pred_len=fuser_cfg.get('pred_len', hparams.get('pred_len', 12)),
                 num_variates=num_nodes,
-                d_model=hparams.get('fuser_d_model', 64),
-                n_heads=hparams.get('fuser_n_heads', 4)
+                d_model=fuser_cfg.get('d_model', hparams.get('fuser_d_model', 64)),
+                n_heads=fuser_cfg.get('n_heads', hparams.get('fuser_n_heads', 4)),
+                layers=fuser_cfg.get('layers', hparams.get('fuser_layers', 2)),
+                learning_rate=fuser_cfg.get('lr', hparams.get('fuser_lr', 1e-4))
             )
+            try:
+                from src.mlops.mlops_pipe import create_mlops_pipe
+                from src.mlops.mlops_process import MLOpsProcess
+                mlops_pipe = create_mlops_pipe()
+                mlops_process = MLOpsProcess(pipe=mlops_pipe)
+                fuser.attach_mlops(pipe=mlops_pipe, process=mlops_process)
+                mlops_process.start()
+                self.logger.info("[NeuralFactory] 🚀 MLOps Out-of-Process Worker & Pipe attached to FuserAgent.")
+            except Exception as e:
+                self.logger.warning(f"[NeuralFactory] Could not initialize MLOpsProcess: {e}")
+            self.agents['fuser'] = fuser
 
             # 4. Auditor Agent (Wavelet Scattering + AE + OCC)
+            aud_cfg = hparams.get('auditor', {}) if isinstance(hparams.get('auditor'), dict) else {}
+            aud_meta = self.checkpoint_loader.peek_checkpoint_meta()
             self.agents['auditor'] = AuditorAgent(
-                input_len=hparams.get('seq_len', 60), 
-                J=hparams.get('auditor_J', 2),        
-                Q=hparams.get('auditor_Q', 1),        
-                latent_dim=hparams.get('auditor_latent', 16)
+                input_len=aud_meta.get('input_len', aud_cfg.get('input_len', hparams.get('seq_len', 60))),
+                J=aud_meta.get('J', aud_cfg.get('J', hparams.get('auditor_J', 2))),
+                Q=aud_meta.get('Q', aud_cfg.get('Q', hparams.get('auditor_Q', 1))),
+                latent_dim=aud_meta.get('latent_dim', aud_cfg.get('latent_dim', hparams.get('auditor_latent', 16))),
+                learning_rate=aud_cfg.get('lr', hparams.get('auditor_lr', 1e-3))
             )
             
             # --- Load Offline Calibration (Cold-Start Elimination) ---
-            self._load_auditor_calibration(self.agents['auditor'])
+            self.checkpoint_loader.load_calibration(self.agents['auditor'])
 
             # 5. Linguist Agent (Neuro-Symbolic)
-            self.agents['linguist'] = LinguistAgent()
+            ling_cfg = hparams.get('linguist', {}) if isinstance(hparams.get('linguist'), dict) else {}
+            self.agents['linguist'] = LinguistAgent(
+                latent_dim=ling_cfg.get('latent_dim', hparams.get('linguist_latent', 64)),
+                kernel_size=ling_cfg.get('kernel_size', hparams.get('linguist_kernel', 3)),
+                learning_rate=ling_cfg.get('lr', hparams.get('linguist_lr', 1e-4))
+            )
 
             # 6. Jurist Agent (Qwen 3.5 GGUF)
             self.agents['jurist'] = JuristAgent()
@@ -161,9 +180,11 @@ class NeuralFactory:
                     agent.to(self.device)
                 
                 # Fallback for agents that might wrap a model but not inherit properly
-                elif hasattr(agent, 'model') and agent.model:
-                    if hasattr(agent.model, 'to'):
-                        agent.model.to(self.device)
+                else:
+                    agent_model = getattr(agent, "model", None)
+                    to_fn = getattr(agent_model, "to", None) if agent_model is not None else None
+                    if callable(to_fn):
+                        to_fn(self.device)
             
             self.logger.info(f"Neural Factory: Successfully initialized {len(self.agents)} Runtime Agents on {self.device}.")
             return self.agents
@@ -175,57 +196,14 @@ class NeuralFactory:
     def get_device(self) -> torch.device:
         return self.device
 
+    def _get_auditor_checkpoint_candidates(self) -> List[str]:
+        """Backward-compatibility shim delegating to AuditorCheckpointLoader."""
+        return self.checkpoint_loader.get_checkpoint_candidates()
+
+    def _peek_auditor_checkpoint_meta(self) -> Dict[str, Any]:
+        """Backward-compatibility shim delegating to AuditorCheckpointLoader."""
+        return self.checkpoint_loader.peek_checkpoint_meta()
+
     def _load_auditor_calibration(self, auditor: AuditorAgent):
-        """
-        Loads the offline-calibrated checkpoint into the AuditorAgent.
-        This eliminates the cold-start problem: the agent enters online mode
-        with trained weights and a statistically-calibrated threshold.
-        """
-        candidate_paths = [
-            os.path.join(self.weights_dir, "auditor_calibrated.pth"),
-            os.path.join(os.path.expanduser("~"), "Documentos", "Synapse", "data", "config", "auditor_calibrated.pth"),
-            os.path.join(os.path.expanduser("~"), "Documents", "Synapse", "data", "config", "auditor_calibrated.pth"),
-        ]
-
-        for path in candidate_paths:
-            if os.path.exists(path) and os.path.getsize(path) > 0:
-                try:
-                    checkpoint = torch.load(path, map_location="cpu")
-
-                    if 'model_state_dict' in checkpoint:
-                        auditor.model.load_state_dict(checkpoint['model_state_dict'])
-
-                    if 'threshold' in checkpoint:
-                        raw_thresh = checkpoint['threshold']
-                        raw_val = float(raw_thresh.item() if isinstance(raw_thresh, torch.Tensor) else raw_thresh)
-                        # Ensure robust baseline headroom for older checkpoints (< 0.75)
-                        thresh_val = max(0.75, raw_val * 1.35 if raw_val < 0.60 else raw_val)
-                        auditor.model.threshold = torch.tensor(thresh_val)
-                        if hasattr(auditor, 'pipeline') and hasattr(auditor.pipeline, 'calibrator') and auditor.pipeline.calibrator is not None:
-                            auditor.pipeline.calibrator.threshold = thresh_val
-                        if hasattr(auditor, 'trainer') and hasattr(auditor.trainer, 'calibrator') and auditor.trainer.calibrator is not None:
-                            auditor.trainer.calibrator.threshold = thresh_val
-
-                    if 'center' in checkpoint and checkpoint['center'] is not None:
-                        center = checkpoint['center']
-                        center_init = checkpoint.get('center_initialized', True)
-                        auditor.model.center = center
-                        auditor.model.center_initialized = center_init
-                        if hasattr(auditor, 'pipeline') and hasattr(auditor.pipeline, 'calibrator') and auditor.pipeline.calibrator is not None:
-                            auditor.pipeline.calibrator.center = center
-                            auditor.pipeline.calibrator.center_initialized = center_init
-                        if hasattr(auditor, 'trainer') and hasattr(auditor.trainer, 'calibrator') and auditor.trainer.calibrator is not None:
-                            auditor.trainer.calibrator.center = center
-                            auditor.trainer.calibrator.center_initialized = center_init
-
-                    loaded_thresh = auditor.model.threshold.item() if isinstance(auditor.model.threshold, torch.Tensor) else auditor.model.threshold
-                    self.logger.info(
-                        f"Neural Factory: ✅ Auditor loaded CALIBRATED checkpoint from {path} "
-                        f"(threshold={loaded_thresh:.6f})"
-                    )
-                    return
-
-                except Exception as e:
-                    self.logger.warning(f"Neural Factory: ⚠️ Failed to load auditor checkpoint {path}: {e}")
-
-        self.logger.info("Neural Factory: No auditor calibration found. Starting with fresh weights (threshold=0.5).")
+        """Backward-compatibility shim delegating to AuditorCheckpointLoader."""
+        return self.checkpoint_loader.load_calibration(auditor)

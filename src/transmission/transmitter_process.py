@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/transmission/transmitter_process.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Dedicated HFT Transmission Process (Level 2 Safety Gateway).
@@ -84,7 +67,7 @@ class TransmitterWorker:
         # Initialize GrpcConnector if not injected
         if self._connector is None:
             try:
-                from src.infrastructure.grpc_connector import GrpcConnector
+                from src.hft.grpc_connector import GrpcConnector
                 self._connector = GrpcConnector(endpoint=self.endpoint)
                 await self._connector.start_channel()
                 await self._connector.start_streaming()
@@ -99,8 +82,9 @@ class TransmitterWorker:
 
             # 1. Check for Emergency Flag (forced by FÊNIX during Hot-Reset)
             is_emergency = False
-            if hasattr(self.emergency_flag, "is_set"):
-                is_emergency = self.emergency_flag.is_set()
+            is_set_fn = getattr(self.emergency_flag, "is_set", None)
+            if callable(is_set_fn):
+                is_emergency = is_set_fn()
             elif isinstance(self.emergency_flag, bool):
                 is_emergency = self.emergency_flag
 
@@ -152,9 +136,10 @@ class TransmitterWorker:
             await asyncio.sleep(sleep_time)
 
         # Cleanup on shutdown
-        if self._connector and hasattr(self._connector, "stop"):
+        stop_fn = getattr(self._connector, "stop", None) if self._connector else None
+        if callable(stop_fn):
             try:
-                await self._connector.stop()
+                await stop_fn()
             except Exception:
                 pass
 
@@ -219,12 +204,13 @@ def start_transmitter_process(
     Returns:
         tuple (process, pipe_sender, emergency_event, stop_event)
     """
+    ctx = multiprocessing.get_context("spawn")
     # In Python multiprocessing.Pipe(duplex=False), conn1 is read-only and conn2 is write-only.
-    pipe_receiver, pipe_sender = multiprocessing.Pipe(duplex=False)
-    emergency_event = multiprocessing.Event()
-    stop_event = multiprocessing.Event()
+    pipe_receiver, pipe_sender = ctx.Pipe(duplex=False)
+    emergency_event = ctx.Event()
+    stop_event = ctx.Event()
 
-    proc = multiprocessing.Process(
+    proc = ctx.Process(
         target=run_transmitter_worker,
         args=(pipe_receiver, emergency_event, stop_event),
         kwargs={

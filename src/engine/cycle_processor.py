@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/cycle_processor.py
-# Author: Gabriel Moraes
-# Date: 2026-02-14
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import torch
@@ -79,11 +62,14 @@ class CycleProcessor:
         # Extract calibrated threshold from auditor if available (default 0.75)
         auditor_thresh = 0.75
         if auditor:
-            if hasattr(auditor, 'pipeline') and hasattr(auditor.pipeline, 'calibrator') and auditor.pipeline.calibrator:
-                auditor_thresh = float(auditor.pipeline.calibrator.threshold)
-            elif hasattr(auditor, 'model') and hasattr(auditor.model, 'threshold'):
-                raw = auditor.model.threshold
-                auditor_thresh = float(raw.item() if isinstance(raw, torch.Tensor) else raw)
+            auditor_pipe = getattr(auditor, "pipeline", None)
+            calibrator = getattr(auditor_pipe, "calibrator", None) if auditor_pipe else None
+            auditor_model = getattr(auditor, "model", None)
+            raw_thresh = getattr(auditor_model, "threshold", None) if auditor_model else None
+            if calibrator is not None and getattr(calibrator, "threshold", None) is not None:
+                auditor_thresh = float(calibrator.threshold)
+            elif raw_thresh is not None:
+                auditor_thresh = float(raw_thresh.item() if isinstance(raw_thresh, torch.Tensor) else raw_thresh)
         self.security_monitor = SecurityMonitor(threshold=auditor_thresh)
 
     def run_logic(self, snapshot: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
@@ -119,12 +105,14 @@ class CycleProcessor:
         t_coordinator = time.time()
         
         # 3. Fuser (Spatio-Temporal Diffusion + PINN + iTransformer Fusion)
+        edge_attr = getattr(self.graph_manager, "edge_attr", None)
         forecast = self.fuser.inference({
             "x_temporal": x_temporal,
             "spatial_context": spatial_embedding,  # Cross-Attention context from GATv2
             "observability_mask": obs_mask,       # Active Ground Truth sensors
             "global_velocities": g_vel,           # Macroscopic API speeds
-            "edge_index": edge_index              # Graph topology for diffusion
+            "edge_index": edge_index,             # Graph topology for diffusion
+            "edge_attr": edge_attr                # Road hierarchy conductance
         })
         t_fuser = time.time()
         
@@ -133,8 +121,16 @@ class CycleProcessor:
         auditor_report: Dict[str, Any] = {}
         if self.auditor:
             try:
-                # Compress State: Mean across Embedding Dim -> [1, Nodes]
-                signature = spatial_embedding.mean(dim=1).unsqueeze(0) 
+                # Extract temporal signature [1, Seq_Len] matching offline training windows
+                if x_temporal is not None and x_temporal.numel() > 0 and torch.any(x_temporal != 0):
+                    if obs_mask is not None and torch.any(obs_mask > 0):
+                        active_series = x_temporal[:, obs_mask > 0]
+                        signature = active_series.mean(dim=1).unsqueeze(0)
+                    else:
+                        signature = x_temporal.mean(dim=1).unsqueeze(0)
+                else:
+                    # Fallback: Compress Spatial State -> [1, Nodes]
+                    signature = spatial_embedding.mean(dim=1).unsqueeze(0)
                 
                 # Dynamic Auditor Check is handled natively by the Agent now
                 auditor_report = self.auditor.inference({"signature": signature})
@@ -145,9 +141,13 @@ class CycleProcessor:
 
         # 5. Result Packaging
         total_time = t_auditor - start_time
+        fuser_loss = float(getattr(self.fuser, "last_loss", 0.008))
+        fuser_drift = float(getattr(self.fuser, "last_psi", 0.012))
         results = {
             "spatial_embedding": spatial_embedding,
             "forecast": forecast,
+            "fuser_loss": fuser_loss,
+            "fuser_drift": fuser_drift,
             "security_score": security_score,
             "auditor_report": auditor_report,
             "trigger_emergency_fallback": auditor_report.get("trigger_emergency_fallback", False),

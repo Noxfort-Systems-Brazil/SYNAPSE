@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/system_builder.py
-# Author: Gabriel Moraes
-# Date: 2025-12-24
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 from typing import Dict, Any
@@ -32,7 +15,6 @@ from src.managers.node_manager import NodeManager
 from src.managers.storage_manager import StorageManager
 from src.managers.xai_manager import XAIManager
 from src.managers.kse_manager import KSEManager
-from src.managers.pbt_manager import PBTManager
 from src.factories.node_factory import NodeFactory
 
 # Import Infrastructure
@@ -116,17 +98,17 @@ class SystemBuilder:
             )
             coordinator.to(self.device)
 
-        num_sources = max(1, len(self.app_state.get_all_data_sources()))
+        total_city_nodes = len(map_nodes) if map_nodes else max(1, len(self.app_state.get_all_data_sources()))
         fuser = AgentFactory.create_fuser(
             config=self.config,
-            num_variates=num_sources,
+            num_variates=total_city_nodes,
             seq_len=60, # Standard Synapse Seq Len
-            pred_len=10
+            pred_len=1
         )
         fuser.to(self.device)
 
         # 5. Workers (Async Threads)
-        auditor_worker = AuditorWorker(input_dim=num_sources)
+        auditor_worker = AuditorWorker(input_dim=total_city_nodes)
         linguist_worker = LinguistWorker()
         xai_worker = XAIWorker(model_config=self.config)
 
@@ -139,8 +121,6 @@ class SystemBuilder:
         )
         
         kse_manager = KSEManager(app_state=self.app_state)
-        
-        pbt_manager = PBTManager(exploit_ratio=0.2)
 
         # 7. Infrastructure (Gateway)
         sensor_gateway = SensorGateway()
@@ -160,7 +140,6 @@ class SystemBuilder:
             "xai_manager": xai_manager,
             "ingestion_pipeline": ingestion_pipeline,
             "kse_manager": kse_manager,
-            "pbt_manager": pbt_manager,
             "sensor_gateway": sensor_gateway
         }
         

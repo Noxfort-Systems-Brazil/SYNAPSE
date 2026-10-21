@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/engine/tensor_builder.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import numpy as np
@@ -47,8 +30,9 @@ class TensorBuilder:
         """Dynamically looks at the GAT model to cast padding constraints."""
         expected_dim = 32  # DEFAULTS TO 32 (TCN Latent Dim)
         try:
-            if hasattr(coordinator_model, 'conv1'):
-                in_channels = coordinator_model.conv1.in_channels
+            conv1 = getattr(coordinator_model, "conv1", None)
+            if conv1 is not None:
+                in_channels = getattr(conv1, "in_channels", None)
                 if isinstance(in_channels, tuple):
                     expected_dim = in_channels[0]
                 elif isinstance(in_channels, int):
@@ -71,17 +55,52 @@ class TensorBuilder:
         history_list = []
         mask_list = []
         global_vel_list = []
-        
+        # Extract macroscopic speed baseline from global APIs (TomTom / Waze) if available
+        macro_speed = 0.0
+        app_state = getattr(self.graph_manager, "app_state", None)
+        get_all_ds_fn = getattr(app_state, "get_all_data_sources", None) if app_state else None
+        if callable(get_all_ds_fn):
+            global_speeds = []
+            for src in (get_all_ds_fn() or []):
+                if not getattr(src, "is_local", True):
+                    # Check latest value from TomTom/Waze safely
+                    raw_val = getattr(src, "latest_value", 0.0)
+                    v = 0.0
+                    if isinstance(raw_val, (int, float)):
+                        v = float(raw_val)
+                    elif isinstance(raw_val, dict):
+                        v_cand = raw_val.get("speed") or raw_val.get("currentSpeed_kmh") or raw_val.get("value")
+                        try:
+                            v = float(v_cand) if v_cand is not None else 0.0
+                        except (ValueError, TypeError):
+                            v = 0.0
+                    else:
+                        try:
+                            v = float(raw_val or 0.0)
+                        except (ValueError, TypeError):
+                            v = 0.0
+
+                    if v > 0.0:
+                        global_speeds.append(v)
+            if global_speeds:
+                macro_speed = float(np.mean(global_speeds))
+
         for nid in ordered_ids:
             node_data = snapshot.get(nid, {}) if snapshot else {}
             
             # Observability Mask (1.0 = Ground truth live sensor, 0.0 = Virtual/Synthesized node)
-            is_real = (node_data.get("type") == "real") or (node_data.get("status") == "Active")
+            val_float = float(node_data.get("value", 0.0) if isinstance(node_data.get("value", 0.0), (int, float)) else 0.0)
+            node_type = node_data.get("type")
+            node_status = node_data.get("status")
+            if node_type in ("synthetic", "virtual") or node_status in ("Ghost", "Extrapolated", "Synthesized"):
+                is_real = False
+            else:
+                is_real = (node_type == "real") or (node_status == "Active") or (val_float > 0.0)
             mask_list.append(1.0 if is_real else 0.0)
             
-            # Global Velocity for node
-            node_val = node_data.get("value", 0.0)
-            global_vel_list.append(float(node_val) if isinstance(node_val, (int, float)) else 0.0)
+            # Global Velocity for node (use macro_speed from global APIs if available, fallback to node_val)
+            target_vel = macro_speed if macro_speed > 0.0 else val_float
+            global_vel_list.append(target_vel)
             
             # Spatial Embedding (X)
             final_emb = torch.zeros(self.expected_dim)
@@ -132,8 +151,9 @@ class TensorBuilder:
 
         x_spatial = torch.stack(features_list).to(self.device) 
         
-        if hasattr(self.graph_manager, 'edge_index') and self.graph_manager.edge_index is not None:
-            edge_index = self.graph_manager.edge_index.to(self.device)
+        raw_edge_idx = getattr(self.graph_manager, "edge_index", None)
+        if raw_edge_idx is not None:
+            edge_index = raw_edge_idx.to(self.device)
         else:
             edge_index = torch.empty((2, 0), dtype=torch.long).to(self.device)
 
