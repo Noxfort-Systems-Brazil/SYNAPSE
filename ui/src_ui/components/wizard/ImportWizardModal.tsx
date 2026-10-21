@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/wizard/ImportWizardModal.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +30,7 @@ export const ImportWizardModal: React.FC<ImportWizardModalProps> = ({
   const { t } = useTranslation();
 
   const mapLoaded = useTopologyStore((s) => s.mapLoaded);
+  const isPickingElement = useTopologyStore((s) => s.isPickingElement);
   const { importProgress, resetEtlState } = useEtlStore();
   const hasDataset = useEtlStore((s) => s.hasDataset);
   const sources = useSensorsStore((s) => s.sources);
@@ -79,7 +63,11 @@ export const ImportWizardModal: React.FC<ImportWizardModalProps> = ({
     : t('wizard.next');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in select-none">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in select-none ${
+        isPickingElement ? 'hidden pointer-events-none opacity-0' : ''
+      }`}
+    >
       <div className="w-full max-w-3xl glass-panel bg-surface p-6 rounded-2xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-border/80 pb-4 flex-shrink-0">

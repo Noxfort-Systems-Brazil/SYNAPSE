@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/map/overlays/MapTrafficLegend.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 
@@ -33,8 +16,8 @@ export const MapTrafficLegend: React.FC<MapTrafficLegendProps> = ({ visible }) =
         Regime Fluidodinâmico
       </div>
       <div className="flex items-center gap-3 text-[10px]">
-        <div className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-slate-900 dark:bg-slate-400" />
           <span>&gt; 45 km/h</span>
         </div>
         <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400">

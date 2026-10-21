@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/map/hooks/useMapInteraction.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState, useEffect, RefObject } from 'react';
 import { MapNodeData, MapEdgeData, Point2D } from '../../../types/topology';
@@ -115,7 +98,7 @@ export function useMapInteraction({
     if (clickedNode) {
       onSelectNode(clickedNode.id);
       const associatedSensor = sources.find(
-        (s) => s.associated_element === clickedNode?.id
+        (s) => s.is_local && s.associated_element === clickedNode?.id
       );
       const liveNode = latestEngineData?.sensor_snapshot?.[clickedNode.id];
       const nodeVal =
@@ -125,12 +108,13 @@ export function useMapInteraction({
           ? liveNode
           : null;
 
+      const nodeDisplayName = clickedNode.name ? clickedNode.name : `Cruzamento ${clickedNode.id}`;
       if (associatedSensor) {
-        setHoveredInfo(`Cruzamento ${clickedNode.id} • Sensor: ${associatedSensor.name} (${associatedSensor.id})`);
+        setHoveredInfo(`${nodeDisplayName} • Sensor: ${associatedSensor.name} (${associatedSensor.id})`);
       } else if (nodeVal !== null && !isNaN(nodeVal) && nodeVal > 0) {
-        setHoveredInfo(`Cruzamento ${clickedNode.id} • Fluxo Imputado: ${nodeVal.toFixed(1)} veíc/min • TLS: ${clickedNode.is_tls ? 'SIM' : 'NÃO'}`);
+        setHoveredInfo(`${nodeDisplayName} • Fluxo Imputado: ${nodeVal.toFixed(1)} veíc/min • TLS: ${clickedNode.is_tls ? 'SIM' : 'NÃO'}`);
       } else {
-        setHoveredInfo(`Cruzamento ${clickedNode.id} (Semáforo TLS: ${clickedNode.is_tls ? 'SIM' : 'NÃO'})`);
+        setHoveredInfo(`${nodeDisplayName} (Semáforo TLS: ${clickedNode.is_tls ? 'SIM' : 'NÃO'})`);
       }
       if (onElementClicked) {
         onElementClicked(clickedNode.id, 'node');
@@ -170,17 +154,35 @@ export function useMapInteraction({
 
     if (clickedEdge) {
       onSelectEdge(clickedEdge.id);
+
+      const oppId = clickedEdge.id.startsWith('-') ? clickedEdge.id.slice(1) : `-${clickedEdge.id}`;
+      const oppEdge = edges.find((o) => o.id === oppId || (o.from === clickedEdge.to && o.to === clickedEdge.from));
+
       const associatedSensor = sources.find(
         (s) =>
-          s.associated_element === clickedEdge?.id ||
-          s.associated_element === `-${clickedEdge?.id}` ||
-          s.associated_element === clickedEdge?.id.replace(/^-/, '')
+          s.is_local && (
+            s.associated_element === clickedEdge?.id ||
+            s.associated_element === `-${clickedEdge?.id}` ||
+            s.associated_element === clickedEdge?.id.replace(/^-/, '') ||
+            (oppEdge !== undefined && (
+              s.associated_element === oppEdge.id ||
+              s.associated_element === `-${oppEdge.id}` ||
+              s.associated_element === oppEdge.id.replace(/^-/, '')
+            ))
+          )
       );
 
       const live =
         latestEngineData?.edge_data?.[clickedEdge.id] ||
         latestEngineData?.edge_data?.[clickedEdge.id.replace(/^-/, '')] ||
-        latestEngineData?.edge_data?.[`-${clickedEdge.id}`];
+        latestEngineData?.edge_data?.[`-${clickedEdge.id}`] ||
+        (oppEdge !== undefined
+          ? latestEngineData?.edge_data?.[oppEdge.id] ||
+            latestEngineData?.edge_data?.[oppEdge.id.replace(/^-/, '')] ||
+            latestEngineData?.edge_data?.[`-${oppEdge.id}`]
+          : null);
+
+      const edgeDisplayName = clickedEdge.name ? clickedEdge.name : `Via ${clickedEdge.id}`;
 
       if (associatedSensor) {
         const valStr =
@@ -189,12 +191,12 @@ export function useMapInteraction({
             : live
             ? ` [${live.speed.toFixed(1)} km/h]`
             : '';
-        setHoveredInfo(`Via ${clickedEdge.id} • Sensor: ${associatedSensor.name}${valStr} • Densidade: ${live?.density ?? 15} v/km`);
+        setHoveredInfo(`${edgeDisplayName} • Sensor: ${associatedSensor.name}${valStr} • Densidade: ${live?.density ?? 15} v/km`);
       } else if (live) {
         const occPct = ((live.occupancy ?? 0.12) * 100).toFixed(0);
-        setHoveredInfo(`Via ${clickedEdge.id} • Vel: ${live.speed.toFixed(1)} km/h • Densidade: ${live.density?.toFixed(1) ?? '15.0'} v/km • Ocupação: ${occPct}% • Fila: ${live.queue ?? 0} veíc [LWR Fluidodinâmico]`);
+        setHoveredInfo(`${edgeDisplayName} • Vel: ${live.speed.toFixed(1)} km/h • Densidade: ${live.density?.toFixed(1) ?? '15.0'} v/km • Ocupação: ${occPct}% • Fila: ${live.queue ?? 0} veíc [LWR Fluidodinâmico]`);
       } else {
-        setHoveredInfo(`Via ${clickedEdge.id} (${clickedEdge.from} → ${clickedEdge.to})`);
+        setHoveredInfo(`${edgeDisplayName} (${clickedEdge.from} → ${clickedEdge.to})`);
       }
 
       if (onElementClicked) {

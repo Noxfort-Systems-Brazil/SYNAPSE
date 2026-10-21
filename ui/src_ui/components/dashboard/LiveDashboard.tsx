@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/dashboard/LiveDashboard.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { useSystemStore, useSensorsStore } from '../../stores';
@@ -27,7 +10,13 @@ import { TelemetryCharts } from './TelemetryCharts';
 export const LiveDashboard: React.FC = () => {
   const phase = useSystemStore((s) => s.phase);
   const latencyMs = useSystemStore((s) => s.latencyMs);
-  const { sources, selectedSourceId, setSelectedSourceId, lossHistory, driftHistory } = useSensorsStore();
+  const {
+    sources,
+    selectedSourceId,
+    setSelectedSourceId,
+    fuserLossHistory,
+    fuserDriftHistory,
+  } = useSensorsStore();
 
   const liveSensors = sources.filter(
     (s) =>
@@ -38,19 +27,10 @@ export const LiveDashboard: React.FC = () => {
   );
 
   const activeSource = liveSensors.find((s) => s.id === selectedSourceId) || liveSensors[0];
-  const activeLossPoints = activeSource
-    ? lossHistory[activeSource.id] || lossHistory[activeSource.name] || Object.values(lossHistory)[0] || []
-    : Object.values(lossHistory)[0] || [];
-  const activeDriftPoints = activeSource
-    ? driftHistory[activeSource.id] || driftHistory[activeSource.name] || Object.values(driftHistory)[0] || []
-    : Object.values(driftHistory)[0] || [];
 
-  const allDriftPoints = Object.values(driftHistory).flat();
   const avgPsi =
-    activeDriftPoints.length > 0
-      ? (activeDriftPoints.reduce((acc, p) => acc + p.value, 0) / activeDriftPoints.length).toFixed(3)
-      : allDriftPoints.length > 0
-      ? (allDriftPoints.reduce((acc, p) => acc + p.value, 0) / allDriftPoints.length).toFixed(3)
+    fuserDriftHistory.length > 0
+      ? (fuserDriftHistory.reduce((acc, p) => acc + p.value, 0) / fuserDriftHistory.length).toFixed(3)
       : '0.000';
 
   return (
@@ -70,11 +50,11 @@ export const LiveDashboard: React.FC = () => {
         onSelectSource={setSelectedSourceId}
       />
 
-      {/* 3. MLOps Live Charts */}
+      {/* 3. MLOps Live Charts: Central Fuser Agent (iTransformer + PINO) */}
       <TelemetryCharts
-        sensorName={activeSource?.name || 'Geral'}
-        lossPoints={activeLossPoints}
-        driftPoints={activeDriftPoints}
+        modelName="Fuser Agent (iTransformer + PINO)"
+        lossPoints={fuserLossHistory}
+        driftPoints={fuserDriftHistory}
       />
     </div>
   );

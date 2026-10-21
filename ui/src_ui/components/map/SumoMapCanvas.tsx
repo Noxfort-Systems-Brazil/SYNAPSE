@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/map/SumoMapCanvas.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useRef, useState } from 'react';
 import { useTopologyStore, useSensorsStore } from '../../stores';
@@ -33,6 +16,10 @@ export const SumoMapCanvas: React.FC = () => {
     selectedNodeId,
     selectedEdgeId,
     isAssociatingSourceId,
+    isPickingElement,
+    pickingPrompt,
+    cancelPickingElement,
+    confirmElementPicked,
     setSelectedNodeId,
     setSelectedEdgeId,
     setAssociatingSourceId,
@@ -44,10 +31,34 @@ export const SumoMapCanvas: React.FC = () => {
   const [associationNotice, setAssociationNotice] = useState<string | null>(null);
 
   const handleElementClicked = async (elementId: string, type: 'node' | 'edge') => {
+    let displayName = elementId;
+    if (type === 'edge') {
+      const edge = edges.find((e) => e.id === elementId);
+      displayName = edge?.name || elementId;
+    } else {
+      const node = nodes.find((n) => n.id === elementId);
+      displayName = node?.name || elementId;
+    }
+
+    // 1. Element Picker Mode (from Ingestion Wizard or modal)
+    if (isPickingElement) {
+      const label = type === 'node' ? `cruzamento '${displayName}'` : `via '${displayName}'`;
+      setAssociationNotice(`✓ ${label} selecionada! Retornando ao assistente...`);
+      confirmElementPicked(elementId, type);
+      if (type === 'edge') {
+        setSelectedEdgeId(elementId);
+      } else {
+        setSelectedNodeId(elementId);
+      }
+      setTimeout(() => setAssociationNotice(null), 3500);
+      return;
+    }
+
+    // 2. Direct Source Association Mode
     if (isAssociatingSourceId) {
       associateSourceToElement(isAssociatingSourceId, elementId);
       await sensorService.associateSource(isAssociatingSourceId, elementId);
-      const label = type === 'node' ? `cruzamento '${elementId}'` : `via '${elementId}'`;
+      const label = type === 'node' ? `cruzamento '${displayName}'` : `via '${displayName}'`;
       setAssociationNotice(`Sensor '${isAssociatingSourceId}' vinculado com sucesso a ${label}`);
       setAssociatingSourceId(null);
       if (type === 'edge') {
@@ -95,7 +106,7 @@ export const SumoMapCanvas: React.FC = () => {
   return (
     <div
       className={`relative w-full h-[calc(100vh-4rem-2rem)] overflow-hidden bg-background select-none flex items-center justify-center ${
-        isAssociatingSourceId ? 'cursor-crosshair' : 'cursor-default'
+        isAssociatingSourceId || isPickingElement ? 'cursor-crosshair' : 'cursor-default'
       }`}
     >
       <canvas
@@ -111,10 +122,14 @@ export const SumoMapCanvas: React.FC = () => {
       <MapOverlays
         mapLoaded={mapLoaded}
         isAssociatingSourceId={isAssociatingSourceId}
+        isPickingElement={isPickingElement}
+        pickingPrompt={pickingPrompt}
+        onCancelPicking={cancelPickingElement}
         associationNotice={associationNotice}
         hoveredInfo={hoveredInfo}
         selectedEdgeId={selectedEdgeId}
         selectedNodeId={selectedNodeId}
+        nodes={nodes}
         edges={edges}
         sources={sources}
         latestEngineData={latestEngineData}

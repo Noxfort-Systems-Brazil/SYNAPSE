@@ -1,26 +1,9 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/wizard/steps/MapStep.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderOpen, Network, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FolderOpen, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTopologyStore } from '../../../stores';
 import { topologyService, systemService } from '../../../services/api';
 
@@ -57,6 +40,7 @@ export const MapStep: React.FC = () => {
           return;
         }
         setMapPath(res.path);
+        await handleLoadMap(res.path);
       }
     } catch (err) {
       console.warn('[MapStep] Falha ao invocar seletor de arquivos:', err);
@@ -65,7 +49,7 @@ export const MapStep: React.FC = () => {
     }
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const fileName = file.name;
@@ -77,11 +61,12 @@ export const MapStep: React.FC = () => {
       const path = (file as any).path || fileName;
       setMapPath(path);
       setError(null);
+      await handleLoadMap(path);
     }
   };
 
-  const handleLoadMap = async () => {
-    const cleanPath = mapPath.trim();
+  const handleLoadMap = async (pathOverride?: string) => {
+    const cleanPath = (typeof pathOverride === 'string' ? pathOverride : mapPath).trim();
     if (!cleanPath) return;
 
     if (!isValidSumoExtension(cleanPath)) {
@@ -133,33 +118,32 @@ export const MapStep: React.FC = () => {
             placeholder="/caminho/para/rede_viaria.net.xml ou .net.xml.gz"
             value={mapPath}
             onChange={(e) => setMapPath(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleLoadMap();
+              }
+            }}
+            disabled={isLoading}
             className="flex-1 h-10 px-3 bg-surface dark:bg-background border border-border rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary-500 font-mono text-xs"
           />
           <button
             type="button"
             onClick={handleBrowseFile}
-            disabled={isBrowsing}
+            disabled={isBrowsing || isLoading}
             title={isBrowsing ? 'Abrindo seletor de arquivos...' : t('wizard.browseTooltip')}
             className={`h-10 px-3.5 bg-surface border border-border text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm group ${
-              isBrowsing
+              isBrowsing || isLoading
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:border-primary-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <FolderOpen className={`w-4 h-4 text-primary-500 dark:text-primary-400 ${isBrowsing ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
-            <span>{isBrowsing ? 'Aguarde...' : t('wizard.browse')}</span>
-          </button>
-          <button
-            onClick={handleLoadMap}
-            disabled={!mapPath.trim() || isLoading}
-            className="px-4 h-10 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-primary-600/20 transition-all flex items-center gap-2"
-          >
             {isLoading ? (
-              <span className="animate-spin text-white">⏳</span>
+              <span className="animate-spin text-primary-500">⏳</span>
             ) : (
-              <Network className="w-4 h-4" />
+              <FolderOpen className={`w-4 h-4 text-primary-500 dark:text-primary-400 ${isBrowsing ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
             )}
-            <span>{t('wizard.loadMap')}</span>
+            <span>{isLoading ? 'Carregando...' : isBrowsing ? 'Aguarde...' : t('wizard.browse')}</span>
           </button>
         </div>
       </div>

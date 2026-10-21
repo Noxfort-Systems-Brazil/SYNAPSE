@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/settings/tabs/GeneralSettingsTab.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,7 +88,7 @@ export const GeneralSettingsTab: React.FC = () => {
           <Globe className="w-3.5 h-3.5 text-accent-cyan" />
           {t('settings.language')}
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <button
             onClick={() => i18n.changeLanguage('pt_BR')}
             className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
@@ -125,6 +108,46 @@ export const GeneralSettingsTab: React.FC = () => {
             }`}
           >
             🇺🇸 English (US)
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage('es_ES')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
+              i18n.language.startsWith('es')
+                ? 'bg-primary-600/20 border-primary-500 text-primary-600 dark:text-primary-300'
+                : 'bg-surface border-border text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            🇪🇸 Español
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage('fr_FR')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
+              i18n.language.startsWith('fr')
+                ? 'bg-primary-600/20 border-primary-500 text-primary-600 dark:text-primary-300'
+                : 'bg-surface border-border text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            🇫🇷 Français
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage('ru_RU')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
+              i18n.language.startsWith('ru')
+                ? 'bg-primary-600/20 border-primary-500 text-primary-600 dark:text-primary-300'
+                : 'bg-surface border-border text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            🇷🇺 Русский
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage('zh_CN')}
+            className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
+              i18n.language.startsWith('zh')
+                ? 'bg-primary-600/20 border-primary-500 text-primary-600 dark:text-primary-300'
+                : 'bg-surface border-border text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            🇨🇳 简体中文
           </button>
         </div>
       </div>

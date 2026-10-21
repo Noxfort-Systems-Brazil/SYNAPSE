@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/xai/XaiOfficialReportModal.tsx
-// Author: Gabriel Moraes
-// Date: 2026-09-02
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -24,78 +7,87 @@ import {
   FileCheck,
   Printer,
   ShieldCheck,
+  ShieldAlert,
   FileText,
   Loader2,
   SlidersHorizontal,
+  FolderDown,
+  CheckCircle2,
 } from 'lucide-react';
 import { XaiResultItem } from '../../types/xai';
-import { IReportBuilder, IReportExportService, OfficialReportData } from '../../types/report';
-import { useSensorsStore, useReportStore } from '../../stores';
+import { IReportBuilder, OfficialReportData } from '../../types/report';
+import { useReportStore } from '../../stores';
 import { useReportTypographyStore } from '../../stores/useReportTypographyStore';
-import { defaultReportBuilder } from '../../services/report/reportBuilder';
-import { defaultReportExportService } from '../../services/report/reportExportService';
-
 import { ReportTypographyToolbar } from './report/ReportTypographyToolbar';
-import { Page1ExecutiveSummary } from './report/pages/Page1ExecutiveSummary';
-import { Page2TechnicalAudit } from './report/pages/Page2TechnicalAudit';
-import { Page3SafetyAndAttribution } from './report/pages/Page3SafetyAndAttribution';
-import { Page4FormulasAndCounterfactual } from './report/pages/Page4FormulasAndCounterfactual';
-import { Page5QuesitosAndLegal } from './report/pages/Page5QuesitosAndLegal';
-import { Page6SignaturesAndReferences } from './report/pages/Page6SignaturesAndReferences';
+import { XaiReportPreviewContainer } from './report/XaiReportPreviewContainer';
+import { SaveReportModal } from './report/SaveReportModal';
+
 
 interface XaiOfficialReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   result?: XaiResultItem | null;
-  savedReport?: OfficialReportData | null;
   reportBuilder?: IReportBuilder;
-  exportService?: IReportExportService;
 }
 
 /**
  * Official Traffic Engineering & Municipal Operations Audit Report Modal.
- * Standardized in strict compliance with ABNT NBR 10719, NBR 14724, CTB Art. 24, and CONTRAN Manual Vol. V.
- * Refactored in strict accordance with SOLID principles (SRP, OCP, LSP, ISP, DIP).
+ * Standardized in strict compliance with ABNT NBR 10719, NBR 14724, CTB Art. 24, and CONTRAN.
+ * Enforces Operational Compliance Lock Guard: reports are compiled strictly from active telemetry.
  */
 export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
   isOpen,
   onClose,
   result,
-  savedReport,
-  reportBuilder = defaultReportBuilder,
-  exportService = defaultReportExportService,
 }) => {
-  const [exportingDocx, setExportingDocx] = useState(false);
+  const [exportingDocxLocal, setExportingDocxLocal] = useState(false);
   const [showFormatControls, setShowFormatControls] = useState(false);
-  const sources = useSensorsStore((s) => s.sources);
-  const { isLoadingReport, selectedReport } = useReportStore();
+  const [isSaveAsModalOpen, setIsSaveAsModalOpen] = useState(false);
+  const [savedPathFeedback, setSavedPathFeedback] = useState<string | null>(null);
+
+  const {
+    isLoadingReport,
+    selectedReport,
+    previewHtml,
+    exportDocx,
+    isExportingDocx,
+    isDataReady,
+    generatingMessage,
+    reportError,
+    fetchOfficialReport,
+  } = useReportStore();
 
   // Typography Preferences from Store
   const { fontFamily, fontSize, lineSpacing, alignment } = useReportTypographyStore();
 
-  // Build Domain Model (Consumes Backend DTO with fallback to reportBuilder)
-  const reportData = useMemo<OfficialReportData>(() => {
-    if (savedReport) return savedReport;
-    if (selectedReport) return selectedReport;
-    return reportBuilder.build(result, sources);
-  }, [savedReport, selectedReport, result, sources, reportBuilder]);
+  // Strict Real Data: consumes backend live report. Zero fake fallbacks.
+  const reportData = selectedReport;
+
+  const defaultFilename = useMemo(() => {
+    const proto = reportData?.protocol || result?.id || 'RELATORIO';
+    const cleanProto = proto.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `Laudo_Tecnico_Trafego_${cleanProto}.docx`;
+  }, [reportData?.protocol, result?.id]);
 
   if (!isOpen) return null;
 
-  const handleExportDocx = async () => {
-    setExportingDocx(true);
+  const handleExportDocx = async (outputPath?: string) => {
+    setExportingDocxLocal(true);
+    setSavedPathFeedback(null);
     try {
-      const fileName = `Laudo_Tecnico_Trafego_${reportData.protocol}.docx`;
-      await exportService.exportToDocx(reportData, fileName, {
-        fontFamily,
-        fontSize,
-        lineSpacing,
-        alignment,
-      });
+      const res = await exportDocx(outputPath);
+      if (res.success) {
+        console.log(`Laudo Oficial exportado com sucesso para DOCX: ${res.output_path}`);
+        if (res.output_path) {
+          setSavedPathFeedback(res.output_path);
+        }
+      } else {
+        console.error('Erro ao exportar DOCX via backend:', res.error);
+      }
     } catch (e) {
       console.error('Error generating DOCX:', e);
     } finally {
-      setExportingDocx(false);
+      setExportingDocxLocal(false);
     }
   };
 
@@ -103,13 +95,6 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
     window.print();
   };
 
-  const TOTAL_PAGES = 6;
-
-  // Dynamic CSS styles for on-screen live preview
-  const previewFontFamily =
-    fontFamily === 'Arial' ? 'Arial, Helvetica, sans-serif' : '"Times New Roman", Times, serif';
-  const previewLineHeight = lineSpacing === 1.5 ? '1.75' : lineSpacing === 1.15 ? '1.4' : '1.25';
-  const previewTextAlign = alignment === 'left' ? 'left' : 'justify';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -126,12 +111,20 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
                 <h2 className="text-sm font-bold tracking-wide">
                   Laudo Técnico & Relatório de Auditoria de Tráfego
                 </h2>
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xs">
-                  Word (.docx) / ABNT
-                </span>
+                {isDataReady && reportData ? (
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xs">
+                    Word (.docx) / ABNT
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xs">
+                    TRAVA ATIVA (GERANDO DADOS)
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-300 font-mono">
-                Protocolo: {reportData.protocol} • Processo: {reportData.processNumber}
+                {reportData
+                  ? `Protocolo: ${reportData.protocol} • Processo: ${reportData.processNumber}`
+                  : 'Aguardando telemetria ativa da malha viária...'}
               </p>
             </div>
           </div>
@@ -140,7 +133,8 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
             {/* Botão para alternar a Barra de Tipografia */}
             <button
               onClick={() => setShowFormatControls(!showFormatControls)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border ${
+              disabled={!isDataReady || !reportData}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border disabled:opacity-40 disabled:cursor-not-allowed ${
                 showFormatControls
                   ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
                   : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
@@ -157,30 +151,42 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
             {/* Imprimir */}
             <button
               onClick={handlePrint}
-              className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-colors"
-              title="Imprimir visualização do laudo"
+              disabled={!isDataReady || !reportData}
+              className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={!isDataReady ? "Dados em processamento" : "Imprimir visualização do laudo"}
             >
               <Printer className="w-4 h-4" />
             </button>
 
-            {/* Exportar DOCX */}
+            {/* Salvar DOCX Direto (Padrão / Downloads) */}
             <button
-              onClick={handleExportDocx}
-              disabled={exportingDocx}
-              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-blue-950/40 disabled:opacity-50"
-              title="Exportar documento Microsoft Word (.docx) formatado segundo as normas ABNT"
+              onClick={() => handleExportDocx(undefined)}
+              disabled={!isDataReady || !reportData || isExportingDocx || exportingDocxLocal}
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-blue-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={!isDataReady ? "Trava Operacional Ativa: exportação bloqueada enquanto dados são gerados" : "Salvar diretamente na pasta Downloads com o nome padrão oficial"}
             >
-              {exportingDocx ? (
+              {isExportingDocx || exportingDocxLocal ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Gerando Word (.docx)...</span>
+                  <span>Salvando...</span>
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4" />
-                  <span>Salvar DOCX (Oficial)</span>
+                  <span>Salvar DOCX (Padrão)</span>
                 </>
               )}
+            </button>
+
+            {/* Salvar Como (Escolher Onde Salvar e Qual Nome Salvar) */}
+            <button
+              onClick={() => setIsSaveAsModalOpen(true)}
+              disabled={!isDataReady || !reportData || isExportingDocx || exportingDocxLocal}
+              className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Escolher onde salvar e qual nome dar ao laudo pericial (.docx)"
+            >
+              <FolderDown className="w-4 h-4 text-blue-400" />
+              <span>Salvar Como...</span>
             </button>
 
             <button
@@ -195,88 +201,86 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
         {/* Subcomponente Especializado: Barra de Tipografia (SRP) */}
         <ReportTypographyToolbar isVisible={showFormatControls} />
 
+        {/* Banner de Sucesso de Salvamento */}
+        {savedPathFeedback && (
+          <div className="mx-5 my-2 p-3 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-200 animate-in fade-in duration-200 shadow-lg">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="p-1.5 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <div className="font-bold text-white flex items-center gap-2">
+                  <span>Laudo Oficial DOCX exportado com sucesso!</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-sm">ABNT NBR 10719</span>
+                </div>
+                <div className="text-[11px] text-emerald-300 font-mono truncate mt-0.5" title={savedPathFeedback}>
+                  Salvo em: <span className="underline font-semibold">{savedPathFeedback}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setSavedPathFeedback(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-emerald-900/40 transition-colors ml-3 shrink-0"
+              title="Fechar notificação"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Banner de Conformidade e Resumo de Configuração */}
         <div className="px-5 py-2 bg-slate-950/90 text-[11px] text-slate-300 flex items-center justify-between border-b border-slate-800 font-mono">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span>Formato Nativo: Microsoft Word (.docx) • Padrão Editorial ABNT NBR 10719 & NBR 6023 • CTB Art. 24</span>
+            {isDataReady && reportData ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                <span>Formato Nativo: Microsoft Word (.docx) • Padrão Editorial ABNT NBR 10719 & NBR 6023 • CTB Art. 24</span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span className="text-amber-300">
+                  Trava Operacional Ativa: Telemetria e fusão neural em processamento na malha viária
+                </span>
+              </>
+            )}
           </div>
           <span className="text-slate-400">
-            Configuração Ativa: {fontFamily} • {fontSize}pt • {lineSpacing}x • {alignment === 'justify' ? 'Justificado' : 'À Esquerda'}
+            {isDataReady && reportData
+              ? `Configuração Ativa: ${fontFamily} • ${fontSize}pt • ${lineSpacing}x • ${alignment === 'justify' ? 'Justificado' : 'À Esquerda'}`
+              : 'MARKVART™ Gateway de Percepção'}
           </span>
         </div>
 
-        {/* Conteúdo do Laudo com as 6 Folhas ABNT e Estilos Tipográficos Dinâmicos */}
+        {/* Conteúdo do Laudo com as Folhas ABNT e Estilos Tipográficos Dinâmicos */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-300 dark:bg-slate-950/70">
-          {isLoadingReport ? (
-            <div className="flex flex-col items-center justify-center min-h-[400px] p-12 space-y-4 text-center">
-              <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Compilando Laudo Pericial de Tráfego no Backend...
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
-                  O SYNAPSE Core está sintetizando telemetrias da malha, verificando guardrails do CONTRAN e formatando o parecer pericial conforme a norma ABNT NBR 10719.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div
-              id="official-traffic-audit-dossier"
-              className="space-y-6 transition-all duration-150"
-              style={{
-                fontFamily: previewFontFamily,
-                textAlign: previewTextAlign as any,
-                lineHeight: previewLineHeight,
-                fontSize: `${fontSize}pt`,
-              }}
-            >
-              {/* Folha 1: Timbre, Autuação e PARTE I (Sumário Executivo e Quadro Comparativo) */}
-              <Page1ExecutiveSummary
-                report={reportData}
-                pageNumber={1}
-                totalPages={TOTAL_PAGES}
-              />
-
-              {/* Folha 2: PARTE II (Objeto, Diagnóstico de Tráfego, Panorama HCM e Tabela de Detectores) */}
-              <Page2TechnicalAudit
-                report={reportData}
-                pageNumber={2}
-                totalPages={TOTAL_PAGES}
-              />
-
-              {/* Folha 3: Guardrails CONTRAN e Atribuição Causal de Tráfego */}
-              <Page3SafetyAndAttribution
-                report={reportData}
-                pageNumber={3}
-                totalPages={TOTAL_PAGES}
-              />
-
-              {/* Folha 4: Memorial de Cálculo Matemático e Análise Contrafactual */}
-              <Page4FormulasAndCounterfactual
-                report={reportData}
-                pageNumber={4}
-                totalPages={TOTAL_PAGES}
-              />
-
-              {/* Folha 5: Resposta aos Quesitos Técnicos e Enquadramento Normativo */}
-              <Page5QuesitosAndLegal
-                report={reportData}
-                pageNumber={5}
-                totalPages={TOTAL_PAGES}
-              />
-
-              {/* Folha 6: Parecer Conclusivo, Assinaturas Oficiais e Referências Bibliográficas */}
-              <Page6SignaturesAndReferences
-                report={reportData}
-                pageNumber={6}
-                totalPages={TOTAL_PAGES}
-              />
-            </div>
-          )}
+          <XaiReportPreviewContainer
+            isLoadingReport={isLoadingReport}
+            isDataReady={isDataReady}
+            generatingMessage={generatingMessage}
+            reportError={reportError}
+            previewHtml={previewHtml}
+            reportData={reportData}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            lineSpacing={lineSpacing}
+            alignment={alignment}
+            onRefresh={() => fetchOfficialReport(result?.id, result)}
+          />
         </div>
+
+        {/* Modal de Escolha de Nome e Pasta (Salvar Como) */}
+        <SaveReportModal
+          isOpen={isSaveAsModalOpen}
+          onClose={() => setIsSaveAsModalOpen(false)}
+          onSave={handleExportDocx}
+          isSaving={isExportingDocx || exportingDocxLocal}
+          defaultFilename={defaultFilename}
+          protocol={reportData?.protocol}
+        />
 
       </div>
     </div>
   );
 };
+

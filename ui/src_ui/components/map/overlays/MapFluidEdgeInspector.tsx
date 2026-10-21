@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/map/overlays/MapFluidEdgeInspector.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { Radio, Waves, Gauge, Layers, Car, X, Unlink } from 'lucide-react';
@@ -56,35 +39,38 @@ export const MapFluidEdgeInspector: React.FC<MapFluidEdgeInspectorProps> = ({
     <div className="absolute bottom-4 left-6 z-20 glass-panel p-4 rounded-2xl border border-border/80 bg-surface/95 backdrop-blur-md shadow-2xl space-y-3 min-w-[320px] max-w-[360px] animate-in fade-in select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2.5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span
-            className={`w-2.5 h-2.5 rounded-full ${
+            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
               associatedSensor ? 'bg-accent-cyan animate-ping' : 'bg-primary-500'
             }`}
           />
-          <div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate" title={currentEdge?.name || undefined}>
               {associatedSensor ? (
-                <Radio className="w-3.5 h-3.5 text-accent-cyan" />
+                <Radio className="w-3.5 h-3.5 text-accent-cyan flex-shrink-0" />
               ) : (
-                <Waves className="w-3.5 h-3.5 text-primary-400" />
+                <Waves className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
               )}
-              Via Viária
+              <span className="truncate">{currentEdge?.name || 'Via Viária'}</span>
             </span>
             {currentEdge && (
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                {currentEdge.from} → {currentEdge.to}
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
+                {currentEdge.name ? `${currentEdge.from} → ${currentEdge.to} • ID: ${edgeId}` : `${currentEdge.from} → ${currentEdge.to}`}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary-500/10 text-primary-400 border border-primary-500/30 font-bold">
-            {edgeId}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary-500/10 text-primary-400 border border-primary-500/30 font-bold"
+            title={`ID SUMO: ${edgeId}`}
+          >
+            {currentEdge?.name ? currentEdge.name : edgeId}
           </span>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-surfaceHover transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-surfaceHover transition-colors cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>

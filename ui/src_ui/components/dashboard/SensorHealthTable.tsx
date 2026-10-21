@@ -1,27 +1,11 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/dashboard/SensorHealthTable.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { RadioTower } from 'lucide-react';
 import { DataSourceItem } from '../../types/sensors';
+import { useTopologyStore } from '../../stores';
 
 interface SensorHealthTableProps {
   sources: DataSourceItem[];
@@ -35,6 +19,22 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
   onSelectSource,
 }) => {
   const { t } = useTranslation();
+  const edges = useTopologyStore((s) => s.edges);
+  const nodes = useTopologyStore((s) => s.nodes);
+
+  const getElementDisplayName = (elementId?: string, fallbackName?: string | null) => {
+    if (!elementId) return '';
+    const edge = edges.find(
+      (e) =>
+        e.id === elementId ||
+        `-${e.id}` === elementId ||
+        e.id === elementId.replace(/^-/, '')
+    );
+    if (edge?.name) return edge.name;
+    const node = nodes.find((n) => n.id === elementId);
+    if (node?.name) return node.name;
+    return fallbackName || elementId;
+  };
 
   const getStatusBadge = (src: DataSourceItem) => {
     switch (src.status) {
@@ -136,9 +136,12 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
                       <span className={`w-2 h-2 rounded-full ${src.is_local ? 'bg-accent-cyan' : 'bg-primary-500 dark:bg-primary-400'}`} />
                       <div>
                         <span>{src.name}</span>
-                        {src.associated_element && (
-                          <span className="ml-2 text-[10px] text-accent-cyan font-mono font-normal">
-                            (Via: {src.associated_element})
+                        {src.is_local && src.associated_element && (
+                          <span
+                            className="ml-2 text-[10px] text-accent-cyan font-mono font-normal"
+                            title={`ID SUMO: ${src.associated_element}`}
+                          >
+                            (Via: {getElementDisplayName(src.associated_element, src.associated_element_name)})
                           </span>
                         )}
                       </div>

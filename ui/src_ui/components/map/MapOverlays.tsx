@@ -1,26 +1,9 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/map/MapOverlays.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { DataSourceItem, EngineDataPayload } from '../../types/sensors';
-import { MapEdgeData } from '../../types/topology';
+import { MapEdgeData, MapNodeData } from '../../types/topology';
 import { sensorService } from '../../services/api';
 import { useSensorsStore } from '../../stores';
 import {
@@ -28,7 +11,6 @@ import {
   MapFluidEdgeInspector,
   MapNodeInspector,
   MapHoverBadge,
-  MapTrafficLegend,
   MapZoomControls,
   MapEmptyState,
 } from './overlays';
@@ -38,8 +20,12 @@ interface MapOverlaysProps {
   isAssociatingSourceId: string | null;
   associationNotice: string | null;
   hoveredInfo: string | null;
+  isPickingElement?: boolean;
+  pickingPrompt?: string | null;
+  onCancelPicking?: () => void;
   selectedEdgeId?: string | null;
   selectedNodeId?: string | null;
+  nodes?: MapNodeData[];
   edges?: MapEdgeData[];
   sources?: DataSourceItem[];
   latestEngineData?: EngineDataPayload | null;
@@ -55,8 +41,12 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
   isAssociatingSourceId,
   associationNotice,
   hoveredInfo,
+  isPickingElement,
+  pickingPrompt,
+  onCancelPicking,
   selectedEdgeId,
   selectedNodeId,
+  nodes = [],
   edges = [],
   sources = [],
   latestEngineData,
@@ -70,20 +60,40 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
 
   const selectedElementId = selectedEdgeId || selectedNodeId;
   const currentEdge = selectedEdgeId ? edges.find((e) => e.id === selectedEdgeId) : null;
+  const currentNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
+  const oppEdge = currentEdge
+    ? edges.find(
+        (o) =>
+          o.id === (currentEdge.id.startsWith('-') ? currentEdge.id.slice(1) : `-${currentEdge.id}`) ||
+          (o.from === currentEdge.to && o.to === currentEdge.from)
+      )
+    : null;
 
   const associatedSensor = selectedElementId
     ? sources.find(
         (s) =>
-          s.associated_element === selectedElementId ||
-          s.associated_element === `-${selectedElementId}` ||
-          s.associated_element === selectedElementId.replace(/^-/, '')
+          s.is_local && (
+            s.associated_element === selectedElementId ||
+            s.associated_element === `-${selectedElementId}` ||
+            s.associated_element === selectedElementId.replace(/^-/, '') ||
+            (oppEdge ? (
+              s.associated_element === oppEdge.id ||
+              s.associated_element === `-${oppEdge.id}` ||
+              s.associated_element === oppEdge.id.replace(/^-/, '')
+            ) : false)
+          )
       )
     : null;
 
   const liveEdge = selectedEdgeId
     ? latestEngineData?.edge_data?.[selectedEdgeId] ||
       latestEngineData?.edge_data?.[selectedEdgeId.replace(/^-/, '')] ||
-      latestEngineData?.edge_data?.[`-${selectedEdgeId}`]
+      latestEngineData?.edge_data?.[`-${selectedEdgeId}`] ||
+      (oppEdge
+        ? latestEngineData?.edge_data?.[oppEdge.id] ||
+          latestEngineData?.edge_data?.[oppEdge.id.replace(/^-/, '')] ||
+          latestEngineData?.edge_data?.[`-${oppEdge.id}`]
+        : null)
     : null;
 
   const handleDisassociate = async (sensorId: string) => {
@@ -98,10 +108,13 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
         isAssociatingSourceId={isAssociatingSourceId}
         associationNotice={associationNotice}
         onCancelAssociation={onCancelAssociation}
+        isPickingElement={isPickingElement}
+        pickingPrompt={pickingPrompt}
+        onCancelPicking={onCancelPicking}
       />
 
       {/* Selected Edge: Comprehensive Fluid Dynamics Inspector */}
-      {selectedEdgeId && (
+      {selectedEdgeId && !isPickingElement && (
         <MapFluidEdgeInspector
           edgeId={selectedEdgeId}
           currentEdge={currentEdge}
@@ -113,9 +126,10 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
       )}
 
       {/* Selected Node: Intersection Inspector */}
-      {!selectedEdgeId && selectedNodeId && (
+      {!selectedEdgeId && selectedNodeId && !isPickingElement && (
         <MapNodeInspector
           nodeId={selectedNodeId}
+          nodeName={currentNode?.name}
           infoText={hoveredInfo}
           onClose={() => onSelectNode?.(null)}
         />
@@ -125,9 +139,6 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
       {!selectedEdgeId && !selectedNodeId && (
         <MapHoverBadge hoveredInfo={hoveredInfo} />
       )}
-
-      {/* Fluid Dynamics Heatmap Legend */}
-      <MapTrafficLegend visible={mapLoaded} />
 
       {/* Canvas Zoom Controls */}
       <MapZoomControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />

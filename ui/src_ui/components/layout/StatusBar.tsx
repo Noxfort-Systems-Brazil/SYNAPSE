@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/layout/StatusBar.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,19 +22,19 @@ export const StatusBar: React.FC = () => {
   };
 
   return (
-    <footer className="h-8 border-t border-border bg-surface/90 backdrop-blur-md px-4 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono select-none z-30">
+    <footer className="h-8 border-t border-border bg-surface/90 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono select-none z-30 overflow-hidden whitespace-nowrap">
       {/* Left items */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5" title={!isNative ? 'Para conectar ao Core Python via IPC, use a janela Desktop nativa executando python synapse.py' : ''}>
-          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : isNative ? 'bg-rose-500 animate-ping' : 'bg-amber-500'}`} />
-          <span className={`font-semibold ${connected ? 'text-emerald-500 dark:text-emerald-400' : isNative ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'}`}>
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0 min-w-0">
+        <div className="flex items-center gap-1.5 shrink-0" title={!isNative ? 'Para conectar ao backend Python via IPC, use a janela Desktop nativa executando python synapse.py' : ''}>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${connected ? 'bg-emerald-400' : isNative ? 'bg-rose-500 animate-ping' : 'bg-amber-500'}`} />
+          <span className={`font-semibold shrink-0 ${connected ? 'text-emerald-500 dark:text-emerald-400' : isNative ? 'text-rose-500 dark:text-rose-400' : 'text-amber-500 dark:text-amber-400'}`}>
             {getStatusText()}
           </span>
         </div>
 
-        <span className="text-slate-300 dark:text-slate-600">|</span>
+        <span className="hidden sm:inline text-slate-300 dark:text-slate-600">|</span>
 
-        <div>
+        <div className="hidden sm:block shrink-0">
           <span>{t('map.nodesCount')}: </span>
           <span className="text-slate-800 dark:text-slate-200 font-bold">{nodesCount}</span>
           <span className="ml-2">{t('map.edgesCount')}: </span>
@@ -60,22 +43,22 @@ export const StatusBar: React.FC = () => {
       </div>
 
       {/* Right items */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         {latestEngineData && (
           <>
-            <div>
+            <div className="hidden md:block shrink-0">
               <span>{t('metrics.meanSpeed')}: </span>
               <span className="text-accent-cyan font-bold">
                 {latestEngineData.mean_speed ? `${latestEngineData.mean_speed.toFixed(1)} km/h` : '--'}
               </span>
             </div>
-            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span className="hidden md:inline text-slate-300 dark:text-slate-600">|</span>
           </>
         )}
 
-        <div className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-bold">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>ZERO-TRUST MEMORY</span>
+        <div className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-bold shrink-0">
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden md:inline">ZERO-TRUST MEMORY</span>
         </div>
       </div>
     </footer>

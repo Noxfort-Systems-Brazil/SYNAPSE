@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/xai/report/pages/Page2TechnicalAudit.tsx
-// Author: Gabriel Moraes
-// Date: 2026-09-01
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { OfficialReportData } from '../../../../types/report';
@@ -51,7 +34,7 @@ export const Page2TechnicalAudit: React.FC<PageProps> = ({ report, pageNumber, t
         {/* Título Principal da Parte II */}
         <div className="border-b border-black pb-1">
           <h2 className="text-xs font-bold uppercase tracking-wider text-black">
-            PARTE II — RELATÓRIO TÉCNICO E AUDITORIA DA MALHA SEMAFÓRICA
+            PARTE II — RELATÓRIO TÉCNICO E AUDITORIA DA MALHA DE SENSORES E FUSÃO NEURAL
           </h2>
           <p className="text-[10px] text-black italic">
             Fundamentação pericial analítica, inventário metrológico e conformidade normativa (CTB Art. 24).
@@ -74,7 +57,7 @@ export const Page2TechnicalAudit: React.FC<PageProps> = ({ report, pageNumber, t
               <strong>1.2. Diagnóstico Operacional do Tráfego:</strong> {report.observedTrafficDiagnosis}
             </p>
             <p className="indent-6 text-[10.5px] text-black">
-              <strong>1.3. Ação Semafórica Executada:</strong> {report.adaptiveActionExecuted}
+              <strong>1.3. Ação de Fusão e Tratamento de Telemetria Executada:</strong> {report.adaptiveActionExecuted}
             </p>
             <p className="indent-6 text-[10.5px] text-black">
               <strong>1.4. Caracterização do Local:</strong> {report.location.corridorName} • {report.location.centralNodes}.

@@ -1,32 +1,16 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/components/settings/SettingsModal.tsx
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Globe, Database, Radio, Sliders, Landmark, UserCheck, History } from 'lucide-react';
+import { X, Globe, Database, Radio, Sliders, Landmark, UserCheck, History, Cloud } from 'lucide-react';
 import { DatabaseSettingsTab } from './tabs/DatabaseSettingsTab';
 import { MonitorSettingsTab } from './tabs/MonitorSettingsTab';
 import { GeneralSettingsTab } from './tabs/GeneralSettingsTab';
 import { MunicipalSettingsTab } from './tabs/MunicipalSettingsTab';
 import { AccountSettingsTab } from './tabs/AccountSettingsTab';
 import { AuditLogTab } from './tabs/AuditLogTab';
+import { DuckDnsSettingsTab } from './tabs/DuckDnsSettingsTab';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -35,7 +19,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'municipal' | 'db' | 'monitor' | 'general' | 'accounts' | 'audit'>('municipal');
+  const [activeTab, setActiveTab] = useState<'municipal' | 'duckdns' | 'db' | 'monitor' | 'general' | 'accounts' | 'audit'>('municipal');
 
   if (!isOpen) return null;
 
@@ -80,6 +64,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           >
             <Database className="w-4 h-4" />
             <span>Banco de Dados</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('duckdns')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              activeTab === 'duckdns'
+                ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-surfaceHover'
+            }`}
+          >
+            <Cloud className="w-4 h-4" />
+            <span>Acesso Remoto (DuckDNS)</span>
           </button>
 
           <button
@@ -135,6 +131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         <div className="min-h-[280px]">
           {activeTab === 'municipal' && <MunicipalSettingsTab />}
           {activeTab === 'db' && <DatabaseSettingsTab />}
+          {activeTab === 'duckdns' && <DuckDnsSettingsTab />}
           {activeTab === 'monitor' && <MonitorSettingsTab />}
           {activeTab === 'general' && <GeneralSettingsTab />}
           {activeTab === 'accounts' && <AccountSettingsTab />}
