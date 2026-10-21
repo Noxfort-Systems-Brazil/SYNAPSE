@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/node/node_snapshot_formatter.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, Any, Optional
 from src.interfaces.node import IPhysicsEngine, INodeSnapshotFormatter
@@ -31,10 +14,11 @@ class NodeSnapshotFormatter:
     @staticmethod
     def _extract_physics_report(physics_engine: Optional[IPhysicsEngine]) -> Dict[str, Any]:
         """Extracts kinetic state variables from the physics engine."""
-        if physics_engine is None or not hasattr(physics_engine, "get_kinetic_snapshot"):
+        get_snap_fn = getattr(physics_engine, "get_kinetic_snapshot", None) if physics_engine is not None else None
+        if not callable(get_snap_fn):
             return {}
         
-        kse_snapshot = physics_engine.get_kinetic_snapshot()
+        kse_snapshot = get_snap_fn()
         if kse_snapshot is None:
             return {}
 

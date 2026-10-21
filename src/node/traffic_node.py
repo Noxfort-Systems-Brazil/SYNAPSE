@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/node/traffic_node.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import numpy as np
 from typing import Optional, Dict, Any, Callable
@@ -233,12 +216,15 @@ class TrafficNode:
 
     def get_state(self) -> Dict[str, Any]:
         """Exports the full internal state via clean component delegation."""
+        mem_get = getattr(self._memory, "get_state", None) if self._memory is not None else None
+        agent_get = getattr(self._agent, "get_state", None) if self._agent is not None else None
+        phys_get = getattr(self._physics_engine, "get_state", None) if self._physics_engine is not None else None
         return {
             "source_id": self.source_id,
             "steps_processed": self.state.steps_processed,
-            "memory_buffer": self._memory.get_state() if self._memory is not None and hasattr(self._memory, "get_state") else [],
-            "agent_state": self._agent.get_state() if self._agent is not None and hasattr(self._agent, "get_state") else {},
-            "kse_state": self._physics_engine.get_state() if self._physics_engine is not None and hasattr(self._physics_engine, "get_state") else {}
+            "memory_buffer": mem_get() if callable(mem_get) else [],
+            "agent_state": agent_get() if callable(agent_get) else {},
+            "kse_state": phys_get() if callable(phys_get) else {}
         }
 
     def set_state(self, state: Dict[str, Any]) -> None:
@@ -249,23 +235,27 @@ class TrafficNode:
         try:
             self.state.from_dict(state)
 
-            if "memory_buffer" in state and self._memory is not None and hasattr(self._memory, "set_state"):
+            mem_set = getattr(self._memory, "set_state", None) if self._memory is not None else None
+            if "memory_buffer" in state and callable(mem_set):
                 try:
-                    self._memory.set_state(state["memory_buffer"])
+                    mem_set(state["memory_buffer"])
                 except Exception as e:
                     logger.error(f"[TrafficNode] Failed to restore memory for {self.source_id}: {e}")
 
-            if "agent_state" in state and self._agent is not None and hasattr(self._agent, "set_state"):
+            agent_set = getattr(self._agent, "set_state", None) if self._agent is not None else None
+            if "agent_state" in state and callable(agent_set):
                 try:
-                    self._agent.set_state(state["agent_state"])
+                    agent_set(state["agent_state"])
                 except Exception as e:
                     logger.error(f"[TrafficNode] Failed to restore agent state for {self.source_id}: {e}")
 
-            if "kse_state" in state and self._physics_engine is not None and hasattr(self._physics_engine, "set_state"):
+            phys_set = getattr(self._physics_engine, "set_state", None) if self._physics_engine is not None else None
+            if "kse_state" in state and callable(phys_set):
                 try:
-                    self._physics_engine.set_state(state["kse_state"])
-                    if hasattr(self._physics_engine, "get_kinetic_snapshot"):
-                        kse_snap = self._physics_engine.get_kinetic_snapshot()
+                    phys_set(state["kse_state"])
+                    get_snap = getattr(self._physics_engine, "get_kinetic_snapshot", None)
+                    if callable(get_snap):
+                        kse_snap = get_snap()
                         if kse_snap is not None:
                             self.state.last_value = float(getattr(kse_snap, "p", 0.0))
                 except Exception as e:

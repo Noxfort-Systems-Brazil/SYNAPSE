@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/fenix/evolution_strategy.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import traceback
@@ -29,7 +12,7 @@ class Level2EvolutionStrategy:
     """
     Level 2 Autonomous Evolution Strategy:
     - Retrains Coordinator (GATv2), Fuser (Diffusion/iTransformer), and Auditor.
-    - EXCLUDES TCN (SpecialistAgent), which evolves online via PBT.
+    - EXCLUDES TCN (SpecialistAgent), which operates as a local sensor feature extractor.
     - Validates candidate model before hot-swap.
     - Saves evolved checkpoints via storage manager.
     """
@@ -45,7 +28,7 @@ class Level2EvolutionStrategy:
         try:
             logger.info(">>> [FENIX N2] STARTING AUTONOMOUS EVOLUTION CYCLE <<<")
 
-            callbacks.on_progress("Loading Multi-Day Datalake Batch (Excluding TCN/PBT)...", 20)
+            callbacks.on_progress("Loading Multi-Day Datalake Batch (Excluding TCN)...", 20)
             time.sleep(1.0)
             if callbacks.is_interrupted():
                 raise InterruptedError("Cycle Aborted")
@@ -65,8 +48,9 @@ class Level2EvolutionStrategy:
             new_model_path = "temp/candidate_fuser.pth"
             
             final_path = new_model_path
-            if self.storage and hasattr(self.storage, "save_model_checkpoint"):
-                final_path = self.storage.save_model_checkpoint(new_model_path, tag="fenix_level2")
+            save_ckpt_fn = getattr(self.storage, "save_model_checkpoint", None) if self.storage else None
+            if callable(save_ckpt_fn):
+                final_path = save_ckpt_fn(new_model_path, tag="fenix_level2")
 
             callbacks.on_request_model_hot_swap(final_path)
 

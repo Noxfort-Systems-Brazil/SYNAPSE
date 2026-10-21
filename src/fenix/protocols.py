@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/fenix/protocols.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from dataclasses import dataclass
 from enum import Enum
@@ -25,8 +8,8 @@ from datetime import datetime
 
 
 class TriggerType(Enum):
-    EMERGENCY = 1      # Fênix Nível 1: Hot-Reset (Auditor Trigger, ~1-2s)
-    OPPORTUNISTIC = 2  # Fênix Nível 2: Autonomous Multi-Day Evolution (Traffic Valley)
+    EMERGENCY = 1      # Fenix Level 1: Hot-Reset (Auditor Trigger, ~1-2s)
+    OPPORTUNISTIC = 2  # Fenix Level 2: Autonomous Multi-Day Evolution (Traffic Valley)
 
 
 @dataclass

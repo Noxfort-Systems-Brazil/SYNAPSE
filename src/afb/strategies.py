@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/afb/strategies.py
-# Author: Gabriel Moraes
-# Date: 2026-03-09
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 AFB Fusion Strategies — Pure Math, Zero Dependencies.
@@ -219,8 +202,9 @@ class LastKnownGoodStrategy:
         decay_factor = math.exp(-self._decay_rate * elapsed)
         decayed = target + (last_value - target) * decay_factor
 
-        # Confidence decays with time
-        confidence = max(0.1, 0.7 * (0.99 ** elapsed))
+        # Confidence decays continuously with time based on calibrated half-life (t_half ≈ 68.97s, C_0 = 0.70)
+        confidence_half_life_s = 68.96756
+        confidence = max(0.1, 0.7 * math.exp(-math.log(2.0) * elapsed / confidence_half_life_s))
 
         return FusionResult(
             value=decayed,

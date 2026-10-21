@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/node/node_ghost_processor.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 from typing import Dict, Any, Optional
@@ -85,9 +68,10 @@ class NodeGhostProcessor:
 
         # Keep neural embeddings fresh
         current_embedding = state.last_embedding
-        if self._memory is not None and hasattr(self._agent, "predict"):
+        predict_fn = getattr(self._agent, "predict", None)
+        if self._memory is not None and callable(predict_fn):
             history_np = self._memory.get_numpy()
-            pred_emb = self._agent.predict(history_np)
+            pred_emb = predict_fn(history_np)
             if pred_emb is not None:
                 current_embedding = pred_emb
                 state.last_embedding = current_embedding
