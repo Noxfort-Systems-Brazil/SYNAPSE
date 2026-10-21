@@ -105,7 +105,9 @@ This updates:
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE HFT-Link — Noxfort Systems Transport Protocols</sub><br/>
-  <sub><a href="#synapse-hft-link--protocol-buffers--grpc-specification">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>
