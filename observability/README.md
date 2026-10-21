@@ -99,7 +99,9 @@ If using custom subnets or firewall rules, ensure port `8000` (telemetry endpoin
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Observability — Noxfort Systems Operations & SRE</sub><br/>
-  <sub><a href="#synapse-observability--metrics-dashboards--telemetry">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

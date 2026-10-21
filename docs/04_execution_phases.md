@@ -20,7 +20,7 @@ The SYNAPSE lifecycle is orchestrated by **ADAGIO™** (*Automated Data Analysis
 │   Phase 0: Optimization      Phase 1: Offline Bootstrap   Phase 2: Runtime  │
 │   ┌─────────────────────┐    ┌────────────────────────┐   ┌───────────────┐ │
 │   │ Optuna AutoML       │───►│ Historical Parquet     │──►│ 4-Thread Core │ │
-│   │ Population Training │    │ Ghost-File Protection  │   │ KSE Kinematics│ │
+│   │ Topology Calibration│    │ Ghost-File Protection  │   │ KSE Kinematics│ │
 │   │ Baseline Variance   │    │ SafeTensors Checkpoint │   │ HFT Streaming │ │
 │   └─────────────────────┘    └────────────────────────┘   └───────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -37,7 +37,6 @@ Handles calculus-based AutoML and parameter calibration before starting online o
   - Uses the **Tree-structured Parzen Estimator (TPE)** algorithm to explore the hyperparameter space.
   - Automatically calibrates local [`TCNAE`](03_neural_models.md) channel depths, latent dimensions ($16 \dots 64$), and learning rates.
   - Calibrates baseline sensor variance $\sigma_{\text{base}}$ and anomaly detection boundaries in [`WaveletAE-OCC`](03_neural_models.md#9-waveletae-occ-high-frequency-anomaly-detector).
-- **Population-Based Training (PBT)**: Dynamically mutates hyper-parameters for under-performing sensor nodes while copying weights from top-performing models.
 
 ---
 
@@ -108,20 +107,23 @@ graph TD
 
 ---
 
-## 🚗 Kinematic State Estimation (KSE Dead Reckoning)
+## 🚗 Kinematic State Estimation (KSE Dead Reckoning & Hydrodynamics)
 
-During the Neural Core cycle, every intersection (`MapNode`) is ticked. If a physical sensor experiences dropped packets (e.g., packet loss or hardware latency), the **Kinematic State Estimation (KSE)** module immediately intervenes.
+During the Neural Core cycle, every intersection (`MapNode`) and road segment (`MapEdge`) is ticked. If a physical sensor experiences dropped packets or operates on a lower polling frequency, the **Kinematic State Estimation (KSE)** and **Macroscopic Hydrodynamics** modules maintain physical continuity:
 
-The filter executes `ghost_step()`, invoking Newtonian kinematics combined with exponential historical decay:
-
-$$v_{t} = v_{t-1} + a_{t-1} \cdot \Delta t \cdot e^{-\lambda \Delta t}$$
-
-$$x_{t} = x_{t-1} + v_{t-1} \cdot \Delta t + \frac{1}{2} a_{t-1} (\Delta t)^2$$
-
-Where $\lambda$ is a decay coefficient relaxing kinematic projections towards the historical `MEH` baseline.
+1. **UKF Internal State Synchronization (`KSEInertialImputationStrategy`)**:
+   - The filter executes `ghost_step()`, invoking Unscented Kalman Filter (UKF) Newtonian kinematics combined with exponential historical decay:
+     $$v_{t} = v_{t-1} + a_{t-1} \cdot \Delta t \cdot e^{-\lambda \Delta t}, \quad x_{t} = x_{t-1} + v_{t-1} \cdot \Delta t + \frac{1}{2} a_{t-1} (\Delta t)^2$$
+   - Immediately after computing the bounded velocity `new_val`, the strategy synchronizes the UKF state vector (`physics_engine.x[0, 0] = new_val`) and resets divergent acceleration when clamped, preventing exponential runaway across multi-step dead reckoning.
+2. **Global Polling Observability Window (`SnapshotBuilder`)**:
+   - Preserves spatial observability (`M_t = 1.0`) for up to `fallback_steps <= 75` ($\sim 60\text{s}$), matching the natural polling cadence of external global APIs (Waze/TomTom) while applying confidence decay ($0.985^{\text{steps}}$).
+3. **Road-Hierarchy Hydrodynamic Interpolation (`TrafficHydrodynamicEngine`)**:
+   - Computes edge density $\rho$ (`veh/km`) by combining upstream/downstream node priors weighted by road permeability (`perm` $\in [0.15, 1.15]$ based on `edge_type`, `priority`, and `lanes`) and segment geometry (`geom_factor`), overriding with local inductive loop or mapped Waze jam kinematics whenever present.
+4. **Physical Queue Estimation (`TrafficQueueCalculator`)**:
+   - Estimates `estimated_queue_m` from real-time speed reduction ratio ($v_{\text{ratio}} = v_{\text{edge}} / v_{\max}$) and shockwave density saturation ($\rho / \rho_{\text{jam}}$) whenever $v_{\text{ratio}} < 0.85$ or $\rho > 18.0\text{ veh/km}$.
 
 > [!IMPORTANT]
-> Because KSE guarantees that every node emits a continuous vector, downstream PyTorch models (`GATv2`, `iTransformer`) **never receive a `NaN` or infinite tensor**, preventing system crashes during urban network partition events.
+> Because KSE and the 8-hop harmonic graph diffusion guarantee that every node and edge emits a physically bounded continuous vector, downstream PyTorch models (`DiffusionGATv2`, `iTransformer`) and the CARINA controller **never receive `NaN`, infinite, or collapsed zero-density tensors**.
 
 ---
 
@@ -129,7 +131,9 @@ Where $\lambda$ is a decay coefficient relaxing kinematic projections towards th
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Execution Lifecycle — Noxfort Systems</sub><br/>
-  <sub><a href="#04-execution-phases--lifecycle-adagio">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

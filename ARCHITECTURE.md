@@ -36,7 +36,6 @@ Synapse/
 ├── [proto/](proto/README.md)                    # Protocol Buffers v3 definitions for HFT-Link gRPC
 ├── [Model_Vault/](Model_Vault/README.md)              # Pre-trained weights (SafeTensors, GGUF tokenizers)
 ├── [observability/](observability/README.md)            # Prometheus, Grafana, TensorBoard docker orchestration
-├── [packaging/](packaging/README.md)                # Native Debian (.deb) builder & Dockerfile
 ├── [tests/](tests/README.md)                    # Test suites, mocks, benchmarks, and fixtures
 └── [docs/](docs/README.md)                     # Comprehensive 7-chapter technical library
 ```
@@ -131,14 +130,14 @@ sequenceDiagram
     Streamer->>UI: Stream Telemetry & Alerts via Stdio JSON-RPC
 ```
 
-1. **Ingestion (`src/adapters/`)**: A telemetry packet arrives via HTTP push/poll, MQTT stream, or WebSocket feed.
+1. **Ingestion & Alias Resolution (`src/adapters/ingestion_hub.py`, `src/engine/data_flow_router.py`)**: Telemetry arrives via HTTP push/poll, MQTT stream, or WebSocket feed. External device aliases (e.g., `loop_01`) are automatically resolved to canonical source IDs (`src_2`) via `device_id_map`.
 2. **Zero-Trust Validation (`src/agents/linguist_agent.py`)**: If the sensor is in `QUARANTINE`, the `Standby Linguist Thread` processes the schema through `DistilRoBERTa` and symbolic physics rules.
-3. **Graph State Memory (`src/domain/app_state.py`)**: Upon validation, the reading updates the corresponding `MapNode` state in memory.
-4. **Local Feature Extraction (`src/agents/specialist_agent.py`)**: Each node executes its local `TCNAE` autoencoder to generate temporal representations.
-5. **Kinematic Protection (`src/kse/`)**: If packets are dropped, the `Extended Kalman Filter` extrapolates the speed and density vectors to avoid `NaN` tensors.
-6. **Topological Aggregation (`src/agents/coordinator_agent.py`)**: `GATv2 Lite` propagates attention across road edges (`MapEdge`).
-7. **Global Neural Fusion (`src/agents/fuser_agent.py`)**: `iTransformer` and `PINO` fuse temporal tokens into a single snapshot matrix.
-8. **Transport (`src/infrastructure/grpc_connector.py`)**: The snapshot is serialized into `TrafficFrame` protobufs and streamed to CARINA over the `HFT-Link` in $< 250\text{ ms}$.
+3. **Graph State & Multi-Jam Unpacking (`src/managers/graph_manager.py`)**: Validated readings update `MapEdge` hydrodynamics (`EdgeHydrodynamicsEngine`) and propagate physical continuum densities ($\text{veh/km}$) to boundary `MapNode` junctions. Multi-segment cloud feeds (e.g., Waze `jams`) are unpacked per street polyline via `GeoProjectionService` and `FastMapMatcher` (R-Tree).
+4. **Local Feature Extraction (`src/agents/specialist_agent.py`)**: Each node executes its local `TCNAE` autoencoder to generate temporal representations, maintaining active observability across the 60s global polling window (`SnapshotBuilder`).
+5. **Kinematic Protection (`src/kse/`, `src/strategies/kse_inertial_imputation.py`)**: If packets are dropped, the Kalman Filter updates `physics_engine.x[0, 0]` and extrapolates speed and density vectors via Newtonian dead reckoning.
+6. **Topological Aggregation & 8-Hop Diffusion (`src/pipeline/fusion_pipeline.py`)**: `DiffusionGATv2` leverages 5D physical edge attributes (`edge_attr`) alongside 8-hop damped harmonic graph diffusion and a topological conductance prior (`y_bg`) to propagate congestion waves across unobserved intersections.
+7. **Global Neural Fusion & Hierarchy Hydrodynamics (`src/physics/traffic_hydrodynamics.py`)**: `iTransformer` and `PINO` fuse tokens into the global snapshot, while `TrafficHydrodynamicEngine` and `TrafficQueueCalculator` interpolate unobserved edges weighted by OSM/SUMO road hierarchy (`edge_type`, `priority`) and geometric impedance.
+8. **Transport (`src/infrastructure/grpc_connector.py`)**: The 76-edge fluid state is serialized into `TrafficFrame` protobufs and streamed to CARINA over the `HFT-Link` in $< 250\text{ ms}$.
 9. **Desktop Telemetry (`src/ipc/event_bridge.py`)**: Real-time metrics are streamed over standard I/O pipes to the Tauri interface at 60 FPS.
 
 ---
@@ -156,7 +155,9 @@ For granular mathematical formulations, data schemas, and deployment instruction
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Core Architecture — Noxfort Systems Engineering</sub><br/>
-  <sub><a href="#synapse-core-architecture-low-level">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

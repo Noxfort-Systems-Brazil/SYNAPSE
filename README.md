@@ -1,16 +1,28 @@
-# SYNAPSE CORE
-> **An Intelligent Perception & Neural Fusion Gateway for Smart City Traffic Management**
+<div align="center">
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Ubuntu%2022.04%2B-lightgrey)]()
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)]()
-[![CUDA](https://img.shields.io/badge/CUDA-12.x-76B900?logo=nvidia&logoColor=white)]()
-[![Frontend](https://img.shields.io/badge/Frontend-Tauri%20v2%20%2B%20React%2018-24C8D8?logo=tauri&logoColor=white)](ui/README.md)
-[![IPC](https://img.shields.io/badge/IPC-Stdio%20JSON--RPC%20(Zero--Port)-blueviolet)](src/README.md)
-[![gRPC](https://img.shields.io/badge/gRPC-HFT--Link%20%3C250ms-244c5a?logo=grpc&logoColor=white)](proto/README.md)
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-green)]()
+<img src="docs/assets/synapse-logo.png" alt="SYNAPSE CORE Logo" width="130" />
+
+# SYNAPSE CORE
+### Intelligent Perception & Neural Fusion Gateway for Smart City Traffic Management
+*Noxfort Systems — A State Of Art Company*
+
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat&logo=github)](https://github.com/Noxfort-Systems-Brazil/SYNAPSE)
+[![CI](https://github.com/Noxfort-Systems-Brazil/SYNAPSE/actions/workflows/ci.yml/badge.svg)](https://github.com/Noxfort-Systems-Brazil/SYNAPSE/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Noxfort-Systems-Brazil/SYNAPSE/actions/workflows/security-codeql.yml/badge.svg)](https://github.com/Noxfort-Systems-Brazil/SYNAPSE/actions/workflows/security-codeql.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.75%2B-DEA584?style=flat&logo=rust&logoColor=white)](https://rust-lang.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg)](LICENSE)
+
+[![SYNAPSE GitHub Repository Card](https://github-readme-stats.vercel.app/api/pin/?username=Noxfort-Systems-Brazil&repo=SYNAPSE&theme=dark)](https://github.com/Noxfort-Systems-Brazil/SYNAPSE)
 
 ---
+
+🌐 **Translations:** **[🇺🇸 English](README.md)** • **[🇧🇷 Português do Brasil](docs/pt-br/README.md)** • **[🇪🇸 Español](docs/es/README.md)** • **[🇫🇷 Français](docs/fr/README.md)** • **[🇷🇺 Русский](docs/ru/README.md)** • **[🇨🇳 简体中文](docs/zh/README.md)** • **[📚 Documentation Hub](docs/README.md)**
+
+---
+
+</div>
 
 > 🧭 **Quick Navigation**:
 > [📖 Summary](#-executive-summary) • [🏗️ Architecture](ARCHITECTURE.md) • [🧠 Neural Models](docs/03_neural_models.md) • [⏱️ Execution Phases](docs/04_execution_phases.md) • [⚡ HFT-Link](proto/README.md) • [🖥️ Desktop UI](ui/README.md) • [🧪 Testing](tests/README.md) • [📚 Docs Library](docs/README.md) • [🤝 Contributing](CONTRIBUTING.md) • [📜 License](LICENSE)
@@ -23,7 +35,7 @@
 
 SYNAPSE continuously ingests massive, heterogeneous, asynchronous data streams from municipal sensors (cameras, radar, induction loops, Bluetooth/BLE beacons) and external cloud APIs (Waze, TomTom, OpenStreetMap, SUMO traffic networks). 
 
-Using **MARKVART™** (a modular ensemble of 11 deep neural architectures and physics-informed operators), SYNAPSE reconstructs a mathematically sound, fluid-dynamically validated state of the entire urban traffic grid. This synthesized snapshot is transmitted via **HFT-Link** (an ultra-low-latency gRPC stream) to downstream traffic light controllers such as **CARINA** for macroscopic phase and green-wave optimization.
+Using **MARKVART™** (a modular ensemble of 10 deep neural architectures, physics-informed operators, and deterministic geometric spatial engines), SYNAPSE reconstructs a mathematically sound, fluid-dynamically validated state of the entire urban traffic grid. This synthesized snapshot is transmitted via **HFT-Link** (an ultra-low-latency gRPC stream) to downstream traffic light controllers such as **CARINA** for macroscopic phase and green-wave optimization.
 
 ```
                   ┌────────────────────────────────────────────────────────┐
@@ -90,7 +102,7 @@ graph TD
 
 ## 🧠 Neural Architecture Stack (MARKVART™)
 
-The **Modular Adaptive Reasoning Kernel with Variational Attention & Recurrent Transformers (MARKVART™)** deploys 11 specialized neural networks across three semantic levels:
+The **Modular Adaptive Reasoning Kernel with Variational Attention & Recurrent Transformers (MARKVART™)** deploys 10 specialized neural networks alongside deterministic spatial indexing across three semantic levels:
 
 | Model | Subsystem / Agent | Mathematical Formulation / Paradigm | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
@@ -99,7 +111,7 @@ The **Modular Adaptive Reasoning Kernel with Variational Attention & Recurrent T
 | **PI-DVAE-TCN** | Corrector Agent | Denoising Variational Autoencoder with Dilated Causal Convolutions & Kinetic Loss | Filters sensor noise, eliminates measurement jitter, and reconstructs clean trajectories with physical conservation guarantees. |
 | **iTransformer** | Fuser Agent | Inverted Multi-Variate Transformer with Spatio-Temporal Cross-Attention | Global temporal fusion treating variates as tokens, cross-attending with spatial graph embeddings. |
 | **GATv2 Lite / Diffusion**| Coordinator Agent | Dynamic Graph Attention Networks v2 with Spatial Diffusion Kernel | Captures non-Euclidean spatial relationships, congestion propagation, and arterial bottlenecks across city topology. |
-| **Sinkhorn Cross-Attention**| Cartographer Agent | Entropic Optimal Transport (Sinkhorn Algorithm) + Cross-Attention | Performs fast, differentiable map-matching, aligning noisy GPS probe traces to exact street graph edges. |
+| **FastMapMatcher** | Spatial Alignment (Linguist) | Spatial Indexing (R-Tree) + Fréchet Distance & Directional Vectorization | Performs ultra-fast, deterministic CPU map-matching, aligning external GPS/telemetry traces to exact street graph edges. |
 | **TimesNet** | Translation Agent | 2D Fourier Transformation (FFT) + Multi-Period Inception Blocks | Deconstructs multi-frequency periodic patterns (e.g., morning rush, weekend dips, school holidays). |
 | **TimeGAN** | Imputer Agent | Generative Adversarial Network with Temporal Autoencoder Latents | Imputes prolonged data outages and gaps (> 2 hours) preserving realistic auto-correlation distributions. |
 | **WaveletAE-OCC** | Auditor Agent | Discrete Wavelet Transform Autoencoder + Deep One-Class Classification | High-frequency frequency-domain anomaly detection, identifying faulty sensors, hacks, or unusual grid disruptions. |
@@ -115,7 +127,7 @@ For full mathematical derivations, equations, and loss formulations, refer to th
 SYNAPSE operates through a structured execution pipeline called **ADAGIO™** (*Automated Data Analysis, Generation & Inference Orchestration*):
 
 1. **Phase 0 — Optimization & Calibration (`OptimizationPhase`)**:
-   - Executes automated hyperparameter tuning via **Optuna** and **Population-Based Training (PBT)**.
+   - Executes automated hyperparameter tuning via **Optuna** Bayesian optimization.
    - Calibrates baseline sensor variance, latent dimensions, and anomaly detection thresholds.
 2. **Phase 1 — Offline Bootstrap (`BootstrapPhase`)**:
    - Generates historical *Golden Datasets* from partitioned `.parquet` files.
@@ -270,7 +282,6 @@ Synapse/
 ├── [Model_Vault/](Model_Vault/README.md)       # Foundation neural weights (SafeTensors, GGUF, tokenizers)
 ├── [docs/](docs/README.md)              # Technical documentation library (01 to 07)
 ├── [observability/](observability/README.md)     # Prometheus, Grafana, TensorBoard docker orchestration
-├── [packaging/](packaging/README.md)         # Native Debian (.deb) builder & Dockerfile
 ├── [proto/](proto/README.md)             # Protobuf schemas for HFT-Link gRPC
 ├── [src/](src/README.md)               # Python Core Backend (Clean Architecture / DDD)
 │   ├── adapters/          # Ingestion adapters (HTTP push/poll, MQTT, WS, Replay)
@@ -292,7 +303,7 @@ Synapse/
 │   ├── meh/               # Micro-Estimation History & Golden Dataset loader
 │   ├── memory/            # Episodic, Semantic, Spatial, Spatiotemporal memory
 │   ├── models/            # PyTorch models (PINO, DeepONet, iTransformer, GATv2)
-│   ├── optimization/      # Optuna AutoML and Population-Based Training (PBT)
+│   ├── optimization/      # Optuna AutoML and Bayesian Hyperparameter Tuning
 │   ├── phases/            # ADAGIO™ execution phases (0, 1, 2)
 │   ├── physics/           # LWR continuum physics, fundamental diagrams, physical losses
 │   ├── pipeline/          # Agent orchestration pipelines (Fusion, Specialist, etc.)
@@ -304,7 +315,6 @@ Synapse/
 │   ├── src-tauri/         # Rust native backend & sidecar manager
 │   └── src_ui/            # React 18 components, Zustand stores, Echarts, Tailwind
 ├── synapse.py             # Main application launcher
-├── synapse.spec           # PyInstaller binary packaging specification
 └── [LICENSE](LICENSE)               # GNU AGPL v3.0 license definition
 ```
 
@@ -337,11 +347,15 @@ SYNAPSE CORE is an enterprise open-source project. We welcome contributions and 
 
 ## 📄 License
 
-This software is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** — see the [LICENSE](LICENSE) file for complete details.
+This software is licensed under the **GNU Affero General Public License v3.0 or later** (`AGPL-3.0-or-later`) — see the [LICENSE](LICENSE) file for complete details.
+
+SPDX-License-Identifier: `AGPL-3.0-or-later`
 
 ---
 
-<p align="center">
-  <sub>Built with precision by <strong>Noxfort Systems</strong></sub><br/>
-  <sub><a href="#synapse-core">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

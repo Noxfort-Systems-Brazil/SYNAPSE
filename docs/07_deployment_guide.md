@@ -102,21 +102,15 @@ sudo journalctl -u synapse-core -f
 
 ## 📦 4. Native Debian Package Installation (`.deb`)
 
-For municipal edge nodes with standard package managers:
+For municipal edge nodes and offline workstations, the standalone `.deb` package installs all binaries, runtimes, and models directly to `/opt/synapse`:
 
 ```bash
-# Build standalone .deb package
-bash packaging/build_deb.sh
+# Install on target workstation
+sudo dpkg -i synapse_2.0.0_amd64.deb
 
-# Install on target server
-sudo dpkg -i synapse_2.0_amd64.deb
-sudo apt-get install -f
-
-# Start the global systemd service
-sudo systemctl enable --now synapse.service
+# Launch SYNAPSE desktop application
+synapse
 ```
-
-For complete packaging build scripts, refer to [`packaging/README.md`](../packaging/README.md).
 
 ---
 
@@ -157,7 +151,9 @@ This preserves 14 days of historical logs for [Jurist Agent](03_neural_models.md
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Production Operations — Noxfort Systems</sub><br/>
-  <sub><a href="#07-production-deployment-guide">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

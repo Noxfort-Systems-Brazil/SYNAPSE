@@ -1,63 +1,54 @@
-# SYNAPSE Technical Documentation Library
+<div align="center">
 
-> **Exhaustive Architectural, Mathematical, and Operational Manuals**
+<img src="assets/synapse-logo.png" alt="SYNAPSE CORE Logo" width="120" />
 
----
+# SYNAPSE — Documentation Hub
+### Multi-Language Documentation Repository & Technical Guides
+*Noxfort Systems — A State Of Art Company*
 
-> 🧭 **Navigation**:
-> [🏠 Synapse Core](../README.md) • [🏗️ Architecture](../ARCHITECTURE.md) • [01. Entities](01_domain_entities.md) • [02. UI](02_ui_architecture.md) • [03. Neural Models](03_neural_models.md) • [04. Phases](04_execution_phases.md) • [05. HFT](05_data_ingestion_and_hft.md) • [06. Dev Guide](06_developer_guide.md) • [07. Deploy](07_deployment_guide.md)
-
----
-
-## 📚 Technical Documentation Index
-
-Welcome to the comprehensive technical documentation library for **SYNAPSE CORE v2.0**. This library provides deep-dive guides into every subsystem of the platform, designed to be browsed seamlessly both on **GitHub** and inside an **Obsidian** knowledge vault.
-
----
-
-### 📖 Available Guides
-
-| Chapter | Document Link | Description & Key Topics |
-| :--- | :--- | :--- |
-| **01. Domain Entities** | [01_domain_entities.md](01_domain_entities.md) | `MapNode`, `MapEdge`, `DataSource`, `SourceStatus` state machines, zero-trust lifecycle, and Bayesian trust hierarchy constants. |
-| **02. UI Architecture** | [02_ui_architecture.md](02_ui_architecture.md) | Modern desktop UI design, Tauri v2 Rust sidecar manager, React 18 frontend, Zustand reactive stores, and Zero-Port Stdio IPC. |
-| **03. Neural Models & Math** | [03_neural_models.md](03_neural_models.md) | Complete mathematical formulations, loss functions, and PyTorch implementations of the 11 MARKVART™ models (PINO, DeepONet, iTransformer, GATv2, VAE-TCN). |
-| **04. Execution Phases** | [04_execution_phases.md](04_execution_phases.md) | ADAGIO™ lifecycle (Phase 0 AutoML, Phase 1 Bootstrap Golden Dataset, Phase 2 Online 4-Thread Concurrency Runtime, KSE Dead Reckoning). |
-| **05. Data Ingestion & HFT** | [05_data_ingestion_and_hft.md](05_data_ingestion_and_hft.md) | Sensor adapters (HTTP, MQTT, WebSocket), Protocol Buffers (`proto/synapse_hft.proto`), gRPC streaming, and background self-healing auto-recovery loops. |
-| **06. Developer Guide** | [06_developer_guide.md](06_developer_guide.md) | Setting up development environments, compiling Protobuf schemas, extending agents, and executing PyTest suites. |
-| **07. Production Deployment** | [07_deployment_guide.md](07_deployment_guide.md) | Headless daemon configuration, `systemd` unit setup, Docker containerization, Debian packaging, and Prometheus/Grafana monitoring. |
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat&logo=github)](https://github.com/Noxfort-Systems-Brazil/SYNAPSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.75%2B-DEA584?style=flat&logo=rust&logoColor=white)](https://rust-lang.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg)](../LICENSE)
 
 ---
 
-## 🧭 Suggested Reading Paths
+### 🌐 Select Language / Selecione o Idioma
 
-### 🧠 For Machine Learning & Research Engineers:
-1. [01. Domain Entities & Core Structures](01_domain_entities.md)
-2. [03. Neural Models & PyTorch Implementations (MARKVART™)](03_neural_models.md)
-3. [04. Execution Phases & Lifecycle (ADAGIO™)](04_execution_phases.md)
-4. [Model Vault Weights & LLM Assets](../Model_Vault/README.md)
-
-### ⚙️ For Systems & Backend Engineers:
-1. [01. Domain Entities & Core Structures](01_domain_entities.md)
-2. [05. Data Ingestion & HFT Network](05_data_ingestion_and_hft.md)
-3. [06. Developer Guide](06_developer_guide.md)
-4. [07. Production Deployment Guide](07_deployment_guide.md)
-5. [HFT Protocol Buffers Specification](../proto/README.md)
-6. [Backend Core Architecture Guide](../src/README.md)
-
-### 🖥️ For Frontend & Desktop Engineers:
-1. [01. Domain Entities & Core Structures](01_domain_entities.md)
-2. [02. UI Architecture & Modern Frontend](02_ui_architecture.md)
-3. [Desktop UI Technical Manual](../ui/README.md)
-
-### 🧪 For QA & Site Reliability Engineers:
-1. [Testing & Quality Assurance Suite](../tests/README.md)
-2. [Observability & Monitoring Stack](../observability/README.md)
-3. [Packaging & Debian Distribution](../packaging/README.md)
+| Language | Directory | Status | Description |
+|:---:|:---:|:---:|---|
+| **🇺🇸 English** | [**`docs/en/`**](en/README.md) | **Canonical (Source of Truth)** | Full technical documentation suite in English. |
+| **🇧🇷 Português (Brasil)** | [**`docs/pt-br/`**](pt-br/README.md) | **Completo (Equipe Interna)** | Documentação técnica completa em Português do Brasil. |
+| **🇪🇸 Español** | [**`docs/es/`**](es/README.md) | **Completo (Latinoamérica)** | Documentación técnica completa en Español para operaciones internacionales. |
+| **🇫🇷 Français** | [**`docs/fr/`**](fr/README.md) | **Complet (Documentation)** | Suite complète de documentation technique en Français. |
+| **🇷🇺 Русский** | [**`docs/ru/`**](ru/README.md) | **Полный комплект** | Полная техническая документация и руководства на русском языке. |
+| **🇨🇳 简体中文** | [**`docs/zh/`**](zh/README.md) | **完整技术套件** | 面向智能交通系统 (ITS) 与感知融合工程师的完整中文技术文档库。 |
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Documentation — Noxfort Systems Engineering Library</sub><br/>
-  <sub><a href="#synapse-technical-documentation-library">Back to top ↑</a></sub>
-</p>
+</div>
+
+<br/>
+
+## 📚 Direct Topic Navigation / Navegação Direta por Tema
+
+| Topic / Dimension | 🇺🇸 English Guide | 🇧🇷 Guia em Português | 🇪🇸 Guía en Español | 🇫🇷 Guide en Français | 🇷🇺 Руководство | 🇨🇳 中文指南 |
+|---|---|---|---|---|---|---|
+| **Core Architecture & DDD** | [**`en/architecture.md`**](en/architecture.md) | [**`pt-br/architecture.md`**](pt-br/architecture.md) | [**`es/architecture.md`**](es/architecture.md) | [**`fr/architecture.md`**](fr/architecture.md) | [**`ru/architecture.md`**](ru/architecture.md) | [**`zh/architecture.md`**](zh/architecture.md) |
+| **Domain Entities & Schemas** | [**`en/domain_entities.md`**](en/domain_entities.md) | [**`pt-br/domain_entities.md`**](pt-br/domain_entities.md) | [**`es/domain_entities.md`**](es/domain_entities.md) | [**`fr/domain_entities.md`**](fr/domain_entities.md) | [**`ru/domain_entities.md`**](ru/domain_entities.md) | [**`zh/domain_entities.md`**](zh/domain_entities.md) |
+| **MARKVART™ Neural Stack (10 Models)** | [**`en/neural_models.md`**](en/neural_models.md) | [**`pt-br/neural_models.md`**](pt-br/neural_models.md) | [**`es/neural_models.md`**](es/neural_models.md) | [**`fr/neural_models.md`**](fr/neural_models.md) | [**`ru/neural_models.md`**](ru/neural_models.md) | [**`zh/neural_models.md`**](zh/neural_models.md) |
+| **ADAGIO™ Execution Phases & KSE** | [**`en/execution_phases.md`**](en/execution_phases.md) | [**`pt-br/execution_phases.md`**](pt-br/execution_phases.md) | [**`es/execution_phases.md`**](es/execution_phases.md) | [**`fr/execution_phases.md`**](fr/execution_phases.md) | [**`ru/execution_phases.md`**](ru/execution_phases.md) | [**`zh/execution_phases.md`**](zh/execution_phases.md) |
+| **Data Ingestion & HFT-Link gRPC** | [**`en/data_ingestion_and_hft.md`**](en/data_ingestion_and_hft.md) | [**`pt-br/data_ingestion_and_hft.md`**](pt-br/data_ingestion_and_hft.md) | [**`es/data_ingestion_and_hft.md`**](es/data_ingestion_and_hft.md) | [**`fr/data_ingestion_and_hft.md`**](fr/data_ingestion_and_hft.md) | [**`ru/data_ingestion_and_hft.md`**](ru/data_ingestion_and_hft.md) | [**`zh/data_ingestion_and_hft.md`**](zh/data_ingestion_and_hft.md) |
+| **Desktop UI (Tauri v2) & Stdio IPC** | [**`en/ui_architecture.md`**](en/ui_architecture.md) | [**`pt-br/ui_architecture.md`**](pt-br/ui_architecture.md) | [**`es/ui_architecture.md`**](es/ui_architecture.md) | [**`fr/ui_architecture.md`**](fr/ui_architecture.md) | [**`ru/ui_architecture.md`**](ru/ui_architecture.md) | [**`zh/ui_architecture.md`**](zh/ui_architecture.md) |
+| **Safety, Watchdog & Gating Policy** | [**`en/safety_and_watchdog.md`**](en/safety_and_watchdog.md) | [**`pt-br/safety_and_watchdog.md`**](pt-br/safety_and_watchdog.md) | [**`es/safety_and_watchdog.md`**](es/safety_and_watchdog.md) | [**`fr/safety_and_watchdog.md`**](fr/safety_and_watchdog.md) | [**`ru/safety_and_watchdog.md`**](ru/safety_and_watchdog.md) | [**`zh/safety_and_watchdog.md`**](zh/safety_and_watchdog.md) |
+| **Testing & Quality Assurance** | [**`en/testing.md`**](en/testing.md) | [**`pt-br/testing.md`**](pt-br/testing.md) | [**`es/testing.md`**](es/testing.md) | [**`fr/testing.md`**](fr/testing.md) | [**`ru/testing.md`**](ru/testing.md) | [**`zh/testing.md`**](zh/testing.md) |
+
+---
+
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

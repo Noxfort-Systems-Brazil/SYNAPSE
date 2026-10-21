@@ -21,14 +21,12 @@ These assets power the zero-trust semantic ingestion gatekeeper ([`Linguist Agen
 
 ```text
 Model_Vault/
-├── distilroberta/                 # Transformer Language Model for Zero-Trust Validation
+├── modernbert/                    # Transformer Language Model for Zero-Trust Validation
 │   ├── config.json                # Model architecture hyper-parameters
-│   ├── merges.txt                 # BPE tokenizer merges
 │   ├── model.safetensors          # PyTorch weights in zero-copy SafeTensors format
 │   ├── special_tokens_map.json    # Special token mapping
 │   ├── tokenizer.json             # Fast HuggingFace Tokenizer definition
-│   ├── tokenizer_config.json      # Tokenizer parameters
-│   └── vocab.json                 # Vocabulary dictionary
+│   └── tokenizer_config.json      # Tokenizer parameters
 │
 └── Qwen3.5-2B-UD-Q6_K_XL.gguf     # 6-bit Quantized LLM for XAI Jurist Reports (~1.86 GB)
 ```
@@ -37,11 +35,11 @@ Model_Vault/
 
 ## 🧠 Model Specifications
 
-### 1. DistilRoBERTa (Zero-Trust Gatekeeper & Peak Classifier)
+### 1. ModernBERT (Zero-Trust Gatekeeper & Peak Classifier)
 - **Role**: Encodes unstructured incoming sensor payload schemas, verifies semantic validity (e.g., speed vs. volume), and clusters temporal traffic periods.
 - **Format**: `SafeTensors` + HuggingFace Tokenizer.
-- **Source**: [Hugging Face Hub (DistilRoBERTa-base)](https://huggingface.co/distilbert/distilroberta-base)
-- **Architecture**: 6 layers, 768 hidden dimensions, 12 attention heads (~82M parameters).
+- **Source**: [Hugging Face Hub (answerdotai/ModernBERT-base)](https://huggingface.co/answerdotai/ModernBERT-base)
+- **Architecture**: 22 layers, 768 hidden dimensions, native Flash Attention 2, 8192 context window (~149M parameters).
 
 ### 2. Qwen 3 (XAI Jurist Agent)
 - **Role**: Evaluates anomaly alerts from [`WaveletAE-OCC`](../docs/03_neural_models.md#9-waveletae-occ-high-frequency-anomaly-detector), analyzes multi-model voting conflicts, and generates natural language legal compliance reports.
@@ -54,16 +52,16 @@ Model_Vault/
 
 To set up or refresh foundational weights in the Model Vault:
 
-### 1. Download DistilRoBERTa via Python
+### 1. Download ModernBERT via Python
 ```python
 from transformers import AutoTokenizer, AutoModel
 
-model_name = "distilbert/distilroberta-base"
+model_name = "answerdotai/ModernBERT-base"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModel.from_pretrained(model_name)
 
-tokenizer.save_pretrained("Model_Vault/distilroberta")
-model.save_pretrained("Model_Vault/distilroberta")
+tokenizer.save_pretrained("Model_Vault/modernbert")
+model.save_pretrained("Model_Vault/modernbert")
 ```
 
 ### 2. Download Qwen GGUF Model
@@ -85,7 +83,9 @@ Always verify SHA256 checksums when provisioning new edge nodes in production.
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Model Vault — Noxfort Systems AI Assets</sub><br/>
-  <sub><a href="#synapse-model-vault--pre-trained-weights--neural-assets">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

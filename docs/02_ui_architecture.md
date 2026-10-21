@@ -63,7 +63,7 @@ The frontend is structured in [`ui/src_ui/`](../ui/README.md#📂-frontend-direc
    - Graphs velocity distribution, edge occupancy, queue lengths, and packet throughput.
 5. **`XaiInspector`** (`ui/src_ui/components/xai/XaiInspector.tsx`):
    - Explainable AI & Safety Auditor panel rendering legal verdicts from the Qwen3 Jurist Agent.
-   - Renders **KaTeX** mathematical derivations justifying signal timing modifications.
+   - Renders **KaTeX** mathematical derivations justifying neural sensor fusion and state estimation.
 6. **`LogConsole`** (`ui/src_ui/components/layout/LogConsole.tsx`):
    - Retractable terminal drawer displaying real-time system logs with severity filtering (`INFO`, `WARN`, `ERROR`, `CRITICAL`).
 
@@ -127,7 +127,9 @@ Language changes trigger an immediate DOM update across all Zustand stores witho
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE UI Documentation — Noxfort Systems</sub><br/>
-  <sub><a href="#02-ui-architecture--modern-desktop-frontend-tauri-v2--react-18">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

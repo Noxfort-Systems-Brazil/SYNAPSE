@@ -1,0 +1,11 @@
+/* SYNAPSE Documentation - Custom Extra CSS */
+:root {
+  --md-primary-fg-color: #0284c7; /* Sky / Cyan 600 */
+  --md-accent-fg-color: #06b6d4;  /* Cyan 500 */
+}
+
+/* Custom styles for mermaid diagrams and math rendering */
+.mermaid {
+  text-align: center;
+  margin: 1.5em 0;
+}

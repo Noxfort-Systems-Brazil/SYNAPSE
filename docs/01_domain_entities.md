@@ -27,7 +27,11 @@ classDiagram
         +str from_node
         +str to_node
         +List shape
+        +float length
         +float max_speed
+        +int lanes
+        +str edge_type
+        +int priority
         +int signal_group_id
     }
     class DataSource {
@@ -76,8 +80,10 @@ Represents a directional road segment connecting two intersections.
   - `length: float` — Physical segment length in meters.
   - `max_speed: float` — Speed limit in m/s (default $13.89\text{ m/s} \approx 50\text{ km/h}$).
   - `lanes: int` — Number of parallel vehicular lanes.
+  - `edge_type: str` — OSM/SUMO road hierarchy classification extracted from `.net.xml.gz` (e.g., `"highway.primary"`, `"highway.secondary"`, `"highway.tertiary"`, `"highway.residential"`, `"highway.living_street"`, `"highway.unclassified"`).
+  - `priority: int` — SUMO road priority rank (`-1` default when unspecified).
   - `signal_group_id: int` — NTCIP signal group phase controlling vehicular discharge into the junction.
-- **Function**: `MapEdge`s dictate the flow of dynamic spatial attention. Arterial congestion on an edge propagates mathematically to upstream `from_node` vertices.
+- **Function**: `MapEdge` attributes populate the 5D physical edge tensor (`edge_attr` $\in \mathbb{R}^{E \times 5}$: normalized length, free-flow speed, lane count, road priority/hierarchy, and macroscopic conductance) consumed by [`DiffusionGATv2`](03_neural_models.md#5-gatv2-lite--diffusion-gatv2-topological-reasoning) and govern road-hierarchy hydrodynamic permeability in `TrafficHydrodynamicEngine`.
 
 ---
 
@@ -187,7 +193,9 @@ GLOBAL_TRUST_SCORE: float = 0.60  # Crowdsourced cloud APIs (Waze, TomTom)
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Documentation — Noxfort Systems</sub><br/>
-  <sub><a href="#01-domain-entities--core-structures">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

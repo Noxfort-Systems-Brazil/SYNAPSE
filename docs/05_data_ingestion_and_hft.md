@@ -53,11 +53,17 @@ The I/O boundary of SYNAPSE is structured into two core responsibilities:
 
 ### Modular Adapters (`src/adapters/`)
 Sensor protocols subclass `BaseAdapter` (`src/interfaces/`):
-- **`HttpPollingAdapter`**: Periodically fetches REST API endpoints (e.g. municipal open-data portals, TomTom congestion APIs).
+- **`HttpPollingAdapter`**: Periodically fetches REST API endpoints (e.g. municipal open-data portals, Waze/TomTom congestion APIs).
 - **`HttpPushAdapter`**: Lightweight micro-server receiving webhook pushes from smart city cameras and ANPR systems.
 - **`MqttAdapter`**: Subscribes to urban IoT broker topics (e.g., `city/sensors/+/telemetry`).
 - **`WebSocketAdapter`**: Continuous full-duplex socket for high-rate radar sensors.
 - **`HistoricalReplayAdapter`**: Reads chronological Parquet logs for deterministic stress tests and validation.
+
+### Canonical Device Alias Resolution & Edge Kinetics
+- **`device_id_map` Canonical Resolution**: Field sensors often transmit hardware alias identifiers inside their JSON payload (e.g., `device_id: "loop_01"`) while registered under a canonical internal ID (`id: "src_2"`). `IngestionPipeline`, `IngestionHub.route_packet`, and `DataFlowRouter.handle_data_flow` automatically resolve aliases via `device_id_map` and support list/CSV coordinate strings in `ElementResolver`, ensuring uninterrupted routing to the associated `MapNode`/`MapEdge`.
+- **Combined Flow/Count & Speed Extraction**: `EdgeHydrodynamicsEngine` extracts both macroscopic volume (`flow` / `count`) and direct speed fields (`speed_kmh`, `avg_speed_kmh`, `speed_ms`) from compound telemetry payloads, storing `measured_speed_ms` directly in `edge.jam_Translation[source_id]` alongside Greenshields density inversions.
+- **Multi-Segment Global Jam Unpacking**: Global API payloads containing `jams` arrays (`line: [{x, y}, ...]`) are unpacked by `GraphManager._ingest_global_jams_feed`, projected into local metric coordinates, and matched per-segment via `FastMapMatcher`.
+- **`HISTORICAL` Warmup Incident Isolation**: During initial warmup (`active_mode == "HISTORICAL"`), `EdgePayloadFormatter` suppresses localized `detection_list` incident emission (`jam_detected`) so CARINA receives a clean baseline until live telemetry (`ONLINE` / `HYBRID`) activates.
 
 ### Database Persistence (`src/infrastructure/postgres_manager.py`)
 - Continuously dumps approved telemetry records into compressed columnar `.parquet` files partitioned by date (`year=YYYY/month=MM/day=DD/`).
@@ -135,7 +141,9 @@ In hostile physical networking conditions, edge links drop. SYNAPSE implements a
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Ingestion & Transport — Noxfort Systems</sub><br/>
-  <sub><a href="#05-data-ingestion--hft-network">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

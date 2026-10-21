@@ -1,0 +1,113 @@
+# ==============================================================================
+# SYNAPSE — MkDocs Configuration (Material for MkDocs)
+# Sensory & Cognitive Perception Gateway for Smart Cities
+# Copyright (C) 2026 — Noxfort Systems
+# ==============================================================================
+
+site_name: "SYNAPSE — Technical Documentation"
+site_description: "Internal technical documentation for SYNAPSE — Intelligent Perception & Neural Fusion Gateway."
+site_author: "Gabriel Moraes — Noxfort Systems"
+copyright: "Copyright &copy; 2026 Noxfort Systems &bull; SPDX-License-Identifier: AGPL-3.0-or-later"
+
+# ==============================================================================
+# Theme
+# ==============================================================================
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/transit-connection
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: cyan
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Light Mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: cyan
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Dark Mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - navigation.instant
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+# ==============================================================================
+# Markdown Extensions
+# ==============================================================================
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+# ==============================================================================
+# Plugins
+# ==============================================================================
+plugins:
+  - search
+
+# ==============================================================================
+# Navigation
+# ==============================================================================
+nav:
+  - Overview: index.md
+  - Master MOC: SYNAPSE_MOC.md
+  - Architecture & Core:
+      - Core Architecture: en/architecture.md
+      - Domain Entities & Schemas: en/domain_entities.md
+      - Data Ingestion & HFT-Link: en/data_ingestion_and_hft.md
+  - Neural Stack (MARKVART™):
+      - Neural Models & PyTorch: en/neural_models.md
+      - Execution Phases (ADAGIO™): en/execution_phases.md
+  - Safety & Resilience:
+      - Watchdog & Gating Policy: en/safety_and_watchdog.md
+  - Frontend & Zero-Port IPC:
+      - Desktop UI (Tauri v2): en/ui_architecture.md
+  - Operations & QA:
+      - Testing & QA Suite: en/testing.md
+      - Developer Guide: 06_developer_guide.md
+      - Production Deployment: 07_deployment_guide.md
+  - Multi-Language Hub:
+      - Documentation Hub: README.md
+      - Português (Brasil): pt-br/README.md
+      - Español: es/README.md
+      - Français: fr/README.md
+      - Русский: ru/README.md
+      - 简体中文: zh/README.md
+
+# ==============================================================================
+# Extra CSS
+# ==============================================================================
+extra_css:
+  - stylesheets/extra.css

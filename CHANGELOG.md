@@ -12,6 +12,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-10-19
+
+### Added
+- **Multi-Segment Global Feed Unpacking (`GraphManager._ingest_global_jams_feed`)**:
+  - Automatic unpacking of multi-segment cloud feeds (e.g., Waze `jams` arrays) with WGS84-to-UTM projection via [`GeoProjectionService`](src/services/geo_projection_service.py) and deterministic R-Tree polyline alignment via [`FastMapMatcher`](docs/03_neural_models.md#6-fast-geometric-map-matching-deterministic-r-tree--frechet).
+  - Automatic pruning of stale jammed edges when congestion clears in subsequent polling cycles.
+- **8-Hop Harmonic Spatial Diffusion & Topological Conductance Prior (`FusionPipeline`)**:
+  - Extended spatial propagation in [`src/pipeline/fusion_pipeline.py`](src/README.md#4-engine--high-throughput-inference-engine) to 8-hop damped harmonic graph diffusion coupled with a topological conductance/degree background prior (`y_bg`), eliminating uniform density floors on distant unobserved streets.
+- **Road-Hierarchy Hydrodynamic Interpolation (`TrafficHydrodynamicEngine`)**:
+  - Preserved `edge_type` (OSM/SUMO road classification) and `priority` attributes across [`MapEdge`](docs/01_domain_entities.md#2-mapedge), [`MapCommandHandler`](src/handlers/map_handler.py), and [`TopologyRepository`](src/domain/topology_repository.py).
+  - Engineered 5D physical edge attribute tensors (`edge_attr` $\in \mathbb{R}^{E \times 5}$) in [`GraphTopologyBuilder`](src/managers/graph/topology_builder.py) for [`DiffusionGATv2`](docs/03_neural_models.md#5-gatv2-lite--diffusion-gatv2-topological-reasoning).
+  - Weighted node-to-edge continuum interpolation by road-hierarchy permeability (`perm` $\in [0.15, 1.15]$) and continuous geometric impedance (`geom_factor`), differentiating arterial corridors from low-flow residential streets.
+- **Canonical Device Alias Resolution (`IngestionHub` & `DataFlowRouter`)**:
+  - Resolved external device aliases (e.g., MQTT/CSV `loop_01` $\rightarrow$ canonical `src_2` via `device_id_map`) across [`IngestionHub.route_packet`](src/adapters/ingestion_hub.py) and [`DataFlowRouter.handle_data_flow`](src/engine/data_flow_router.py), with coordinate fallback extraction for CV detection lists and inductive loop CSV rows in [`SensorElementResolver`](src/managers/graph/element_resolver.py).
+
+### Changed
+- **60-Second Global Polling Observability Window (`SnapshotBuilder`)**:
+  - Extended active sensor observability horizon (`fallback_steps <= 75`) in [`SnapshotBuilder.gather_snapshot`](src/engine/snapshot_builder.py) to sustain `observability_mask = 1.0` across full 60-second global REST API polling intervals.
+- **KSE UKF State Vector Synchronization (`KSEInertialImputationStrategy`)**:
+  - Synchronized internal Unscented Kalman Filter state `physics_engine.x[0, 0]` during dead-reckoning projections in [`src/strategies/kse_inertial_imputation.py`](docs/04_execution_phases.md#kinematic-state-estimation-kse-dead-reckoning) to prevent unobserved nodes from freezing on static values.
+- **Flow/Count Measured Speed Integration & Historical Warmup Isolation**:
+  - Integrated `measured_speed_ms` into flow and passage count sensors in [`EdgeHydrodynamicsEngine`](src/managers/graph/hydrodynamics_engine.py) and isolated localized incident lists (`jams`) in [`EdgePayloadFormatter`](src/meh/edge_payload_formatter.py) during `HISTORICAL` warmup.
+
+---
+
 ## [2.0.0] - 2026-08-30
 
 ### Added
@@ -60,7 +85,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Changelog — Noxfort Systems Engineering</sub><br/>
-  <sub><a href="#changelog">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>
