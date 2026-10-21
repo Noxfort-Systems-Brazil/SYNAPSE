@@ -1,30 +1,14 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/kse/definitions.py
-# Author: Gabriel Moraes
-# Date: 2026-01-09
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from dataclasses import dataclass
+from src.physics.constants import STANDARD_GRAVITY, TYPICAL_MAX_ACCEL_MS2, TYPICAL_MAX_DECEL_MS2
 
 # --- CONSTANTS & CONFIGURATION ---
 
-GRAVITY = 9.81
-MAX_ACCEL = 4.5   # m/s^2 (Typical car max acceleration)
-MAX_DECEL = -9.0  # m/s^2 (Emergency braking)
+GRAVITY = STANDARD_GRAVITY  # 9.80665 m/s^2 (International Standard CGPM / ISO 80000-3)
+MAX_ACCEL = TYPICAL_MAX_ACCEL_MS2   # 4.5 m/s^2 (Typical vehicular acceleration)
+MAX_DECEL = TYPICAL_MAX_DECEL_MS2  # -9.0 m/s^2 (Emergency braking)
 FRICTION_DECAY = 0.95 # Damping factor for Dead Reckoning (Simulates air resistance/friction)
 
 @dataclass

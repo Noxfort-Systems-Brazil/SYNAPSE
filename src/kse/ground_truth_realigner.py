@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/kse/ground_truth_realigner.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import numpy as np
@@ -46,7 +29,8 @@ class GroundTruthRealigner:
         current_pred_p: float,
         dt_since_last_live: float,
         consecutive_misses: int,
-        is_first_sample: bool = False
+        is_first_sample: bool = False,
+        nominal_dt: Optional[float] = None
     ) -> bool:
         """
         Determines whether the incoming measurement is a Ground Truth injection requiring realignment.
@@ -57,8 +41,9 @@ class GroundTruthRealigner:
         if consecutive_misses >= self.max_misses:
             return True
 
-        # Gap in real sensor data where dead-reckoning was running
-        if dt_since_last_live >= self.gap_threshold:
+        # Adaptive gap: scales to 3 missed sampling intervals when nominal_dt is provided, or uses gap_threshold
+        effective_gap = max(3.0 * float(nominal_dt), self.gap_threshold) if (nominal_dt is not None and nominal_dt > 0) else self.gap_threshold
+        if dt_since_last_live >= effective_gap:
             return True
 
         return False

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/slm/prompt_builder.py
-# Author: Gabriel Moraes
-# Date: 2026-09-03
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import json
@@ -119,9 +102,35 @@ class SLMPromptBuilder:
             input_str += f"SPEED_UNIT: [{speed_unit}]\n"
 
         if isinstance(attributions, dict):
-            input_str += f"DATA_PAYLOAD: {json.dumps(attributions, ensure_ascii=False)}"
+            payload_dict = attributions
+            numeric_entries = {
+                k: v for k, v in attributions.items()
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            }
+            if len(numeric_entries) > 30:
+                sorted_num = sorted(numeric_entries.items(), key=lambda kv: abs(float(kv[1])), reverse=True)
+                compacted: Dict[str, Any] = {
+                    k: v for k, v in attributions.items() if k not in numeric_entries
+                }
+                for k, v in sorted_num[:25]:
+                    compacted[k] = round(float(v), 4)
+                vals = [float(v) for v in numeric_entries.values()]
+                compacted["_summary"] = {
+                    "total_numeric_features": len(numeric_entries),
+                    "shown_top_k": 25,
+                    "max_attribution": round(max(vals), 4),
+                    "min_attribution": round(min(vals), 4),
+                }
+                payload_dict = compacted
+            payload_json = json.dumps(payload_dict, ensure_ascii=False)
+            if len(payload_json) > 6000:
+                payload_json = payload_json[:6000] + "... [TRUNCATED]"
+            input_str += f"DATA_PAYLOAD: {payload_json}"
         else:
-            input_str += f"DATA_PAYLOAD: {str(attributions)}"
+            raw_attr_str = str(attributions)
+            if len(raw_attr_str) > 6000:
+                raw_attr_str = raw_attr_str[:6000] + "... [TRUNCATED]"
+            input_str += f"DATA_PAYLOAD: {raw_attr_str}"
 
         last_report = input_data.get("last_report_text")
         if last_report:

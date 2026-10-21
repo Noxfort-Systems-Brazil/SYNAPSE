@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/slm/output_sanitizer.py
-# Author: Gabriel Moraes
-# Date: 2026-09-03
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import re
 
@@ -50,11 +33,36 @@ class SLMOutputSanitizer:
         )
         text = emoji_pattern.sub("", text)
 
-        # 3. Clean spaces before punctuation caused by removed tokens/emojis
+        # 3. Purge leaked prompt/metadata variable tokens (CARINA semantic cleaner standard)
+        metadata_replacements = [
+            (r"\bno\s+DATA_PAYLOAD\b", "nos registros metrológicos auditados"),
+            (r"\bdo\s+DATA_PAYLOAD\b", "dos registros metrológicos auditados"),
+            (r"\bpelo\s+DATA_PAYLOAD\b", "pelos registros metrológicos auditados"),
+            (r"\bem\s+DATA_PAYLOAD\b", "nos registros metrológicos auditados"),
+            (r"\bDATA_PAYLOAD\b", "conjunto de telemetria auditado"),
+            (r"\bTARGET_SUBSYSTEM\b", "subsistema auditado"),
+            (r"\bLAST_REPORT_TEXT\b", "registro metrológico anterior"),
+        ]
+        for pattern, repl in metadata_replacements:
+            text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+
+        # 4. Clean spaces before punctuation and ensure space after period before uppercase letter
         text = re.sub(r"\s+([.,;:!?])", r"\1", text)
+        text = re.sub(r"\.([A-ZÀ-Ú])", r". \1", text)
         text = re.sub(r"[ \t]+", " ", text)
 
-        # 4. Clean trailing repetitive whitespace
-        text = re.sub(r"\n{3,}", "\n\n", text)
+        # 5. Clean trailing repetitive whitespace
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
-        return text.strip()
+        # 6. Trim incomplete trailing sentence if truncated mid-generation by max_tokens
+        if len(text) > 100 and text[-1] not in ".!?;:)]\"'":
+            last_punct = max(text.rfind(". "), text.rfind(".\n"), text.rfind("! "), text.rfind("? "))
+            if last_punct > 60:
+                text = text[: last_punct + 1].strip()
+            elif text.endswith(","):
+                text = text[:-1].rstrip() + "."
+            else:
+                text = text + "."
+
+        return text
+

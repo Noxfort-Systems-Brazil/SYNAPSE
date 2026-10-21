@@ -1,6 +1,3 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
-from src.formatters.abnt_markdown_formatter import AbntMarkdownReportFormatter
-
-__all__ = ["AbntMarkdownReportFormatter"]

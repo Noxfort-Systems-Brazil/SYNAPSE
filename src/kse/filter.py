@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/kse/filter.py
-# Author: Gabriel Moraes
-# Date: 2026-01-09
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import numpy as np
@@ -24,6 +7,7 @@ from typing import Dict, Any, Optional
 from src.utils.logging_setup import logger
 from src.kse.definitions import SensorProfile, KineticState, FRICTION_DECAY, MAX_ACCEL, MAX_DECEL
 from src.kse.ground_truth_realigner import GroundTruthRealigner
+from src.physics.constants import MAX_URBAN_SPEED_CEILING_KMH
 
 # =============================================================================
 # CORE MATHEMATICS: ROBUST KALMAN FILTER
@@ -130,7 +114,8 @@ class RobustKalmanFilter:
             current_pred_p=self.x[0, 0],
             dt_since_last_live=time_since_last,
             consecutive_misses=self.consecutive_misses,
-            is_first_sample=is_first
+            is_first_sample=is_first,
+            nominal_dt=effective_dt
         ):
             self.x, self.P, _ = self.realigner.realign(
                 node_id=self.node_id,
@@ -198,8 +183,8 @@ class RobustKalmanFilter:
         """
         Hard Constraints to prevent mathematical divergence.
         """
-        # Position / Scalar state Limit (0 to 200 km/h or reasonable traffic metric)
-        self.x[0, 0] = np.clip(self.x[0, 0], 0.0, 200.0)
+        # Position / Scalar state Limit (0 to MAX_URBAN_SPEED_CEILING_KMH km/h or reasonable traffic metric)
+        self.x[0, 0] = np.clip(self.x[0, 0], 0.0, MAX_URBAN_SPEED_CEILING_KMH)
 
         # Velocity Limit (e.g., 0 to 120 km/h -> ~33 m/s)
         self.x[1, 0] = np.clip(self.x[1, 0], -10.0, 40.0) 
