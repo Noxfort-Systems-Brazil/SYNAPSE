@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/handlers/security_handler.py
-# Author: Gabriel Moraes
-# Date: 2026-09-03
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Security Command Handler (SOLID: SRP & DIP).
@@ -125,6 +108,14 @@ class SecurityCommandHandler:
         password = msg.payload.get("password", "")
         role = msg.payload.get("role", "OPERATOR").upper()
 
+        val_pwd_fn = getattr(self.security_manager, "validate_password", None)
+        if callable(val_pwd_fn):
+            val_result = val_pwd_fn(password)
+            if not val_result.is_valid:
+                err_msg = f"A senha não atende aos requisitos de segurança: {'; '.join(val_result.errors)}"
+                responder(False, None, err_msg)
+                return
+
         success = self.security_manager.add_user(username, password, role)
         if success:
             self.audit_logger.log_action(
@@ -133,11 +124,24 @@ class SecurityCommandHandler:
             users = self.security_manager.list_users()
             responder(True, {"success": True, "users": users})
         else:
+            get_err_fn = getattr(self.security_manager, "get_last_account_error", None)
+            err_reason = get_err_fn() if callable(get_err_fn) else None
             responder(
                 False,
                 None,
-                "Falha ao criar usuário. Verifique se o nome já existe ou se os campos são válidos.",
+                err_reason or "Falha ao criar usuário. Verifique se o nome já existe ou se os campos são válidos.",
             )
+
+    def handle_validate_password(self, msg: IpcMessage, responder: Responder) -> None:
+        """Validates a password candidate against the security policy."""
+        password = msg.payload.get("password", "")
+        val_pwd_fn = getattr(self.security_manager, "validate_password", None)
+        if callable(val_pwd_fn):
+            val_result = val_pwd_fn(password)
+            responder(True, {"is_valid": val_result.is_valid, "errors": val_result.errors})
+        else:
+            responder(True, {"is_valid": True, "errors": []})
+
 
     def handle_remove_user(self, msg: IpcMessage, responder: Responder) -> None:
         """Removes a user account."""

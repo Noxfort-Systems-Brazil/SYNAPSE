@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/adapters/ingestion_hub.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import threading
 from typing import Any, Callable, Dict, List, Optional
@@ -60,8 +43,10 @@ class IngestionHub:
                 logger.warning(f"[IngestionHub] Adapter '{adapter.adapter_id}' already registered. Replacing...")
             self._adapters[adapter.adapter_id] = adapter
             # Bind callback so adapter can forward packets immediately
-            if hasattr(adapter, '_callback'):
+            try:
                 adapter._callback = self.route_packet
+            except AttributeError:
+                pass
             logger.info(f"🔌 [IngestionHub] Registered adapter '{adapter.adapter_id}' ({adapter.transport_name})")
 
         # If hub is already running, immediately start the newly registered adapter
@@ -134,11 +119,15 @@ class IngestionHub:
         # 1. Zero Trust Pipeline Authentication & Quarantine/Active Buffering
         is_accepted = self.pipeline.process_packet(source_id, payload)
 
-        # 2. Notify Listeners if accepted
+        # 2. Notify Listeners if accepted (using canonical resolved source_id if mapped)
         if is_accepted:
+            resolved_id = source_id
+            device_map = getattr(self.pipeline, "device_id_map", None)
+            if isinstance(device_map, dict) and source_id in device_map:
+                resolved_id = device_map[source_id]
             for listener in list(self._listeners):
                 try:
-                    listener(source_id, payload, metadata)
+                    listener(resolved_id, payload, metadata)
                 except Exception as e:
                     logger.error(f"❌ [IngestionHub] Error in packet listener: {e}", exc_info=True)
 

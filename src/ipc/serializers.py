@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/ipc/serializers.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 IPC Data Transfer Object (DTO) Serializers (SOLID: SRP).
@@ -36,22 +19,26 @@ class TopologySerializer:
         """Serializes current map graph for the React visualizer."""
         try:
             nodes_list = []
-            raw_nodes = app_state.get_all_nodes() if hasattr(app_state, "get_all_nodes") else []
+            get_nodes_fn = getattr(app_state, "get_all_nodes", None)
+            raw_nodes = get_nodes_fn() if callable(get_nodes_fn) else []
             for n in raw_nodes:
                 nodes_list.append({
                     "id": n.id,
                     "x": n.x,
                     "y": n.y,
+                    "name": getattr(n, "real_name", None),
                     "is_tls": getattr(n, "is_tls", bool(getattr(n, "tl_logic_id", False))),
                 })
 
             edges_list = []
-            raw_edges = app_state.get_all_edges() if hasattr(app_state, "get_all_edges") else []
+            get_edges_fn = getattr(app_state, "get_all_edges", None)
+            raw_edges = get_edges_fn() if callable(get_edges_fn) else []
             for e in raw_edges:
                 edges_list.append({
                     "id": e.id,
                     "from": e.from_node,
                     "to": e.to_node,
+                    "name": getattr(e, "real_name", None),
                     "length": getattr(e, "length", 0.0),
                     "shape": getattr(e, "shape", []),
                 })

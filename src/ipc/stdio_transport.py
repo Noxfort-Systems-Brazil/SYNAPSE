@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/ipc/stdio_transport.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Low-Level Standard I/O Transport Layer (SOLID: SRP).
@@ -62,14 +45,16 @@ class StdioTransport:
 
     def _reconfigure_streams(self) -> None:
         """Configures line buffering and UTF-8 encoding on OS streams if supported."""
-        if hasattr(self._raw_stdout, "reconfigure"):
+        out_reconf = getattr(self._raw_stdout, "reconfigure", None)
+        if callable(out_reconf):
             try:
-                self._raw_stdout.reconfigure(line_buffering=True, encoding="utf-8")
+                out_reconf(line_buffering=True, encoding="utf-8")
             except Exception:
                 pass
-        if hasattr(self._raw_stdin, "reconfigure"):
+        in_reconf = getattr(self._raw_stdin, "reconfigure", None)
+        if callable(in_reconf):
             try:
-                self._raw_stdin.reconfigure(encoding="utf-8")
+                in_reconf(encoding="utf-8")
             except Exception:
                 pass
 

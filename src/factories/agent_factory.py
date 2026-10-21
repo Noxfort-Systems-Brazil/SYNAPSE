@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/factories/agent_factory.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, Any, Optional
 
@@ -107,6 +90,14 @@ class AgentFactory:
         freeing GPU/RAM resources immediately after directional reconciliation.
         """
         self.registry.remove(source_id, 'compass')
+
+    def get_or_create_cartographer(self, source_id: str, app_state: Optional[Any] = None) -> Optional[Any]:
+        """Retrieves registered Cartographer instance if present (or None for deterministic R-Tree matching)."""
+        return self.registry.get(source_id, 'cartographer')
+
+    def release_cartographer(self, source_id: str) -> None:
+        """Explicitly unregisters ephemeral Cartographer instance for a sensor source."""
+        self.registry.remove(source_id, 'cartographer')
 
     def get_or_create_specialist(self, source_id: str) -> SpecialistAgent:
         """Retrieves or creates SpecialistAgent for a sensor source."""

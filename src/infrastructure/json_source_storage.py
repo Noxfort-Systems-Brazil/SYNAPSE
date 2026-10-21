@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/infrastructure/json_source_storage.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import json
 import os
@@ -36,11 +19,8 @@ class JsonSourceStorage(ISourceStorage):
 
     @classmethod
     def get_default_path(cls) -> str:
-        home = os.path.expanduser("~")
-        docs = os.path.join(home, "Documentos")
-        if not os.path.exists(docs):
-            docs = os.path.join(home, "Documents")
-        return os.path.join(docs, "Synapse", "config", "sources.json")
+        from src.storage.path_scaffolder import PathScaffolder
+        return os.path.join(PathScaffolder().get_system_config_path(), "sources.json")
 
     def __init__(self, file_path: Optional[str] = None, engine: Optional[Any] = None):
         self.file_path = file_path or self.get_default_path()
@@ -150,7 +130,7 @@ class JsonSourceStorage(ISourceStorage):
                 json.dump(payload, f, indent=2, ensure_ascii=False)
 
             # Sync with PostgreSQL cloud vault
-            if self.engine:
+            if self.engine and getattr(self.engine, "is_connected", True):
                 try:
                     from src.repositories.cloud_vault_repo import CloudVaultRepository
                     repo = CloudVaultRepository(self.engine)
@@ -170,8 +150,8 @@ class JsonSourceStorage(ISourceStorage):
         associations: Dict[str, List[str]] = {}
         map_path: Optional[str] = None
 
-        # If file missing on disk, try to restore from PostgreSQL cloud vault (only for legitimate Synapse configs)
-        if not os.path.exists(self.file_path) and self.engine:
+        # If file missing on disk, try to restore from PostgreSQL cloud vault (only for legitimate Synapse configs and if DB is connected)
+        if not os.path.exists(self.file_path) and self.engine and getattr(self.engine, "is_connected", True):
             try:
                 base_dir = self._resolve_base_dir()
                 rel_path = os.path.relpath(self.file_path, base_dir)

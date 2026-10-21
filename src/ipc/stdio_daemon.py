@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/ipc/stdio_daemon.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Pure Headless IPC Facade & Orchestrator (SOLID Architecture).
@@ -28,9 +11,20 @@ Adheres strictly to SOLID:
 - [ISP] Communicates via well-defined, segregated service interfaces.
 """
 
+import os
 import sys
 import signal
+import multiprocessing as mp
 from typing import Any, Callable, Optional
+
+# Ensure gRPC and CUDA safety before spawning threads or child processes
+os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "1")
+os.environ.setdefault("GRPC_POLL_STRATEGY", "poll")
+if mp.get_start_method(allow_none=True) != "spawn":
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass
 
 from PyQt6.QtCore import QCoreApplication, QTimer
 
@@ -147,8 +141,9 @@ class StdioDaemon:
 
     def shutdown(self) -> None:
         """Coordinates graceful shutdown across all subsystems."""
-        if hasattr(self.controller, "shutdown"):
-            self.controller.shutdown()
+        shutdown_fn = getattr(self.controller, "shutdown", None)
+        if callable(shutdown_fn):
+            shutdown_fn()
         if self.on_shutdown_cb:
             self.on_shutdown_cb()
 

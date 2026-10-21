@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/factories/engine_component_factory.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import NamedTuple, TYPE_CHECKING
 
@@ -82,8 +65,8 @@ class EngineComponentFactory:
 
         # ── 1. Shared Dependencies ──────────────────────────────────────
         ingestion = IngestionWorker(self.app_state)
-        graph_manager = GraphManager(self.app_state)
         historical_manager = HistoricalManager(self.app_state)
+        graph_manager = GraphManager(self.app_state, historical_manager=historical_manager)
         enricher = SemanticEnricher(self.app_state)
 
         # ── 2. Data Flow Router (Fast Path) ─────────────────────────────

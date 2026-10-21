@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/handlers/map_handler.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Map & Topology Command Handler (SOLID: SRP & DIP).
@@ -103,17 +86,25 @@ class MapCommandHandler:
                 "weight": getattr(e, "weight", 1.0),
                 "max_speed": getattr(e, "max_speed", 13.89),
                 "lanes": getattr(e, "lanes", 1),
+                "edge_type": getattr(e, "edge_type", "highway.residential"),
+                "priority": getattr(e, "priority", 1),
+                "signal_group_id": getattr(e, "signal_group_id", None),
             }
             for e in edges
         ]
 
-        if hasattr(self.app_state, "set_map_data"):
-            self.app_state.set_map_data(nodes_data, edges_data)
-        elif hasattr(self.app_state, "topology") and hasattr(self.app_state.topology, "load_data"):
-            self.app_state.topology.load_data(nodes_data, edges_data)
+        set_map_data_fn = getattr(self.app_state, "set_map_data", None)
+        if callable(set_map_data_fn):
+            set_map_data_fn(nodes_data, edges_data)
+        else:
+            topo_obj = getattr(self.app_state, "topology", None)
+            load_data_fn = getattr(topo_obj, "load_data", None)
+            if callable(load_data_fn):
+                load_data_fn(nodes_data, edges_data)
 
-        if hasattr(self.app_state, "set_map_source_path"):
-            self.app_state.set_map_source_path(os.path.abspath(clean_path))
+        set_path_fn = getattr(self.app_state, "set_map_source_path", None)
+        if callable(set_path_fn):
+            set_path_fn(os.path.abspath(clean_path))
 
         self.logger.info(
             f"✅ [MapCommandHandler] Rede viária SUMO carregada com sucesso! "
@@ -126,9 +117,11 @@ class MapCommandHandler:
     def handle_get_topology(self, msg: IpcMessage) -> Dict[str, Any]:
         self.logger.info("📍 [MapCommandHandler] Solicitando topologia atual do AppState")
         # Auto-hydrate if map_path is restored from disk but nodes not yet loaded into memory
-        map_path = self.app_state.get_map_source_path() if hasattr(self.app_state, "get_map_source_path") else None
-        if map_path and os.path.exists(map_path) and hasattr(self.app_state, "get_all_nodes"):
-            nodes = self.app_state.get_all_nodes()
+        get_path_fn = getattr(self.app_state, "get_map_source_path", None)
+        get_nodes_fn = getattr(self.app_state, "get_all_nodes", None)
+        map_path = get_path_fn() if callable(get_path_fn) else None
+        if map_path and os.path.exists(map_path) and callable(get_nodes_fn):
+            nodes = get_nodes_fn()
             if not nodes:
                 self.logger.info(f"📍 [MapCommandHandler] Auto-hydrating topology from restored map path: '{map_path}'")
                 if self.map_service.load_network(map_path):
@@ -156,12 +149,19 @@ class MapCommandHandler:
                             "weight": getattr(e, "weight", 1.0),
                             "max_speed": getattr(e, "max_speed", 13.89),
                             "lanes": getattr(e, "lanes", 1),
+                            "edge_type": getattr(e, "edge_type", "highway.residential"),
+                            "priority": getattr(e, "priority", 1),
+                            "signal_group_id": getattr(e, "signal_group_id", None),
                         }
                         for e in svc_edges
                     ]
-                    if hasattr(self.app_state, "set_map_data"):
-                        self.app_state.set_map_data(nodes_data, edges_data)
-                    elif hasattr(self.app_state, "topology") and hasattr(self.app_state.topology, "load_data"):
-                        self.app_state.topology.load_data(nodes_data, edges_data)
+                    set_map_data_fn = getattr(self.app_state, "set_map_data", None)
+                    if callable(set_map_data_fn):
+                        set_map_data_fn(nodes_data, edges_data)
+                    else:
+                        topo_obj = getattr(self.app_state, "topology", None)
+                        load_data_fn = getattr(topo_obj, "load_data", None)
+                        if callable(load_data_fn):
+                            load_data_fn(nodes_data, edges_data)
 
         return TopologySerializer.serialize_topology(self.app_state)

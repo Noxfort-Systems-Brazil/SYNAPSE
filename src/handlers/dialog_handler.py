@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/handlers/dialog_handler.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 OS Dialog & Network Info Command Handler (SOLID: SRP & DIP).
@@ -48,5 +31,18 @@ class SystemDialogHandler:
         selected_path = self.dialog_service.pick_file(title, filter_str)
         return {"path": selected_path, "cancelled": selected_path is None}
 
+    def handle_save_file(self, msg: IpcMessage) -> Dict[str, Any]:
+        title = msg.payload.get("title", "Salvar Arquivo")
+        default_filename = msg.payload.get("default_filename")
+        filter_str = msg.payload.get("filter", "*")
+        selected_path = self.dialog_service.save_file(default_filename, title, filter_str)
+        return {"path": selected_path, "cancelled": selected_path is None}
+
+    def handle_pick_directory(self, msg: IpcMessage) -> Dict[str, Any]:
+        title = msg.payload.get("title", "Selecionar Pasta")
+        selected_path = self.dialog_service.pick_directory(title)
+        return {"path": selected_path, "cancelled": selected_path is None}
+
     def handle_get_network_info(self, msg: IpcMessage) -> Dict[str, Any]:
         return self.network_service.get_network_info()
+

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/handlers/handler_registry.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Handler Registration Registry (SOLID: SRP & Composition Root).
@@ -28,6 +11,7 @@ from typing import Any, Callable, Optional
 
 from src.ipc.command_router import IpcCommandRouter
 from src.handlers.system_handler import SystemCommandHandler
+from src.handlers.report_handler import ReportCommandHandler
 from src.handlers.map_handler import MapCommandHandler
 from src.handlers.source_handler import SourceCommandHandler
 from src.handlers.database_handler import DatabaseCommandHandler
@@ -38,6 +22,7 @@ from src.security.audit_logger import AuditLogger
 from src.infrastructure.dialog_service import NativeDialogService
 from src.infrastructure.network_service import NetworkService
 from src.services.data_inspection_service import DataInspectionService
+from src.handlers.duckdns_handler import DuckDnsHandler
 
 
 def register_default_command_handlers(
@@ -102,6 +87,11 @@ def register_default_command_handlers(
         telemetry_service=telem_svc,
     )
 
+    report_handler = ReportCommandHandler(
+        controller=controller,
+        audit_logger=aud_log,
+    )
+
     # 1. System Actions
     router.register("ping", system_handler.handle_ping)
     router.register("get_system_status", system_handler.handle_get_system_status)
@@ -114,11 +104,14 @@ def register_default_command_handlers(
     router.register("explain_buffer", system_handler.handle_explain_buffer)
     router.register("explain_local", system_handler.handle_explain_local)
     router.register("explain_global", system_handler.handle_explain_global)
-    router.register("generate_official_report", system_handler.handle_generate_official_report)
     router.register("hot_swap_model", system_handler.handle_hot_swap_model)
     router.register("get_process_health", system_handler.handle_get_process_health)
     router.register("reset_workspace", system_handler.handle_reset_workspace)
     router.register("shutdown", system_handler.handle_shutdown)
+
+    # 2. Report Actions (ABNT / Official Traffic Audit)
+    router.register("generate_official_report", report_handler.handle_generate_official_report)
+    router.register("export_official_report_docx", report_handler.handle_export_official_report_docx)
 
 
     # 2. Map Actions
@@ -128,9 +121,12 @@ def register_default_command_handlers(
     # 3. Source Actions
     router.register("get_sources", source_handler.handle_get_sources)
     router.register("add_source", source_handler.handle_add_source)
+    router.register("update_source", source_handler.handle_update_source)
     router.register("associate_source", source_handler.handle_associate_source)
     router.register("toggle_origin", source_handler.handle_toggle_origin)
     router.register("remove_source", source_handler.handle_remove_source)
+    router.register("preview_batch_sources", source_handler.handle_preview_batch_sources)
+    router.register("import_batch_sources", source_handler.handle_import_batch_sources)
 
     # 4. Database Actions
     router.register("inspect_parquet", db_handler.handle_inspect_parquet)
@@ -141,9 +137,12 @@ def register_default_command_handlers(
     router.register("disconnect_db", db_handler.handle_disconnect_db)
     router.register("get_telemetry_config", db_handler.handle_get_telemetry_config)
     router.register("save_telemetry_config", db_handler.handle_save_telemetry_config)
+    router.register("test_telemetry_connection", db_handler.handle_test_telemetry_connection)
 
     # 5. Dialog and Diagnostics
     router.register("pick_file", dialog_handler.handle_pick_file)
+    router.register("save_file", dialog_handler.handle_save_file)
+    router.register("pick_directory", dialog_handler.handle_pick_directory)
     router.register("get_network_info", dialog_handler.handle_get_network_info)
 
     # 6. Security Actions
@@ -151,8 +150,16 @@ def register_default_command_handlers(
     router.register("check_lockdown", security_handler.handle_check_lockdown)
     router.register("list_users", security_handler.handle_list_users)
     router.register("add_user", security_handler.handle_add_user)
+    router.register("validate_password", security_handler.handle_validate_password)
     router.register("remove_user", security_handler.handle_remove_user)
     router.register("get_audit_logs", security_handler.handle_get_audit_logs)
+
+    # 7. DuckDNS Dynamic DNS & Reverse Proxy Actions
+    duckdns_handler = DuckDnsHandler(controller=controller)
+    router.register("get_duckdns_config", duckdns_handler.handle_get_duckdns_config)
+    router.register("save_duckdns_config", duckdns_handler.handle_save_duckdns_config)
+    router.register("test_duckdns_connection", duckdns_handler.handle_test_duckdns_connection)
+    router.register("toggle_duckdns", duckdns_handler.handle_toggle_duckdns)
 
 
 __all__ = ["register_default_command_handlers"]

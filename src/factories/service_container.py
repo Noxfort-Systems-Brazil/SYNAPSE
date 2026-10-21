@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/factories/service_container.py
-# Author: Gabriel Moraes
-# Date: 2026-03-09
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Dependency Injection Container (SOLID: SRP + DIP).
@@ -69,8 +52,8 @@ class ServiceContainer:
         from src.services.historical_manager import HistoricalManager
 
         ingestion = IngestionWorker(self.app_state)
-        graph_manager = GraphManager(self.app_state)
         historical_manager = HistoricalManager(self.app_state)
+        graph_manager = GraphManager(self.app_state, historical_manager=historical_manager)
 
         # --- 3. Agent Factory + Linguist ---
         from src.factories.agent_factory import AgentFactory
@@ -100,6 +83,8 @@ class ServiceContainer:
         neural_factory = NeuralFactory()
         device = neural_factory.get_device()
         agents = neural_factory.build_all(self.app_state)
+        gating_policy = SourceGatingPolicy()
+        forecast_imputer = ForecastImputer()
 
         snapshot_builder = SnapshotBuilder(
             app_state=self.app_state,
@@ -132,10 +117,7 @@ class ServiceContainer:
             ingestion=ingestion,
         )
 
-        # --- 6. Cartographer (Safe Import) ---
-        cartographer = self._build_cartographer()
-
-        # --- 7. Fenix (Reliability) ---
+        # --- 6. Fenix (Reliability) ---
         fenix = self._build_fenix(storage_manager)
 
         logger.info("[ServiceContainer] ✅ All subsystems wired.")
@@ -144,7 +126,6 @@ class ServiceContainer:
             "inference_engine": inference_engine,
             "data_flow_router": data_flow_router,
             "ingestion": ingestion,
-            "cartographer": cartographer,
             "fenix": fenix,
             "storage_manager": storage_manager,
             "optimizer_service": None,  # Lazy: created on demand by orchestrator
@@ -165,28 +146,6 @@ class ServiceContainer:
                 def save_json(self, f, d): return False
                 def load_json(self, f): return None
             return _MockStorage()
-
-    def _build_cartographer(self) -> Optional[Any]:
-        """Builds CartographerAgent with safe import and deferred map injection."""
-        try:
-            from src.agents.cartographer_agent import CartographerAgent
-            agent = CartographerAgent()
-            
-            # Attempt early map injection (may be deferred if no map loaded yet)
-            map_nodes = self.app_state.get_all_nodes()
-            map_edges = self.app_state.get_all_edges()
-            if map_edges:
-                agent.set_map_data(map_edges, map_nodes)
-            else:
-                logger.info("[ServiceContainer] 📋 Cartographer created, map injection deferred.")
-            
-            return agent
-        except ImportError:
-            logger.warning("[ServiceContainer] CartographerAgent not available.")
-            return None
-        except Exception as e:
-            logger.warning(f"[ServiceContainer] ⚠️ Cartographer init failed: {e}")
-            return None
 
     @staticmethod
     def _build_fenix(storage_manager):

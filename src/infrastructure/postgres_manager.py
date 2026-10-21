@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/infrastructure/postgres_manager.py
-# Author: Gabriel Moraes
-# Date: 2025-11-26
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import psycopg2
 from psycopg2 import sql
@@ -48,9 +31,9 @@ class PostgresWorker(QObject):
             conn = psycopg2.connect(
                 host=config.get("host", "localhost"),
                 port=config.get("port", 5432),
-                database=config.get("dbname", "banco_de_dados_noxfort"),
+                database=config.get("dbname", "synapse_db"),
                 user=config.get("user", "user_synapse"),
-                password=config.get("password", "synapse123"),
+                password=config.get("password", ""),
                 options=f"-c search_path={schema},public",
                 connect_timeout=3
             )
@@ -96,8 +79,8 @@ class PostgresWorker(QObject):
             cursor = conn.cursor()
             
             target_user = target_config.get("user", "user_synapse")
-            target_pass = target_config.get("password", "synapse123")
-            target_db = target_config.get("dbname", "banco_de_dados_noxfort")
+            target_pass = target_config.get("password", "")
+            target_db = target_config.get("dbname", "synapse_db")
             target_schema = target_config.get("schema", "schema_synapse")
 
             # 2. Check if User exists, create if not
