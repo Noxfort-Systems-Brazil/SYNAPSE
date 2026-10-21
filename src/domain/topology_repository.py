@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/domain/topology_repository.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from typing import Dict, List, Optional
@@ -74,7 +57,10 @@ class TopologyRepository(QObject):
                 weight=float(e_data.get('weight', e_data.get('length', 1.0))),
                 length=float(e_data.get('length', 100.0)),
                 max_speed=float(e_data.get('max_speed', 13.89)),
-                lanes=int(e_data.get('lanes', 1))
+                lanes=int(e_data.get('lanes', 1)),
+                edge_type=str(e_data.get('edge_type', e_data.get('type', 'highway.residential'))),
+                priority=int(e_data.get('priority', 1)),
+                signal_group_id=e_data.get('signal_group_id')
             )
             self._edges[e_data['id']] = edge
         

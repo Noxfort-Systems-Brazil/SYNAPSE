@@ -1,26 +1,9 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/domain/source_repository.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from datetime import datetime
 from typing import Dict, List, Optional, Union
-from src.domain.entities import DataSource
+from src.domain.entities import DataSource, SourceType
 from src.interfaces.sources import ISourceRepository, ISourceStorage
 from src.infrastructure.json_source_storage import JsonSourceStorage
 from src.utils.logging_setup import get_logger
@@ -88,28 +71,76 @@ class SourceRepository(ISourceRepository):
             source.latest_value = value
             source.last_update = datetime.now().timestamp()
 
+    def update_source(
+        self,
+        source_id: str,
+        name: Optional[str] = None,
+        is_local: Optional[bool] = None,
+        source_type: Optional[SourceType] = None,
+        connection_string: Optional[str] = None,
+    ) -> Optional[DataSource]:
+        """Update configurable properties of an existing DataSource."""
+        source = self.get(source_id)
+        if not source:
+            return None
+        if name is not None:
+            source.name = name
+        if is_local is not None:
+            source.is_local = is_local
+        if source_type is not None:
+            source.source_type = source_type
+        if connection_string is not None:
+            source.connection_string = connection_string
+        if self._storage is not None:
+            self._save_to_storage()
+        return source
+
     def associate(self, source_id: str, element_id: str) -> None:
-        """Associate a source ID with a map topology element (node or edge)."""
-        if element_id not in self._associations:
-            self._associations[element_id] = []
-        if source_id not in self._associations[element_id]:
-            self._associations[element_id].append(source_id)
-            if self._storage is not None:
-                self._save_to_storage()
+        """Associate a source ID with a map topology element (node or edge). Restricted to local sources."""
+        source = self.get(source_id)
+        if source and not source.is_local:
+            logger.debug(f"[SourceRepository] Ignored static association for global source '{source_id}' to element '{element_id}'.")
+            return
+
+        target = str(element_id).strip() if element_id else ""
+        target_clean = target.lstrip("-")
+
+        for eid in list(self._associations.keys()):
+            # Keep opposite direction of the same road for bidirectional sensors; clear if moved to another road
+            if not target or eid.lstrip("-") != target_clean:
+                if source_id in self._associations[eid]:
+                    self._associations[eid].remove(source_id)
+                if not self._associations[eid]:
+                    del self._associations[eid]
+
+        if target:
+            if target not in self._associations:
+                self._associations[target] = []
+            if source_id not in self._associations[target]:
+                self._associations[target].append(source_id)
+
+        if self._storage is not None:
+            self._save_to_storage()
 
     def get_associations(self, element_id: str) -> List[str]:
         """Get source IDs associated with a given map element."""
         return self._associations.get(element_id, [])
 
     def get_element_for_source(self, source_id: str) -> Optional[str]:
-        """Find the map element associated with a given source ID."""
+        """Find the map element associated with a given source ID (local sources only)."""
+        source = self.get(source_id)
+        if source and not source.is_local:
+            return None
         for element_id, sources in self._associations.items():
             if source_id in sources:
                 return element_id
         return None
 
     def get_elements_for_source(self, source_id: str) -> List[str]:
-        """Find all map elements associated with a given source ID (supporting multi-channel sensors)."""
+        """Find all map elements associated with a given source ID (local sources only)."""
+        source = self.get(source_id)
+        if source and not source.is_local:
+            return []
         elements = []
         for element_id, sources in self._associations.items():
             if source_id in sources:
@@ -121,6 +152,13 @@ class SourceRepository(ISourceRepository):
         source = self.get(source_id)
         if source:
             source.is_local = not source.is_local
+            # If toggled to Global, strip any existing associations
+            if not source.is_local:
+                for eid in list(self._associations.keys()):
+                    if source_id in self._associations[eid]:
+                        self._associations[eid].remove(source_id)
+                    if not self._associations[eid]:
+                        del self._associations[eid]
             if self._storage is not None:
                 self._save_to_storage()
             return source.is_local
@@ -172,6 +210,14 @@ class SourceRepository(ISourceRepository):
         if self._storage is not None:
             self._save_to_storage()
 
+    def notify_source_updated(self, source: DataSource) -> None:
+        """Persists updates to a data source."""
+        self.save()
+
+    def emit_restored_sources(self) -> None:
+        """No-op on pure domain repository (implemented by reactive SourceManager)."""
+        pass
+
     # =========================================================================
     # INTERNAL STORAGE DELEGATION
     # =========================================================================
@@ -187,6 +233,23 @@ class SourceRepository(ISourceRepository):
             self._associations.update(associations)
             if map_path:
                 self._map_path = map_path
+
+            # Cleanse any legacy associations for non-local (global) sources
+            cleaned = False
+            for eid in list(self._associations.keys()):
+                valid_local_sids = [
+                    sid for sid in self._associations[eid]
+                    if getattr(self._data_sources.get(sid), "is_local", True)
+                ]
+                if len(valid_local_sids) != len(self._associations[eid]):
+                    cleaned = True
+                if valid_local_sids:
+                    self._associations[eid] = valid_local_sids
+                else:
+                    del self._associations[eid]
+
+            if cleaned and self._storage is not None:
+                self._save_to_storage()
 
 # Re-export for backward compatibility
 __all__ = ["SourceRepository", "JsonSourceStorage"]

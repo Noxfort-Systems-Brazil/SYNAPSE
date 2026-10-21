@@ -1,14 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# File: src/repositories/sensor_telemetry_writer.py
-# Author: Gabriel Moraes
-# Date: 2026-09-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import io
 import logging
@@ -102,8 +93,9 @@ class SensorTelemetryWriter:
                 str_id = s.get('sensor_str_id') or s.get('sensor_id') or 'unknown'
                 int_id = self.dictionary_repo.get_or_create(str_id, conn=conn)
                 c_at = s.get('collected_at') or now
-                if self.engine.db_type != "postgres" and hasattr(c_at, "strftime"):
-                    c_at = c_at.strftime("%Y-%m-%d %H:%M:%S")
+                strftime_fn = getattr(c_at, "strftime", None)
+                if self.engine.db_type != "postgres" and callable(strftime_fn):
+                    c_at = strftime_fn("%Y-%m-%d %H:%M:%S")
                 rows.append((
                     c_at,
                     s.get('scenario_name', 'default'),
@@ -124,7 +116,8 @@ class SensorTelemetryWriter:
                     buf = io.StringIO()
                     for r in rows:
                         c_at_val, scen, s_str, s_int, flow, spd, occ, cnt, stat = r
-                        ts_str = c_at_val.isoformat() if hasattr(c_at_val, "isoformat") else str(c_at_val)
+                        iso_fn = getattr(c_at_val, "isoformat", None)
+                        ts_str = iso_fn() if callable(iso_fn) else str(c_at_val)
                         clean_scen = str(scen).replace('\t', ' ').replace('\n', ' ')
                         clean_str = str(s_str).replace('\t', ' ').replace('\n', ' ')
                         buf.write(f"{ts_str}\t{clean_scen}\t{clean_str}\t{s_int}\t{flow}\t{spd}\t{occ}\t{cnt}\t{stat}\n")
