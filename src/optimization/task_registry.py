@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/optimization/task_registry.py
-# Author: Gabriel Moraes
-# Date: 2026-04-27
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import logging
@@ -36,14 +19,6 @@ try:
     from torch_geometric.data import Data
 except ImportError:
     Data = None
-
-# Cartographer Strategy (Safe Import)
-try:
-    from src.optimization.strategies_spatial import SpatialStrategies
-    from src.services.map_service import MapService
-    CARTOGRAPHER_AVAILABLE = True
-except ImportError:
-    CARTOGRAPHER_AVAILABLE = False
 
 logger = logging.getLogger("Synapse.TaskRegistry")
 
@@ -97,23 +72,6 @@ class TaskRegistry:
                 ))
 
         # ═══════════════════════════════════════════════════════════════
-        # Phase 1b: Spatial Alignment — Cartographer (Sinkhorn+GATv2)
-        # ═══════════════════════════════════════════════════════════════
-        if map_file_path and CARTOGRAPHER_AVAILABLE:
-            cart_data = TaskRegistry._prepare_cartographer(map_file_path)
-            if cart_data is not None:
-                def _cart_post_hook(best_params, bd=base_dir):
-                    TaskRegistry._save_cartographer_diploma(best_params, bd)
-
-                tasks.append(OptimizationTask(
-                    name="cartographer",
-                    label="🗺️ Tuning Cartographer (Sinkhorn+GATv2)",
-                    objective_fn=lambda t, cd=cart_data: SpatialStrategies.cartographer_strategy(t, cd, device),
-                    slope_threshold=1e-3,
-                    post_hook=_cart_post_hook
-                ))
-
-        # ═══════════════════════════════════════════════════════════════
         # Phase 2: Temporal — Fuser (iTransformer)
         # ═══════════════════════════════════════════════════════════════
         tasks.append(OptimizationTask(
@@ -161,12 +119,13 @@ class TaskRegistry:
         ))
 
         # ═══════════════════════════════════════════════════════════════
-        # Phase 7: Semantics — Linguist (DistilRoBERTa + TCN-AE)
+        # Phase 7: Semantics — Linguist (TCN-AE Reasoner)
         # ═══════════════════════════════════════════════════════════════
+        linguist_embeddings = TaskRegistry._prepare_linguist_embeddings(univ_data, device)
         tasks.append(OptimizationTask(
             name="linguist",
-            label="🗣️ Tuning Linguist (DistilRoBERTa + TCN-AE)",
-            objective_fn=lambda t: SemanticStrategies.linguist_strategy(t, univ_data, device)
+            label="🗣️ Tuning Linguist (TCN-AE)",
+            objective_fn=lambda t, emb=linguist_embeddings: SemanticStrategies.linguist_strategy(t, emb, device)
         ))
 
         # ═══════════════════════════════════════════════════════════════
@@ -201,20 +160,6 @@ class TaskRegistry:
                 logger.warning("[TaskRegistry] ⚠️ PyTorch Geometric not found. Skipping Coordinator.")
                 return None
         return map_graph
-
-    @staticmethod
-    def _prepare_cartographer(map_file_path: str) -> Optional[dict]:
-        """Loads MapService and extracts edge/node data for Cartographer."""
-        try:
-            ms = MapService()
-            if ms.load_network(map_file_path):
-                return {'edges': ms.edges, 'nodes': ms.nodes}
-            else:
-                logger.warning("[TaskRegistry] ⚠️ MapService failed to load network for Cartographer.")
-                return None
-        except Exception as e:
-            logger.warning(f"[TaskRegistry] ⚠️ Cartographer data prep skipped: {e}")
-            return None
 
     @staticmethod
     def _prepare_classifier_data(univ_data: np.ndarray):
@@ -260,33 +205,49 @@ class TaskRegistry:
         return inputs, targets
 
     @staticmethod
-    def _save_cartographer_diploma(best_params: dict, base_dir: str):
+    def _prepare_linguist_embeddings(univ_data: Any, device: torch.device) -> torch.Tensor:
         """
-        Saves the Cartographer's best model weights after optimization.
-        
-        Previously this logic lived inside optimizer_service.run() — violating SRP/DIP
-        by forcing the orchestrator to import SinkhornCrossAttention directly.
+        Pre-computes semantic embeddings from ModernBERT ONCE before Optuna trials begin.
+        Decouples ModernBERT from the Optuna trial loop so HPO runs purely on the TCN-AE.
         """
-        if not best_params:
-            return
-
         try:
-            from src.models.sinkhorn_cross_attention import SinkhornCrossAttention
+            from transformers import AutoTokenizer, AutoModel
+            from src.utils.model_paths import get_modernbert_path
 
-            diploma_dir = os.path.join(base_dir, "weights")
-            os.makedirs(diploma_dir, exist_ok=True)
-            diploma_path = os.path.join(diploma_dir, "cartographer.safetensors")
+            model_path = get_modernbert_path()
+            is_local = os.path.isdir(model_path)
 
-            best_model = SinkhornCrossAttention(
-                d_model=best_params.get('cart_d_model', 64),
-                n_heads=best_params.get('cart_n_heads', 4),
-                n_gat_layers=best_params.get('cart_n_gat_layers', 2),
-                sinkhorn_iters=best_params.get('cart_sinkhorn_iters', 10),
-                dropout=best_params.get('cart_dropout', 0.1),
-                temperature=best_params.get('cart_temperature', 0.1),
-            )
-            best_model.save_diploma(diploma_path)
-            logger.info(f"[TaskRegistry] 🎓 Cartographer diploma saved: {diploma_path}")
+            tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=is_local)
+            transformer = AutoModel.from_pretrained(model_path, local_files_only=is_local).to(device)
+            transformer.eval()
 
+            sample_texts = [
+                "Traffic sensor flow volume peak at main intersection corridor.",
+                "Normal operational vehicle speed telemetry stream.",
+                "Congestion detected on arterial highway with decelerating speed.",
+                "Free flow conditions observed across secondary collector avenue."
+            ]
+            tokens = tokenizer(
+                sample_texts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=64
+            ).to(device)
+
+            with torch.no_grad():
+                outputs = transformer(**tokens)
+                embeddings = outputs.last_hidden_state.permute(0, 2, 1).contiguous()
+
+            del transformer
+            del tokenizer
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            logger.info(f"[TaskRegistry] 🧠 Pre-computed Linguist embeddings once: shape {embeddings.shape}")
+            return embeddings
         except Exception as e:
-            logger.warning(f"[TaskRegistry] ⚠️ Diploma save failed: {e}")
+            logger.warning(f"[TaskRegistry] ⚠️ Transformer pre-compute skipped ({e}). Using synthetic calibration tensor.")
+            return torch.randn(8, 768, 32, device=device)
+
+

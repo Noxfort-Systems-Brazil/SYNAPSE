@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/trainer/coordinator_trainer.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
@@ -59,15 +42,18 @@ class CoordinatorTrainer(ICoordinatorTrainer):
         """
         self.model.train()
 
-        if hasattr(batch_data, 'x') and hasattr(batch_data, 'edge_index'):
-            x = batch_data.x.to(self.device)
-            edge_index = batch_data.edge_index.to(self.device)
-            y = batch_data.y.to(self.device) if hasattr(batch_data, 'y') else x
-        elif isinstance(batch_data, (tuple, list)):
+        if isinstance(batch_data, (tuple, list)):
             x, edge_index, y = batch_data
             x, edge_index, y = x.to(self.device), edge_index.to(self.device), y.to(self.device)
         else:
-            return 0.0
+            raw_x = getattr(batch_data, "x", None)
+            raw_edge_index = getattr(batch_data, "edge_index", None)
+            if raw_x is None or raw_edge_index is None:
+                return 0.0
+            x = raw_x.to(self.device)
+            edge_index = raw_edge_index.to(self.device)
+            raw_y = getattr(batch_data, "y", None)
+            y = raw_y.to(self.device) if raw_y is not None else x
 
         self.optimizer.zero_grad()
 

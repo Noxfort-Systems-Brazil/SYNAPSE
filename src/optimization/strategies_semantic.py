@@ -1,31 +1,16 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/optimization/strategies_semantic.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
+import torch.nn as nn
 import numpy as np
 from typing import Any
 import logging
 import optuna
 
-# Import Agents ONLY - Strict Encapsulation
-from src.agents.linguist_agent import LinguistAgent
+# Import Models & Agents - Strict Encapsulation
+from src.models.neuro_symbolic import TCNAE
+from src.physics.traffic_loss import TrafficPhysicsLoss
 from src.agents.peak_classifier_agent import PeakClassifierAgent
 from src.utils.convergence_tracker import MarginalConvergenceTracker
 
@@ -36,34 +21,48 @@ class SemanticStrategies:
     Optimization Strategies for Semantic Agents (Language & Classification).
     
     Contains:
-    1. Linguist Strategy (NLP / Neuro-Symbolic)
+    1. Linguist Strategy (NLP / Neuro-Symbolic TCN-AE Reasoner)
     2. Classifier Strategy (Peak Detection via encapsulated TimesNet Agent)
     """
 
     @staticmethod
     def linguist_strategy(trial, data: Any, device: torch.device) -> float:
         """
-        Optimizes the Linguist Agent (DistilRoBERTa + TCN-AE + PINN).
-        Focuses on Reconstruction Loss of the physics/numeric signals (TCN-AE),
-        since the Semantic/Grammar Transformer is frozen during HPO.
+        Optimizes the Linguist Reasoner (TCN-AE + PINN).
+        Operates purely on semantic embeddings extracted from ModernBERT.
+        Decoupled from the frozen Transformer to achieve sub-second trial times.
         """
-        lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
+        # 1. Hyperparameters for the TCN-AE
+        lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+        latent_dim = trial.suggest_categorical("latent_dim", [32, 64, 128])
+        kernel_size = trial.suggest_categorical("kernel_size", [3, 5])
         
-        try:
-            agent = LinguistAgent(learning_rate=lr)
-            agent.to(device)
-        except Exception as e:
-            logger.error(f"[Linguist] Init Error: {e}")
-            raise e
-
-        # FIXED: Provide numeric signal data instead of strings.
-        # The LinguistAgent only trains the TCN-AE (physics) part.
-        if isinstance(data, (np.ndarray, torch.Tensor)):
-            train_data = data[:128] if len(data) > 128 else data 
+        # 2. Data Preparation: Ensure [Batch, HiddenSize, SeqLen] tensor
+        if torch.is_tensor(data) and data.dim() == 3:
+            embeddings = data.to(device)
+        elif isinstance(data, np.ndarray) and data.ndim == 3:
+            embeddings = torch.tensor(data, dtype=torch.float32, device=device)
         else:
-            # Fallback to a valid numerical dummy tensor if no real data is provided
-            train_data = np.random.randn(16, 1, 60).astype(np.float32)
+            # Fallback for synthetic/legacy data
+            embeddings = torch.randn(8, 768, 32, device=device)
+            
+        hidden_size = embeddings.shape[1]
 
+        # 3. Instantiate pure TCN-AE (Zero Transformer overhead during HPO)
+        try:
+            tcn = TCNAE(
+                hidden_size=hidden_size,
+                latent_dim=latent_dim,
+                kernel_size=kernel_size
+            ).to(device)
+            optimizer = torch.optim.Adam(tcn.parameters(), lr=lr)
+            criterion = nn.MSELoss()
+            physics_engine = TrafficPhysicsLoss(max_acceleration=10.0)
+        except Exception as e:
+            logger.error(f"[Linguist] TCN Init Error: {e}")
+            return float('inf')
+
+        # 4. Fast Dynamic Training Loop (Marginal Convergence + Pruning)
         try:
             tracker = MarginalConvergenceTracker(
                 min_epochs=3,
@@ -74,21 +73,34 @@ class SemanticStrategies:
             )
             
             for epoch in range(tracker.max_epochs):
-                loss = agent.train_step(train_data)
-                if not np.isfinite(loss):
+                optimizer.zero_grad()
+                reconstruction, latent, physics_states = tcn(embeddings)
+                
+                loss_recon = criterion(reconstruction, embeddings)
+                physics_residuals = physics_engine.compute_losses(physics_states)
+                loss_physics = physics_residuals.get("total_physics_loss", torch.tensor(0.0, device=device))
+                total_loss = loss_recon + 0.1 * loss_physics
+                
+                if not torch.isfinite(total_loss):
                     return float('inf')
-                if tracker.step(epoch, loss, model=agent.model):
+                    
+                total_loss.backward()
+                torch.nn.utils.clip_grad_norm_(tcn.parameters(), max_norm=1.0)
+                optimizer.step()
+                
+                loss_val = total_loss.item()
+                if tracker.step(epoch, loss_val, model=tcn):
                     break
             
             return tracker.best_loss
-
+            
         except optuna.TrialPruned:
             raise
         except Exception as e:
             logger.warning(f"[Linguist] Training failed: {e}")
             return float('inf')
         finally:
-            del agent
+            del tcn
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 

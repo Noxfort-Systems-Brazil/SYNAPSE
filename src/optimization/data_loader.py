@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/optimization/data_loader.py
-# Author: Gabriel Moraes
-# Date: 2026-02-15
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import gzip
 import torch
@@ -58,7 +41,7 @@ class DataLoader:
             # Read Raw Parquet
             df = pd.read_parquet(path)
             
-            # Select only numeric columns (ignore timestamps/metadata)
+            # Select only numeric columns (ignore timestamps/metadata and static spatial coords)
             df_numeric = df.select_dtypes(include=[np.number])
             
             # Fallback: If no numeric types detected, attempt forced coercion
@@ -67,6 +50,11 @@ class DataLoader:
                 for col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce')
                 df_numeric = df.select_dtypes(include=[np.number])
+
+            excluded_spatial = {"lat", "lon", "latitude", "longitude"}
+            non_spatial_cols = [c for c in df_numeric.columns if str(c).lower() not in excluded_spatial]
+            if non_spatial_cols:
+                df_numeric = df_numeric[non_spatial_cols]
 
             # Final Sanitization: Fill NaNs/Infs with 0.0
             clean_matrix = df_numeric.fillna(0.0).values.astype(np.float32)
