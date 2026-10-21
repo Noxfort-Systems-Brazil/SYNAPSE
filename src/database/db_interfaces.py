@@ -1,24 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/database/db_interfaces.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
-# Description: Abstract contracts and protocols for database connections,
-#              settings, and schema migrations adhering to SOLID principles.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Optional, Dict, Protocol, runtime_checkable
 
@@ -32,6 +13,11 @@ class IConnectionProvider(Protocol):
         """Returns the database dialect/type ('postgres')."""
         ...
 
+    @property
+    def is_connected(self) -> bool:
+        """Returns whether the connector is currently active and allowed to connect."""
+        ...
+
     def get_connection(self) -> Optional[Any]:
         """Provides an active database connection or None on failure."""
         ...
@@ -42,6 +28,14 @@ class IConnectionProvider(Protocol):
 
     def close(self) -> None:
         """Closes all underlying connections or connection pools."""
+        ...
+
+    def disconnect(self) -> None:
+        """Disconnects and disables active connections and pools."""
+        ...
+
+    def connect(self) -> None:
+        """Enables database connections."""
         ...
 
 

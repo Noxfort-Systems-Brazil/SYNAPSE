@@ -1,14 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# File: src/database/database_manager.py
-# Author: Gabriel Moraes
-# Date: 2026-09-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import logging
 from typing import Optional, List, Dict, Any, Generator
@@ -114,7 +105,7 @@ class DatabaseManager:
     # =========================================================================
 
     def ingest_golden_dataframe(self, df: pd.DataFrame, version: str = "v1") -> bool:
-        """Loads Golden Dataset na íntegra (zero data loss) via high-speed COPY."""
+        """Loads Golden Dataset fully intact (zero data loss) via high-speed COPY."""
         return self.golden_repo.ingest_dataframe(df, version=version)
 
     def get_golden_exact_reading(
@@ -251,7 +242,9 @@ class DatabaseManager:
 
     def stop(self):
         """Stops the telemetry background worker and releases database connection pool."""
-        if hasattr(self, 'telemetry_worker') and self.telemetry_worker:
-            self.telemetry_worker.stop()
-        if hasattr(self, 'engine') and self.engine:
-            self.engine.close()
+        tw = getattr(self, "telemetry_worker", None)
+        if tw:
+            tw.stop()
+        eng = getattr(self, "engine", None)
+        if eng:
+            eng.close()

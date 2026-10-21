@@ -1,23 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/database/db_settings_manager.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
-# Description: Dedicated manager for database and telemetry configuration I/O (settings.ini).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import logging
@@ -47,6 +29,17 @@ class DatabaseSettingsManager(ISettingsManager):
 
     def _reload_ini(self) -> None:
         """Reloads the INI configuration from disk if the file exists."""
+        if not os.path.exists(self.settings_path):
+            example_path = f"{self.settings_path}.example"
+            if os.path.exists(example_path):
+                try:
+                    import shutil
+                    os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+                    shutil.copyfile(example_path, self.settings_path)
+                    logger.info(f"[SETTINGS_MGR] Initialized {self.settings_path} from {example_path}")
+                except Exception as e:
+                    logger.warning(f"[SETTINGS_MGR] Failed copying {example_path} to {self.settings_path}: {e}")
+
         if os.path.exists(self.settings_path):
             try:
                 self.config_parser.read(self.settings_path, encoding="utf-8")
@@ -70,8 +63,8 @@ class DatabaseSettingsManager(ISettingsManager):
             "host": self._get_ini_val("DATABASE", "host", "db_host", fallback="localhost"),
             "port": int(self._get_ini_val("DATABASE", "port", "db_port", fallback="5432")),
             "user": self._get_ini_val("DATABASE", "user", "db_user", fallback="user_synapse"),
-            "password": self._get_ini_val("DATABASE", "password", "db_password", fallback="synapse123"),
-            "dbname": self._get_ini_val("DATABASE", "dbname", "db_name", fallback="banco_de_dados_noxfort"),
+            "password": self._get_ini_val("DATABASE", "password", "db_password", fallback=""),
+            "dbname": self._get_ini_val("DATABASE", "dbname", "db_name", fallback="synapse_db"),
             "schema": self._get_ini_val("DATABASE", "schema", "db_schema", fallback="schema_synapse"),
             "connected": self._get_ini_val("DATABASE", "connected", fallback="false").lower() in ("true", "1", "yes"),
             "setup_done": self._get_ini_val("DATABASE", "setup_done", fallback="false").lower() in ("true", "1", "yes"),
@@ -117,11 +110,14 @@ class DatabaseSettingsManager(ISettingsManager):
         host = self._get_ini_val("TELEMETRY", "host", fallback="localhost")
         port = int(self._get_ini_val("TELEMETRY", "port", fallback="1883"))
         connected = self._get_ini_val("TELEMETRY", "connected", fallback="false").lower() in ("true", "1", "yes")
+        is_http = str(ip).startswith("http://") or str(ip).startswith("https://") or "/api" in str(ip)
+        protocol = self._get_ini_val("TELEMETRY", "protocol", fallback="HTTP" if is_http else "MQTT")
         return {
             "ip": ip,
             "host": host,
             "port": port,
             "connected": connected,
+            "protocol": protocol,
         }
 
     def save_telemetry_settings(self, ip: str, host: str, port: int, connected: bool) -> None:
@@ -134,6 +130,8 @@ class DatabaseSettingsManager(ISettingsManager):
             self.config_parser.set("TELEMETRY", "host", str(host))
             self.config_parser.set("TELEMETRY", "port", str(port))
             self.config_parser.set("TELEMETRY", "connected", "true" if connected else "false")
+            is_http = str(ip).startswith("http://") or str(ip).startswith("https://") or "/api" in str(ip)
+            self.config_parser.set("TELEMETRY", "protocol", "HTTP" if is_http else "MQTT")
 
             os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
             with open(self.settings_path, "w", encoding="utf-8") as f:
@@ -142,3 +140,46 @@ class DatabaseSettingsManager(ISettingsManager):
         except Exception as e:
             logger.error(f"[SETTINGS_MGR] Failed to save telemetry settings: {e}")
             raise
+
+    def load_duckdns_settings(self) -> Dict[str, Any]:
+        """Loads DuckDNS and Caddy settings from config/settings.ini."""
+        self._reload_ini()
+        enabled = self._get_ini_val("DUCKDNS", "enabled", fallback="false").lower() in ("true", "1", "yes")
+        domain = self._get_ini_val("DUCKDNS", "domain", fallback="")
+        token = self._get_ini_val("DUCKDNS", "token", fallback="")
+        caddy_enabled = self._get_ini_val("DUCKDNS", "caddy_enabled", fallback="true").lower() in ("true", "1", "yes")
+        port = int(self._get_ini_val("DUCKDNS", "port", fallback="8081"))
+        https_port = int(self._get_ini_val("DUCKDNS", "https_port", fallback="443"))
+        refresh_min = int(self._get_ini_val("DUCKDNS", "refresh_interval_min", fallback="10"))
+
+        return {
+            "enabled": enabled,
+            "domain": domain,
+            "token": token,
+            "caddy_enabled": caddy_enabled,
+            "port": port,
+            "https_port": https_port,
+            "refresh_interval_min": refresh_min,
+        }
+
+    def save_duckdns_settings(self, config_dict: Dict[str, Any]) -> None:
+        """Saves DuckDNS and Caddy settings to config/settings.ini."""
+        try:
+            self._reload_ini()
+            if not self.config_parser.has_section("DUCKDNS"):
+                self.config_parser.add_section("DUCKDNS")
+
+            for k, v in config_dict.items():
+                if isinstance(v, bool):
+                    self.config_parser.set("DUCKDNS", k, "true" if v else "false")
+                else:
+                    self.config_parser.set("DUCKDNS", k, str(v))
+
+            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+            with open(self.settings_path, "w", encoding="utf-8") as f:
+                self.config_parser.write(f)
+            logger.info(f"[SETTINGS_MGR] DuckDNS settings saved to {self.settings_path}")
+        except Exception as e:
+            logger.error(f"[SETTINGS_MGR] Failed to save DuckDNS settings: {e}")
+            raise
+

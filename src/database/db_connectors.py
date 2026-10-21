@@ -1,23 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/database/db_connectors.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
-# Description: Concrete database connector (PostgreSQL) implementing IConnectionProvider (Strategy Pattern).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import logging
@@ -25,77 +7,9 @@ import threading
 from pathlib import Path
 from typing import Any, Optional, Dict
 from src.database.db_interfaces import IConnectionProvider, ISettingsManager
+from src.database.connection_pool_proxy import PooledConnectionProxy
 
 logger = logging.getLogger("Synapse.DatabaseConnectors")
-
-
-class PooledConnectionProxy:
-    """
-    Transparent proxy for a pooled psycopg2 connection.
-    Intercepts .close() to return the connection to ThreadedConnectionPool
-    instead of terminating the underlying TCP socket.
-    """
-
-    def __init__(self, pool: Any, conn: Any):
-        self._pool = pool
-        self._conn = conn
-        self._returned = False
-
-    @property
-    def closed(self) -> int:
-        if self._returned:
-            return 1
-        return getattr(self._conn, "closed", 0)
-
-    @property
-    def raw_connection(self) -> Any:
-        return self._conn
-
-    def close(self) -> None:
-        """Returns connection back to pool cleanly with transaction rollback reset."""
-        if not self._returned:
-            self._returned = True
-            if self._pool and self._conn:
-                try:
-                    is_broken = getattr(self._conn, "closed", 1) != 0
-                    if not is_broken:
-                        try:
-                            # Roll back any dirty transaction before returning to pool
-                            if not getattr(self._conn, "autocommit", False):
-                                self._conn.rollback()
-                        except Exception:
-                            is_broken = True
-                    self._pool.putconn(self._conn, close=is_broken)
-                except Exception as e:
-                    logger.debug(f"[PooledConnectionProxy] Error returning connection to pool: {e}")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            try:
-                self._conn.rollback()
-            except Exception:
-                pass
-        self.close()
-
-    @property
-    def autocommit(self) -> bool:
-        return getattr(self._conn, "autocommit", False)
-
-    @autocommit.setter
-    def autocommit(self, val: bool) -> None:
-        setattr(self._conn, "autocommit", val)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._conn, name)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name in ("_pool", "_conn", "_returned"):
-            super().__setattr__(name, value)
-        else:
-            setattr(self._conn, name, value)
 
 
 class PostgresConnector(IConnectionProvider):
@@ -110,13 +24,14 @@ class PostgresConnector(IConnectionProvider):
         host: str = "localhost",
         port: int = 5432,
         user: str = "user_synapse",
-        password: str = "synapse123",
-        dbname: str = "banco_de_dados_noxfort",
+        password: str = "",
+        dbname: str = "synapse_db",
         schema: str = "schema_synapse",
         connect_timeout: int = 5,
         min_connections: int = 1,
         max_connections: int = 20,
-        enable_pool: bool = True
+        enable_pool: bool = True,
+        connected: bool = True
     ):
         self.host = host
         self.port = int(port)
@@ -124,10 +39,26 @@ class PostgresConnector(IConnectionProvider):
         self.password = password
         self.dbname = dbname
         self.schema = schema
+
+        # Fallback to local settings.ini or env vars if credentials are not explicitly passed
+        if not self.password or self.dbname == "synapse_db":
+            try:
+                from src.database.db_settings_manager import DatabaseSettingsManager
+                ini_cfg = DatabaseSettingsManager().load_database_settings()
+                if not self.password:
+                    self.password = os.getenv("SYNAPSE_DB_PASSWORD") or ini_cfg.get("password", "")
+                if self.dbname == "synapse_db":
+                    self.dbname = os.getenv("SYNAPSE_DB_NAME") or ini_cfg.get("dbname", self.dbname)
+                if self.user == "user_synapse":
+                    self.user = os.getenv("SYNAPSE_DB_USER") or ini_cfg.get("user", self.user)
+            except Exception:
+                pass
+
         self.connect_timeout = connect_timeout
         self.min_connections = int(min_connections)
         self.max_connections = int(max_connections)
         self.enable_pool = enable_pool
+        self._connected = bool(connected)
         self._fatal_db_error = False
         self._pool: Optional[Any] = None
         self._pool_lock = threading.Lock()
@@ -136,8 +67,16 @@ class PostgresConnector(IConnectionProvider):
     def db_type(self) -> str:
         return "postgres"
 
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
+
+    @is_connected.setter
+    def is_connected(self, value: bool) -> None:
+        self._connected = bool(value)
+
     def _get_or_create_pool(self) -> Optional[Any]:
-        if not self.enable_pool or self._fatal_db_error:
+        if not self.is_connected or not self.enable_pool or self._fatal_db_error:
             return None
 
         if self._pool is not None:
@@ -174,7 +113,7 @@ class PostgresConnector(IConnectionProvider):
                 return None
 
     def get_connection(self) -> Optional[Any]:
-        if self._fatal_db_error:
+        if not self.is_connected or self._fatal_db_error:
             return None
 
         # 1. Attempt connection via pool
@@ -214,6 +153,16 @@ class PostgresConnector(IConnectionProvider):
         self._fatal_db_error = False
         self.close()
 
+    def disconnect(self) -> None:
+        """Disconnects and releases all connection resources."""
+        self.is_connected = False
+        self.close()
+
+    def connect(self) -> None:
+        """Enables connection attempts and resets error states."""
+        self.is_connected = True
+        self.reset_circuit_breaker()
+
     def close(self) -> None:
         """Closes all connections in the pool."""
         with self._pool_lock:
@@ -230,7 +179,7 @@ class PostgresConnector(IConnectionProvider):
 def create_connector(
     custom_config: Optional[Dict[str, Any]] = None,
     settings_mgr: Optional[ISettingsManager] = None,
-    db_name: str = "banco_de_dados_noxfort"
+    db_name: str = "synapse_db"
 ) -> IConnectionProvider:
     """
     Factory function producing the appropriate IConnectionProvider implementation.
@@ -252,8 +201,8 @@ def create_connector(
     host = custom.get("host") or custom.get("db_host") or os.getenv("SYNAPSE_DB_HOST") or ini_db.get("host", "localhost")
     port = int(custom.get("port") or custom.get("db_port") or os.getenv("SYNAPSE_DB_PORT") or ini_db.get("port", 5432))
     user = custom.get("user") or custom.get("db_user") or os.getenv("SYNAPSE_DB_USER") or ini_db.get("user", "user_synapse")
-    password = custom.get("password") or custom.get("db_password") or os.getenv("SYNAPSE_DB_PASSWORD") or ini_db.get("password", "synapse123")
-    dbname = custom.get("dbname") or custom.get("db_name") or os.getenv("SYNAPSE_DB_NAME") or ini_db.get("dbname", "banco_de_dados_noxfort")
+    password = custom.get("password") or custom.get("db_password") or os.getenv("SYNAPSE_DB_PASSWORD") or ini_db.get("password", "")
+    dbname = custom.get("dbname") or custom.get("db_name") or os.getenv("SYNAPSE_DB_NAME") or ini_db.get("dbname", "synapse_db")
     schema = custom.get("schema") or custom.get("db_schema") or os.getenv("SYNAPSE_DB_SCHEMA") or ini_db.get("schema", "schema_synapse")
 
     min_conn = int(custom.get("min_connections") or os.getenv("SYNAPSE_DB_POOL_MIN") or 1)
@@ -261,6 +210,17 @@ def create_connector(
     enable_pool = custom.get("enable_pool", True)
     if isinstance(enable_pool, str):
         enable_pool = enable_pool.lower() not in ("false", "0", "no")
+
+    connected_setting = custom.get("connected")
+    if connected_setting is not None:
+        if isinstance(connected_setting, str):
+            is_connected = connected_setting.lower() in ("true", "1", "yes")
+        else:
+            is_connected = bool(connected_setting)
+    elif custom_config:
+        is_connected = True
+    else:
+        is_connected = ini_db.get("connected", False)
 
     return PostgresConnector(
         host=host,
@@ -271,6 +231,7 @@ def create_connector(
         schema=schema,
         min_connections=min_conn,
         max_connections=max_conn,
-        enable_pool=enable_pool
+        enable_pool=enable_pool,
+        connected=is_connected
     )
 

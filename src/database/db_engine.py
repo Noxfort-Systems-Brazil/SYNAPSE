@@ -1,23 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/database/db_engine.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
-# Description: High-level database orchestrator and facade conforming to SOLID principles.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import logging
@@ -42,7 +24,7 @@ class DatabaseEngine:
 
     def __init__(
         self,
-        db_name: str = "banco_de_dados_noxfort",
+        db_name: str = "synapse_db",
         custom_config: Optional[Dict[str, Any]] = None,
         auto_init: bool = True,
         connector: Optional[IConnectionProvider] = None,
@@ -86,15 +68,11 @@ class DatabaseEngine:
 
     @property
     def db_name_pg(self) -> str:
-        if hasattr(self.connector, "dbname"):
-            return getattr(self.connector, "dbname")
-        return ""
+        return getattr(self.connector, "dbname", "")
 
     @property
     def db_schema(self) -> str:
-        if hasattr(self.connector, "schema"):
-            return getattr(self.connector, "schema")
-        return "public"
+        return getattr(self.connector, "schema", "public")
 
     @property
     def _fatal_db_error(self) -> bool:
@@ -102,21 +80,49 @@ class DatabaseEngine:
 
     @_fatal_db_error.setter
     def _fatal_db_error(self, value: bool) -> None:
-        if hasattr(self.connector, "_fatal_db_error"):
+        if getattr(self.connector, "_fatal_db_error", None) is not None:
             setattr(self.connector, "_fatal_db_error", value)
+
+    @property
+    def is_connected(self) -> bool:
+        """Indicates whether the database connector is currently active and allowed to connect."""
+        return getattr(self.connector, "is_connected", True)
 
     def get_connection(self) -> Optional[Any]:
         """Provides an active database connection via the configured connector."""
+        if not self.is_connected:
+            return None
         return self.connector.get_connection()
 
     def reset_circuit_breaker(self) -> None:
         """Resets the fatal error circuit breaker on the connector."""
         self.connector.reset_circuit_breaker()
 
+    def disconnect(self) -> None:
+        """Disconnects from the database, closes pools, and persists connected=false."""
+        disc_fn = getattr(self.connector, "disconnect", None) or getattr(self.connector, "close", None)
+        if callable(disc_fn):
+            disc_fn()
+        self.save_settings_to_ini({"connected": "false"})
+        logger.info("[DB_ENGINE] Database disconnected and connected=false persisted.")
+
+    def connect(self, config_dict: Optional[Dict[str, Any]] = None) -> bool:
+        """Enables database connectivity, updates settings, and initializes schema."""
+        if config_dict:
+            self.save_settings_to_ini(config_dict)
+        conn_fn = getattr(self.connector, "connect", None)
+        if callable(conn_fn):
+            conn_fn()
+        self.save_settings_to_ini({"connected": "true"})
+        self._initialize_db()
+        logger.info("[DB_ENGINE] Database connected and schema synchronized.")
+        return self.is_connected
+
     def close(self) -> None:
         """Closes all connections and releases connection pool resources."""
-        if hasattr(self.connector, "close"):
-            self.connector.close()
+        close_fn = getattr(self.connector, "close", None)
+        if callable(close_fn):
+            close_fn()
 
     def load_database_settings(self) -> Dict[str, Any]:
         """Delegates database settings retrieval to the settings manager."""
@@ -136,12 +142,14 @@ class DatabaseEngine:
 
     def _load_schema_config(self) -> Dict[str, Any]:
         """Helper to expose schema configuration for test inspection or monkeypatching."""
-        if hasattr(self.migrator, "_load_schema_config"):
-            return getattr(self.migrator, "_load_schema_config")()
-        return {}
+        load_fn = getattr(self.migrator, "_load_schema_config", None)
+        return load_fn() if callable(load_fn) else {}
 
     def _initialize_db(self) -> None:
         """Executes table creation, column migrations, and index generation."""
+        if not self.is_connected:
+            logger.info("[DB_ENGINE] Database is marked as disconnected (connected=false). Skipping schema initialization.")
+            return
         conn = self.get_connection()
         if not conn:
             return
