@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_offline_models.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import pytest
@@ -24,14 +7,15 @@ import torch
 
 from src.utils.model_paths import (
     get_model_vault_dir,
+    get_modernbert_path,
     get_distilroberta_path,
     get_distilroberta_v1_path,
     get_distilroberta_base_path,
     get_qwen_gguf_path,
 )
-from src.models.distilroberta import (
-    DistilRobertaEmbeddingModel,
-    DistilRobertaSemanticExtractor,
+from src.models.modernbert import (
+    ModernBertEmbeddingModel,
+    ModernBertSemanticExtractor,
 )
 from src.models.neuro_symbolic import NeuroSymbolicModel
 from src.pipeline.linguist_pipeline import LinguistPipeline
@@ -45,6 +29,10 @@ def test_model_vault_paths():
     vault_dir = get_model_vault_dir()
     assert os.path.exists(vault_dir)
     assert os.path.isdir(vault_dir)
+
+    modern_path = get_modernbert_path()
+    assert os.path.exists(modern_path)
+    assert os.path.isdir(modern_path)
 
     distil_path = get_distilroberta_path()
     assert os.path.exists(distil_path)
@@ -61,9 +49,9 @@ def test_model_vault_paths():
     assert gguf_path.endswith(".gguf")
 
 
-def test_distilroberta_embedding_model_offline():
-    emb_model = DistilRobertaEmbeddingModel()
-    assert emb_model.model_name == get_distilroberta_v1_path()
+def test_modernbert_embedding_model_offline():
+    emb_model = ModernBertEmbeddingModel()
+    assert emb_model.model_name == get_modernbert_path()
     
     # Check parameters are frozen
     for p in emb_model.transformer.parameters():
@@ -79,8 +67,8 @@ def test_distilroberta_embedding_model_offline():
     assert pytest.approx(norm.item(), abs=1e-4) == 1.0
 
 
-def test_distilroberta_semantic_extractor_offline():
-    extractor = DistilRobertaSemanticExtractor()
+def test_modernbert_semantic_extractor_offline():
+    extractor = ModernBertSemanticExtractor()
     concept, is_new = extractor.learn_and_map_semantics(["sensor de velocidade"])
     assert isinstance(concept, str)
     assert is_new is True
@@ -93,7 +81,7 @@ def test_distilroberta_semantic_extractor_offline():
 
 def test_neuro_symbolic_model_offline():
     model = NeuroSymbolicModel()
-    assert model.model_name == get_distilroberta_base_path()
+    assert model.model_name == get_modernbert_path()
     for p in model.transformer.parameters():
         assert p.requires_grad is False
 

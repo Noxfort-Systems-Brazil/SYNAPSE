@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_grpc_solid_architecture.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import asyncio
@@ -28,10 +11,10 @@ from src.interfaces.transport import (
     IHFTRecoveryManager,
     IHFTConnector,
 )
-from src.infrastructure.hft_grpc_client import HFTGrpcClient
-from src.infrastructure.hft_streamer import HFTStreamer
-from src.infrastructure.hft_recovery import HFTRecoveryManager
-from src.infrastructure.grpc_connector import GrpcConnector
+from src.hft.hft_grpc_client import HFTGrpcClient
+from src.hft.hft_streamer import HFTStreamer
+from src.hft.hft_recovery import HFTRecoveryManager
+from src.hft.grpc_connector import GrpcConnector
 
 
 def test_solid_protocol_conformance():

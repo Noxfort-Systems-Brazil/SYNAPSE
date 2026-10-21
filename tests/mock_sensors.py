@@ -1,28 +1,11 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/mock_sensors.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import sys
 import os
 import time
 
-# Permite importar do diretório raiz
+# Allow importing from root directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from PyQt6.QtWidgets import QApplication
@@ -37,11 +20,11 @@ def run_stress_test(num_sensors):
     
     print(f"[Stress Test] Registrando {num_sensors} sensores mock na pipeline (SourceType: API)...")
     for i in range(num_sensors):
-        # Registra sensores mock para que a engine, ingestores e otimizadores atuem sobre eles
+        # Register mock sensors so engine, ingestors and optimizers act upon them
         controller.project.add_data_source(f"Sensor_Mock_{i}", "API", f"mock://sensor_{i}")
         
     print("[Stress Test] Disparando start_online_operation()...")
-    # Isso inicia todas as funções: Ingestores, Motores de Inferência e Threads
+    # This starts all services: Ingestors, Inference Engines and Threads
     controller.system.start_online_operation()
     
     print("[Stress Test] Pipeline completamente engajada. Event loop ativo.")

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_phase_auto_progression.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 from pathlib import Path
@@ -80,17 +63,14 @@ def create_fake_phase1_artifacts(storage_mgr: StorageManager):
     with open(auditor_ckpt, "wb") as f:
         f.write(b"AUDITOR_CHECKPOINT")
 
+    linguist_ckpt = config_dir / "linguist_calibrated.json"
+    with open(linguist_ckpt, "w") as f:
+        f.write('{"schema_version": "1.0"}')
+
 
 def test_storage_manager_phase_detection(tmp_path):
     """Verifies that StorageManager accurately identifies Phase 0 and Phase 1 artifacts."""
-    sm = StorageManager()
-    # Override root to tmp_path
-    sm.project_root = tmp_path / "Synapse"
-    sm.checkpoint_dir = sm.project_root / "Checkpoint"
-    sm.datalake_dir = sm.project_root / "datalake"
-    sm.base_dir = sm.datalake_dir / "base"
-    sm.golden_dir = sm.datalake_dir / "golden"
-    sm._ensure_structure()
+    sm = StorageManager(project_root=str(tmp_path / "Synapse"), auto_restore=False)
 
     assert sm.has_phase0_artifacts() is False
     assert sm.has_phase1_artifacts() is False
@@ -106,13 +86,7 @@ def test_storage_manager_phase_detection(tmp_path):
 
 def test_system_controller_auto_phase_sync(tmp_path):
     """Tests that SystemController automatically synchronizes phase state based on storage."""
-    sm = StorageManager()
-    sm.project_root = tmp_path / "Synapse"
-    sm.checkpoint_dir = sm.project_root / "Checkpoint"
-    sm.datalake_dir = sm.project_root / "datalake"
-    sm.base_dir = sm.datalake_dir / "base"
-    sm.golden_dir = sm.datalake_dir / "golden"
-    sm._ensure_structure()
+    sm = StorageManager(project_root=str(tmp_path / "Synapse"), auto_restore=False)
 
     app_state = AppState()
     fenix = MagicMock()
@@ -144,13 +118,7 @@ def test_system_controller_auto_phase_sync(tmp_path):
 
 def test_system_controller_auto_jump_from_phase0_to_phase2(tmp_path):
     """Tests that if Phase 0 completes (or skips) and Phase 1 artifacts already exist, it jumps to Phase 2."""
-    sm = StorageManager()
-    sm.project_root = tmp_path / "Synapse"
-    sm.checkpoint_dir = sm.project_root / "Checkpoint"
-    sm.datalake_dir = sm.project_root / "datalake"
-    sm.base_dir = sm.datalake_dir / "base"
-    sm.golden_dir = sm.datalake_dir / "golden"
-    sm._ensure_structure()
+    sm = StorageManager(project_root=str(tmp_path / "Synapse"), auto_restore=False)
 
     create_fake_phase1_artifacts(sm)
 
@@ -220,13 +188,7 @@ def test_optimization_phase_intelligent_skip(tmp_path):
 
 def test_system_status_auto_sets_phase(tmp_path):
     """Verifies that SystemCommandHandler automatically reports IDLE_ONLINE based on disk artifacts on boot."""
-    sm = StorageManager()
-    sm.project_root = tmp_path / "Synapse"
-    sm.checkpoint_dir = sm.project_root / "Checkpoint"
-    sm.datalake_dir = sm.project_root / "datalake"
-    sm.base_dir = sm.datalake_dir / "base"
-    sm.golden_dir = sm.datalake_dir / "golden"
-    sm._ensure_structure()
+    sm = StorageManager(project_root=str(tmp_path / "Synapse"), auto_restore=False)
 
     create_fake_phase0_artifact(sm)
     create_fake_phase1_artifacts(sm)

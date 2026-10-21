@@ -1,16 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# File: tests/unit/test_database_optimization.py
-# Author: Gabriel Moraes
-# Date: 2026-09-05
-# Description: Unit tests for PostgreSQL connection pooling, streaming COPY,
-#              BRIN index verification, and TOAST external storage.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from src.database.db_connectors import PostgresConnector, PooledConnectionProxy
 from src.repositories.sensor_dictionary_repo import SensorDictionaryRepository

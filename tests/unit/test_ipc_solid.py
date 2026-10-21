@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_ipc_solid.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Unit Tests for IPC Subsystem (SOLID Architecture Verification).
@@ -129,16 +112,18 @@ def test_topology_serializer():
         MapNode(id="node_1", x=10.0, y=20.0, node_type="priority", real_name="Junction 1", tl_logic_id="tl_1")
     ]
     mock_state.get_all_edges.return_value = [
-        MapEdge(id="edge_1", from_node="node_1", to_node="node_2", shape=[[10.0, 20.0], [30.0, 40.0]])
+        MapEdge(id="edge_1", from_node="node_1", to_node="node_2", shape=[[10.0, 20.0], [30.0, 40.0]], real_name="Avenida Brasil")
     ]
 
     payload = TopologySerializer.serialize_topology(mock_state)
     assert payload["loaded"] is True
     assert len(payload["nodes"]) == 1
     assert payload["nodes"][0]["id"] == "node_1"
+    assert payload["nodes"][0]["name"] == "Junction 1"
     assert payload["nodes"][0]["is_tls"] is True
     assert len(payload["edges"]) == 1
     assert payload["edges"][0]["from"] == "node_1"
+    assert payload["edges"][0]["name"] == "Avenida Brasil"
 
 
 def test_ipc_event_bridge(qapp):

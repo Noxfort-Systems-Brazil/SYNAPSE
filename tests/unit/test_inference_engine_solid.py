@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_inference_engine_solid.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import numpy as np
@@ -162,3 +145,82 @@ def test_inference_engine_pure_orchestrator_flow():
     forecast_imputer.impute.assert_called_once()
     assert len(emitted_results) == 1
     assert "sensor_snapshot" in emitted_results[0]
+
+
+def test_inference_engine_dynamic_telemetry_and_qualities():
+    """Verifies that InferenceEngine computes dynamic sensor qualities and propagates live MLOps metrics."""
+    app_state = MagicMock()
+    graph_manager = MagicMock()
+    snapshot_builder = MagicMock()
+    processor = MagicMock()
+    gating_policy = MagicMock()
+    forecast_imputer = MagicMock()
+    ingestion = MagicMock()
+
+    # Active gating
+    gating_policy.evaluate.return_value = MagicMock(is_frozen=False, should_trigger_linguist=False)
+    snapshot_builder.gather_snapshot.return_value = {"N1": {"value": 10.0}, "N2": {"value": 12.0}}
+
+    # MLOps output from Fuser via Processor
+    processor.run_logic.return_value = ({
+        "forecast": [10.0, 12.0],
+        "fuser_loss": 0.015,
+        "fuser_drift": 0.025,
+        "alert_event": None
+    }, None)
+
+    # Topology and node states
+    node_n1 = MagicMock()
+    node_n1.state.last_loss = 0.005
+    node_n1.state.last_psi = 0.010
+    node_n2 = MagicMock()
+    node_n2.state.last_loss = 0.007
+    node_n2.state.last_psi = 0.014
+
+    graph_manager.nodes = {"N1": node_n1, "N2": node_n2}
+
+    # Data sources: 1 local camera on edge_1 (N1 -> N2), 1 global Waze speed, 1 global Waze flow
+    src_cam = MagicMock(id="src_cam", is_local=True, semantic_type="Vehicle Count", latest_value=1.0)
+    src_waze_spd = MagicMock(id="waze_spd", is_local=False, semantic_type="Vehicle Speed", latest_value=2.416) # ~8.7 km/h
+    src_waze_flw = MagicMock(id="waze_flw", is_local=False, semantic_type="Traffic Flow", latest_value=1.0)
+
+    app_state.get_all_data_sources.return_value = [src_cam, src_waze_spd, src_waze_flw]
+    app_state.get_elements_for_source.side_effect = lambda sid: ["edge_1"] if sid == "src_cam" else []
+
+    target_edge = MagicMock(id="edge_1", from_node="N1", to_node="N2", lanes=1, length=100.0, max_speed=13.89)
+    app_state.get_edge.side_effect = lambda eid: target_edge if eid == "edge_1" else None
+
+    engine = InferenceEngine(
+        app_state=app_state,
+        graph_manager=graph_manager,
+        snapshot_builder=snapshot_builder,
+        processor=processor,
+        gating_policy=gating_policy,
+        forecast_imputer=forecast_imputer,
+        ingestion=ingestion
+    )
+
+    emitted_results = []
+    engine.global_cycle_results.connect(lambda r: emitted_results.append(r))
+
+    engine.run_global_cycle()
+
+    assert len(emitted_results) == 1
+    res = emitted_results[0]
+
+    # Verify MLOps telemetry
+    assert res["fuser_loss"] == 0.015
+    assert res["fuser_drift"] == 0.025
+    assert res["loss"] == 0.015
+    assert res["drift"] == 0.025
+
+    # Verify local sensor dynamic loss and quality from connected nodes (0.005 + 0.007) / 2 = 0.006
+    assert abs(res["losses"]["src_cam"] - 0.006) < 1e-4
+    assert abs(res["drift_scores"]["src_cam"] - 0.012) < 1e-4
+    assert 90 <= res["qualities"]["src_cam"] <= 95
+
+    # Verify global sensors dynamic loss and quality
+    assert res["losses"]["waze_spd"] > 0.002
+    assert res["qualities"]["waze_spd"] > 50
+    assert res["losses"]["waze_flw"] > 0.002
+    assert res["qualities"]["waze_flw"] > 50

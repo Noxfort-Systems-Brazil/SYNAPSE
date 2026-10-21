@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_physics_engine.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -44,7 +27,7 @@ from src.models.pino_traffic import PINOTrafficFlow1D
 from src.models.pi_dvae_tcn import PIDVAETCN
 from src.models.wavelet_ae_occ import WaveletAEOCC
 from src.models.neuro_symbolic import NeuroSymbolicModel
-from src.models.distilroberta import DistilRobertaSemanticExtractor
+from src.models.modernbert import ModernBertSemanticExtractor
 
 
 class TestFundamentalDiagrams:
@@ -145,6 +128,86 @@ class TestContinuumConservation:
         
         loss = conservation.compute_residual(flow, edge_index)
         assert loss.item() == 0.0
+
+    def test_spatial_graph_conservation_bifurcation(self):
+        """Verifies 1000 veh/h splitting into 500 + 500 is not penalized (Kirchhoff Law)."""
+        conservation = SpatialGraphConservation()
+        # Node 0 (source: 1000), Node 1 (junction: 1000), Node 2 (branch A: 500), Node 3 (branch B: 500)
+        # Edges: 0 -> 1 (1000), 1 -> 2 (500), 1 -> 3 (500)
+        edge_index = torch.tensor([[0, 1, 1], [1, 2, 3]], dtype=torch.long)
+        flow = torch.tensor([[[1000.0], [1000.0], [500.0], [500.0]]])
+
+        loss = conservation.compute_residual(flow, edge_index)
+        assert loss.item() == pytest.approx(0.0, abs=1e-5)
+
+    def test_spatial_graph_conservation_convergence(self):
+        """Verifies 400 + 600 merging into 1000 veh/h is physically conserved with zero penalty."""
+        conservation = SpatialGraphConservation()
+        # Node 0 (400), Node 1 (600), Node 2 (junction: 1000), Node 3 (sink: 1000)
+        # Edges: 0 -> 2 (400), 1 -> 2 (600), 2 -> 3 (1000)
+        edge_index = torch.tensor([[0, 1, 2], [2, 2, 3]], dtype=torch.long)
+        flow = torch.tensor([[[400.0], [600.0], [1000.0], [1000.0]]])
+
+        loss = conservation.compute_residual(flow, edge_index)
+        assert loss.item() == pytest.approx(0.0, abs=1e-5)
+
+    def test_spatial_graph_conservation_violation_penalty(self):
+        """Verifies unphysical loss of flow at junction (1000 in -> 700 out) is strictly penalized."""
+        conservation = SpatialGraphConservation()
+        edge_index = torch.tensor([[0, 1, 1], [1, 2, 3]], dtype=torch.long)
+        # Inflow to junction 1 is 1000, but predicted outflow at junction 1 is 700 (missing 300 veh/h)
+        flow = torch.tensor([[[1000.0], [700.0], [500.0], [200.0]]])
+
+        loss = conservation.compute_residual(flow, edge_index)
+        assert loss.item() > 0.0
+        # Junction 1 has in=1000, out=700 -> discrepancy 300
+        assert loss.item() == pytest.approx(300.0, rel=1e-3)
+
+        # Also verifies direct edge flow violation penalty (edge 0 has 1000, edges 1 & 2 sum to 700)
+        edge_flow = torch.tensor([[[1000.0], [500.0], [200.0]]])
+        loss_edge = conservation.compute_residual(flow, edge_index, edge_flow=edge_flow)
+        assert loss_edge.item() == pytest.approx(300.0, rel=1e-3)
+
+    def test_spatial_graph_conservation_direct_edge_flow(self):
+        """Verifies evaluation when edge flows are supplied directly."""
+        conservation = SpatialGraphConservation()
+        edge_index = torch.tensor([[0, 1, 1], [1, 2, 3]], dtype=torch.long)
+        # 3 edges: 0->1 (1000), 1->2 (500), 1->3 (500)
+        edge_flow = torch.tensor([[[1000.0], [500.0], [500.0]]])
+        flow = torch.zeros(1, 4, 1)
+
+        loss = conservation.compute_residual(flow, edge_index, edge_flow=edge_flow)
+        assert loss.item() == pytest.approx(0.0, abs=1e-5)
+
+    def test_spatial_graph_conservation_boundary_tolerance(self):
+        """Verifies boundary tolerance slacks boundary imbalances."""
+        conservation = SpatialGraphConservation(boundary_tolerance=50.0)
+        # Simple graph: 0 -> 1 with flow 100
+        edge_index = torch.tensor([[0], [1]], dtype=torch.long)
+        flow = torch.tensor([[[100.0], [100.0]]])
+
+        # Imbalance at boundary is 100. Slack is 50. Penalty per boundary node = 50
+        loss = conservation.compute_residual(flow, edge_index)
+        assert loss.item() == pytest.approx(50.0, rel=1e-3)
+
+    def test_spatial_graph_conservation_permeability_slack(self):
+        """Verifies internal node permeability slack absorbs trip arrivals/destinations without penalty."""
+        # 0 -> 1 -> 2 (Node 1 is internal junction)
+        # Inflow to node 1 is 500, outflow is 450 (50 vehicles parked / reached destination)
+        edge_index = torch.tensor([[0, 1], [1, 2]], dtype=torch.long)
+        flow = torch.tensor([[[500.0], [450.0], [450.0]]])
+        
+        # With zero slack, penalty is 50.0
+        conservation_strict = SpatialGraphConservation(permeability_slack=0.0)
+        assert conservation_strict.compute_residual(flow, edge_index).item() == pytest.approx(50.0, rel=1e-3)
+        
+        # With slack of 50.0, penalty is zero!
+        conservation_porous = SpatialGraphConservation(permeability_slack=50.0)
+        assert conservation_porous.compute_residual(flow, edge_index).item() == pytest.approx(0.0, abs=1e-5)
+
+        # With slack of 30.0, penalty is only the excess (20.0)
+        conservation_partial = SpatialGraphConservation(permeability_slack=30.0)
+        assert conservation_partial.compute_residual(flow, edge_index).item() == pytest.approx(20.0, rel=1e-3)
 
 
 class TestTrafficPhysicsLossEngine:

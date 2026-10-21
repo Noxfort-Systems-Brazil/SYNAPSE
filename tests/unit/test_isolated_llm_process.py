@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: tests/unit/test_isolated_llm_process.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import time
@@ -74,3 +70,52 @@ def test_isolated_jurist_manager_lifecycle():
     assert manager._parent_conn is None
     assert manager._process is None
     assert manager.is_alive is False
+
+
+def test_isolated_jurist_manager_connection_reset_handling():
+    manager = IsolatedJuristManager(model_id="test_model.gguf", command_timeout=2.0)
+    mock_conn = MagicMock()
+    mock_conn.poll.return_value = True
+    mock_conn.recv.side_effect = ConnectionResetError(104, "Connection reset by peer")
+
+    manager._parent_conn = mock_conn
+    mock_proc = MagicMock()
+    mock_proc.is_alive.return_value = True
+    manager._process = mock_proc
+
+    report = manager.generate_report(tensor_data={"f": 1.0}, auto_unload=True)
+    assert "Erro: Inferência da LLM em processo isolado falhou" in report
+    assert "IPC Pipe broken" in report or "Connection reset" in report
+    # Ensure manager cleaned up
+    assert manager._parent_conn is None
+    assert manager._process is None
+
+
+def test_isolated_jurist_manager_concurrency():
+    import concurrent.futures
+
+    manager = IsolatedJuristManager(model_id="test_model.gguf", command_timeout=5.0)
+
+    results = []
+
+    def fake_send_command(cmd, payload=None, timeout=None):
+        time.sleep(0.05)
+        return f"Report for {payload.get('target', 'unknown')}"
+
+    with patch.object(manager, "send_command", side_effect=fake_send_command):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futs = [
+                executor.submit(
+                    manager.generate_report,
+                    tensor_data={"val": i},
+                    target=f"Target_{i}",
+                    auto_unload=True,
+                )
+                for i in range(5)
+            ]
+            for f in concurrent.futures.as_completed(futs):
+                results.append(f.result())
+
+    assert len(results) == 5
+    for i in range(5):
+        assert any(f"Report for Target_{i}" in r for r in results)

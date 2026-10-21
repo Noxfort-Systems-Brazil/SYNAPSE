@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_xai_solid_architecture.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -258,3 +241,41 @@ def test_xai_worker_facade_orchestration(qapp):
 
     worker.unload_resources()
     mock_reporter.unload_resources.assert_called_once()
+
+
+def test_xai_worker_deduplicates_running_tasks(qapp):
+    """
+    Verifies that XAIWorker ignores duplicate requests when an identical
+    task is already running.
+    """
+    mock_explainer = MagicMock(spec=IXAIExplainer)
+    mock_reporter = MagicMock(spec=IXAIReporter)
+
+    worker = XAIWorker(
+        model_config={"feature_dim": 3},
+        explainer=mock_explainer,
+        reporter=mock_reporter,
+        device=torch.device("cpu")
+    )
+
+    # Submit first request
+    worker.submit_request(
+        target_type="tcn",
+        input_vector=[1.0, 2.0],
+        feature_names=["f1", "f2"]
+    )
+    assert len(worker._active_tasks) == 1
+
+    # Immediately submit identical second request while first is running
+    worker.submit_request(
+        target_type="tcn",
+        input_vector=[1.0, 2.0],
+        feature_names=["f1", "f2"]
+    )
+    # Should still be 1 (duplicate skipped)
+    assert len(worker._active_tasks) == 1
+
+    # Wait for completion
+    worker._active_tasks[0].wait(2000)
+    qapp.processEvents()
+

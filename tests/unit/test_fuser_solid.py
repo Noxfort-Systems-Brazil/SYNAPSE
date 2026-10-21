@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_fuser_solid.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -61,6 +44,14 @@ def test_fuser_agent_pure_orchestrator_dependency_injection():
     np.testing.assert_allclose(result, 43.0)
     assert mock_pipeline.execute.called
     assert mock_calibrator.apply.called
+
+    # Verify MLOps Telemetry is computed directly by Fuser Agent
+    assert orchestrator.last_loss > 0.0
+    assert orchestrator.last_psi > 0.0
+    metrics = orchestrator.get_mlops_metrics()
+    assert "loss" in metrics and "drift" in metrics
+    assert metrics["loss"] == orchestrator.last_loss
+    assert metrics["drift"] == orchestrator.last_psi
 
 
 def test_fusion_pipeline_execution():

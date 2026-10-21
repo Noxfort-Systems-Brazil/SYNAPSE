@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_graph_blocks_and_utils.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -143,3 +126,41 @@ def test_diffusion_gatv2_satisfies_contract():
     """Verify DiffusionGATv2 implements IGraphDiffusionModel domain protocol."""
     model = DiffusionGATv2(num_nodes=5, in_channels=16, hidden_channels=32, out_channels=16)
     assert isinstance(model, IGraphDiffusionModel)
+
+
+def test_compute_random_walk_transition_matrices_damping():
+    """Verify damping factor attenuates transition probabilities for permeability."""
+    num_nodes = 4
+    edge_index = torch.tensor([[0, 1, 2], [1, 2, 3]], dtype=torch.long)
+    damping = 0.85
+    
+    p_f, p_b = compute_random_walk_transition_matrices(num_nodes, edge_index, damping_factor=damping)
+    assert torch.isclose(p_f[0, 1], torch.tensor(0.85))
+    assert torch.isclose(p_b[1, 0], torch.tensor(0.85))
+
+
+def test_diffusion_gatv2_forward_with_edge_attr_and_mask():
+    """Verify DiffusionGATv2 runs GATv2 attention, diffuses, and preserves anchors."""
+    num_nodes = 4
+    in_channels = 16
+    out_channels = 16
+    model = DiffusionGATv2(
+        num_nodes=num_nodes,
+        in_channels=in_channels,
+        hidden_channels=32,
+        out_channels=out_channels,
+        gat_heads=2,
+        damping_factor=0.9
+    )
+    
+    x = torch.randn(1, num_nodes, in_channels)
+    edge_index = torch.tensor([[0, 1, 2], [1, 2, 3]], dtype=torch.long)
+    edge_attr = torch.tensor([[0.9], [0.5], [0.2]])  # conductance from hierarchy
+    obs_mask = torch.tensor([1.0, 0.0, 1.0, 0.0])   # nodes 0 and 2 are active sensors
+    
+    out, adp = model(x, edge_index, observability_mask=obs_mask, edge_attr=edge_attr)
+    assert out.shape == (1, num_nodes, out_channels)
+    assert adp.shape == (num_nodes, num_nodes)
+    # Check that output values are finite
+    assert torch.isfinite(out).all()
+

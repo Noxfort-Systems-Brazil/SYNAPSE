@@ -29,12 +29,14 @@ tests/
 │   ├── test_amp_tensorcore.py # Mixed precision & TF32 acceleration
 │   ├── test_app_state_solid.py# Domain facade thread safety & state
 │   ├── test_corrector_pinn.py # Physics-informed loss & autoencoder
+│   ├── test_dynamic_telemetry_fusion.py # Multi-jam unpacking, 8-hop fusion, hierarchy hydrodynamics & alias routing
 │   ├── test_fuser_deeponet.py # DeepONet operator convergence
 │   ├── test_fuser_diffusion_pinn.py # PINO & GATv2 spatial diffusion
 │   ├── test_grpc_solid_architecture.py # HFT-Link client & serializer
+│   ├── test_ingestion_adapters_architecture.py # IngestionHub, GoPushAdapter & canonical ID routing
 │   ├── test_ipc_solid.py      # StdioDaemon JSON-RPC protocol
 │   ├── test_kse_filter.py     # Extended Kalman Filter & dead reckoning
-│   ├── test_linguist_pinn.py  # NeuroSymbolic gatekeeper & DistilRoBERTa
+│   ├── test_linguist_pinn.py  # NeuroSymbolic gatekeeper & ModernBERT
 │   └── test_physics_pinn.py   # LWR continuum conservation equations
 ├── integration/               # End-to-end integration tests
 │   ├── test_global_cycle.py   # Full ADAGIO cycle with mock sensors
@@ -114,7 +116,9 @@ python tests/mock_sensors.py 25
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Testing & QA — Noxfort Systems Reliability Engineering</sub><br/>
-  <sub><a href="#synapse-testing--quality-assurance-suite">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

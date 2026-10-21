@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_slm_on_demand.py
-# Author: Gabriel Moraes
-# Date: 2026-09-03
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
@@ -25,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from src.slm.device_manager import SLMDeviceManager
 from src.slm.output_sanitizer import SLMOutputSanitizer
 from src.slm.prompt_builder import SLMPromptBuilder
+from src.pipeline.jurist_pipeline import JuristPipeline
 from src.agents.jurist_agent import JuristAgent
 from src.services.xai_reporter_service import XAIReporterService
 
@@ -96,7 +80,8 @@ def test_slm_device_manager():
 
 def test_jurist_agent_on_demand_lifecycle():
     """Verifies that JuristAgent loads on-demand and unloads cleanly via JuristPipeline."""
-    jurist = JuristAgent()
+    pipeline = JuristPipeline(isolated=False)
+    jurist = JuristAgent(pipeline=pipeline)
     assert jurist.is_loaded is False
     assert jurist.pipeline.model is None
 

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_map_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-30
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import gzip
 import os
@@ -34,15 +17,16 @@ SAMPLE_NET_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <net version="1.16" junctionCornerDetail="5" limitTurnSpeed="5.50" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <location netOffset="0.00,0.00" convBoundary="0.00,0.00,200.00,200.00" origBoundary="0.00,0.00,200.00,200.00" projParameter="!"/>
 
-    <edge id="edge_1" from="node_1" to="node_2" priority="-1">
+    <edge id="edge_1" from="node_1" to="node_2" priority="-1" name="Avenida Paulista">
         <lane id="edge_1_0" index="0" speed="13.89" length="100.00" shape="0.00,0.00 100.00,0.00"/>
     </edge>
     <edge id="edge_2" from="node_2" to="node_3" priority="-1">
+        <param key="name" value="Rua Augusta"/>
         <lane id="edge_2_0" index="0" speed="13.89" length="100.00" shape="100.00,0.00 200.00,0.00"/>
     </edge>
 
     <junction id="node_1" type="dead_end" x="0.00" y="0.00" incLanes="" intLanes="" shape="0.00,0.00 0.00,3.20"/>
-    <junction id="node_2" type="traffic_light" x="100.00" y="0.00" incLanes="edge_1_0" intLanes="" shape="100.00,3.20 100.00,0.00" tl="TLS_1"/>
+    <junction id="node_2" type="traffic_light" x="100.00" y="0.00" incLanes="edge_1_0" intLanes="" shape="100.00,3.20 100.00,0.00" tl="TLS_1" name="Cruzamento Central"/>
     <junction id="node_3" type="priority" x="200.00" y="0.00" incLanes="edge_2_0" intLanes="" shape="200.00,3.20 200.00,0.00"/>
 </net>
 """
@@ -77,12 +61,17 @@ def test_load_network_plain_xml(sample_xml_file):
     assert n2.y == 0.0
     assert n2.node_type == "traffic_light"
     assert n2.tl_logic_id == "TLS_1"
+    assert n2.real_name == "Cruzamento Central"
 
     # Check edge properties
     e1 = next(e for e in service.edges if e.id == "edge_1")
     assert e1.from_node == "node_1"
     assert e1.to_node == "node_2"
     assert e1.length == 100.0
+    assert e1.real_name == "Avenida Paulista"
+
+    e2 = next(e for e in service.edges if e.id == "edge_2")
+    assert e2.real_name == "Rua Augusta"
 
 
 def test_load_network_gzip_compressed(sample_gz_file):
@@ -92,6 +81,14 @@ def test_load_network_gzip_compressed(sample_gz_file):
     assert len(service.nodes) == 3
     assert len(service.edges) == 2
     assert service.last_error is None
+
+    # Verify street names in gzip compressed network
+    e1 = next(e for e in service.edges if e.id == "edge_1")
+    assert e1.real_name == "Avenida Paulista"
+    e2 = next(e for e in service.edges if e.id == "edge_2")
+    assert e2.real_name == "Rua Augusta"
+    n2 = service._node_lookup["node_2"]
+    assert n2.real_name == "Cruzamento Central"
 
 
 def test_load_network_gzip_extension_fallback(tmp_path):

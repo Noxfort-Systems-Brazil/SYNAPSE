@@ -1,34 +1,18 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_pino_traffic.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
 import time
 import numpy as np
 
-from src.models.pino_traffic import (
+from src.blocks.spectral_blocks import (
     SpectralConv1d,
     SpectralConv2d,
-    PINOTrafficFlow1D,
-    SpectralFeatureExtractor
+    GraphLaplacianSpectralConv,
 )
+from src.blocks.feature_blocks import SpectralFeatureBlock, SpectralFeatureExtractor
+from src.models.pino_traffic import PINOTrafficFlow1D
 
 
 def test_spectral_conv1d_forward():
@@ -112,3 +96,125 @@ def test_spectral_feature_extractor():
 
     assert out.shape == (batch_size, seq_len, enc_in)
     assert torch.isfinite(out).all()
+
+
+def test_graph_laplacian_spectral_conv_forward():
+    """Verifies GraphLaplacianSpectralConv operates on graph topologies."""
+    num_nodes = 5
+    in_channels = 16
+    out_channels = 32
+    edge_index = torch.tensor([[0, 1, 2, 3], [1, 2, 3, 4]], dtype=torch.long)
+
+    conv = GraphLaplacianSpectralConv(in_channels=in_channels, out_channels=out_channels, K=3)
+    x = torch.randn(2, num_nodes, in_channels)
+
+    out = conv(x, edge_index=edge_index)
+    assert out.shape == (2, num_nodes, out_channels)
+    assert torch.isfinite(out).all()
+
+
+def test_graph_laplacian_spectral_conv_permutation_equivariance():
+    """
+    Verifies that Graph Laplacian spectral convolution is strictly permutation-equivariant.
+    Renumbering graph nodes permutes the output identically, preserving physical spatial meaning.
+    """
+    torch.manual_seed(42)
+    num_nodes = 5
+    channels = 8
+    # Directed line graph: 0 -> 1 -> 2 -> 3 -> 4
+    edge_index = torch.tensor([[0, 1, 2, 3], [1, 2, 3, 4]], dtype=torch.long)
+    conv = GraphLaplacianSpectralConv(in_channels=channels, out_channels=channels, K=3)
+    conv.eval()
+
+    x = torch.randn(1, num_nodes, channels)
+
+    # Original forward
+    with torch.no_grad():
+        out_orig = conv(x, edge_index=edge_index)
+
+    # Permute node indices (e.g. 0->4, 1->2, 2->0, 3->3, 4->1)
+    perm = torch.tensor([4, 2, 0, 3, 1], dtype=torch.long)
+    inv_perm = torch.empty_like(perm)
+    inv_perm[perm] = torch.arange(num_nodes)
+
+    x_perm = x[:, perm, :]
+    # Permute edge index endpoints: old node u maps to new node inv_perm[u]
+    edge_index_perm = inv_perm[edge_index]
+
+    with torch.no_grad():
+        out_perm = conv(x_perm, edge_index=edge_index_perm)
+
+    # The un-permuted out_perm should match out_orig
+    out_recovered = out_perm[:, inv_perm, :]
+    assert torch.allclose(out_orig, out_recovered, atol=1e-5), "Graph Laplacian convolution must be permutation equivariant"
+
+
+def test_pino_corridor_lwr_pde_conservation():
+    """
+    Verifies PINO computes true LWR PDE residual (dk/dt + dq/dx) along a 1D roadway corridor.
+    """
+    in_dim = 16
+    pino = PINOTrafficFlow1D(in_channels=in_dim, hidden_dim=32, modes=8, operator_mode="corridor")
+    num_cells = 20
+    x = torch.randn(2, num_cells, in_dim)
+
+    # Synthetic consecutive states for density
+    k_current = torch.rand(2, num_cells, 1) * 30.0
+    # Simulate a downstream shockwave (k_next > k_current)
+    k_next = k_current + torch.randn_like(k_current) * 2.0
+
+    refined, metrics = pino(x, edge_index=None, dt=1.0, dx=100.0, k_next=k_next)
+
+    assert refined.shape == (2, num_cells, in_dim)
+    assert "physics_residual" in metrics
+    assert "res_flow" in metrics
+    assert metrics["physics_residual"].item() > 0.0
+
+
+def test_pino_graph_laplacian_operator_mode():
+    """
+    Verifies PINO in graph mode executes GraphLaplacianSpectralConv across arbitrary connectivity.
+    """
+    in_dim = 16
+    pino = PINOTrafficFlow1D(in_channels=in_dim, hidden_dim=32, cheb_k=3, operator_mode="graph")
+    num_nodes = 6
+    x = torch.randn(1, num_nodes, in_dim)
+    # Bifurcation topology: 0 -> 1, 1 -> 2, 1 -> 3, 2 -> 4, 3 -> 5
+    edge_index = torch.tensor([[0, 1, 1, 2, 3], [1, 2, 3, 4, 5]], dtype=torch.long)
+
+    refined, metrics = pino(x, edge_index=edge_index)
+    assert refined.shape == (1, num_nodes, in_dim)
+    assert "physics_residual" in metrics
+    assert "res_conservation" in metrics
+    assert torch.isfinite(metrics["physics_residual"])
+
+
+def test_pino_corridor_no_silent_stationary_assumption():
+    """
+    Verifies that in corridor mode without k_next/k_prev, PINOTrafficResidualEngine
+    does NOT silently assume dk/dt = 0 (stationary flow), and only activates LWR PDE
+    when temporal states (k_next/k_prev) or assume_stationary=True are provided.
+    """
+    in_dim = 16
+    pino = PINOTrafficFlow1D(in_channels=in_dim, hidden_dim=32, modes=8, operator_mode="corridor")
+    x = torch.randn(2, 10, in_dim)
+
+    # 1. Without k_next/k_prev and assume_stationary=False (default)
+    _, metrics_default = pino(x, edge_index=None, dt=1.0, dx=50.0)
+    assert metrics_default["temporal_continuity_active"] is False
+    assert metrics_default["res_lwr_pde"].item() == 0.0
+    assert torch.allclose(metrics_default["physics_residual"], metrics_default["res_flow"])
+
+    # 2. With both k_prev and k_next (centered finite difference)
+    k_prev = torch.rand(2, 10, 1) * 20.0
+    k_next = k_prev + 5.0
+    _, metrics_temporal = pino(x, edge_index=None, dt=1.0, dx=50.0, k_prev=k_prev, k_next=k_next)
+    assert metrics_temporal["temporal_continuity_active"] is True
+    assert metrics_temporal["res_lwr_pde"].item() > 0.0
+
+    # 3. With explicit assume_stationary=True
+    _, metrics_stationary = pino(x, edge_index=None, dt=1.0, dx=50.0, assume_stationary=True)
+    assert metrics_stationary["temporal_continuity_active"] is True
+    assert metrics_stationary["res_lwr_pde"].item() >= 0.0
+
+

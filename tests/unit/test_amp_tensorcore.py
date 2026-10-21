@@ -1,29 +1,13 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: tests/unit/test_amp_tensorcore.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import pytest
 import torch
 import numpy as np
 
 from src.models.pi_dvae_tcn import PIDVAETCN
-from src.models.pino_traffic import PINOTrafficFlow1D, SpectralFeatureExtractor
+from src.models.pino_traffic import PINOTrafficFlow1D
+from src.blocks.feature_blocks import SpectralFeatureExtractor
 from src.models.neuro_symbolic import NeuroSymbolicModel
 from src.models.itransformer import iTransformer
 from src.models.itransformer_lite import iTransformerLite
@@ -43,11 +27,14 @@ from src.utils.batch_inference import BatchInferenceEngine
 
 
 def test_tf32_flags_enabled():
-    """Verifies that TF32 is allowed for matmul and cuDNN when CUDA is available."""
-    import src  # Loads global __init__.py configuration
+    """Verifies that TF32 and cuDNN benchmark are enabled when CUDA is available."""
+    from src.utils.hardware import configure_hardware_acceleration
+
+    configure_hardware_acceleration()
     if torch.cuda.is_available():
         assert torch.backends.cuda.matmul.allow_tf32 is True
         assert torch.backends.cudnn.allow_tf32 is True
+        assert torch.backends.cudnn.benchmark is True
 
 
 def test_corrector_agent_amp_train_and_inference():
@@ -160,3 +147,38 @@ def test_peak_classifier_agent_amp_train_step():
     assert isinstance(loss, float)
     assert not np.isnan(loss)
     assert not np.isinf(loss)
+
+
+def test_compass_pipeline_amp():
+    """Verifies CompassPipeline runs directional semantic scoring with AMP."""
+    from src.pipeline.compass_pipeline import CompassPipeline
+    from src.domain.entities import DataSource, MapEdge
+
+    pipeline = CompassPipeline()
+    edge_a = MapEdge(
+        id="edge_1",
+        from_node="A",
+        to_node="B",
+        shape=[(0.0, 0.0), (100.0, 0.0)],
+        real_name="Avenida Central Sentido Centro"
+    )
+    edge_b = MapEdge(
+        id="edge_2",
+        from_node="B",
+        to_node="A",
+        shape=[(100.0, 0.0), (0.0, 0.0)],
+        real_name="Avenida Central Sentido Bairro"
+    )
+    source = DataSource(
+        id="radar_01",
+        name="Radar Av Central Centro",
+        connection_string="192.168.1.100"
+    )
+
+    result = pipeline.orient_and_reconcile(
+        source=source,
+        candidate_edges=[edge_a, edge_b]
+    )
+    assert "orientation" in result
+    assert result["primary_edge_id"] in ("edge_1", "edge_2")
+    assert result["confidence"] > 0.0
