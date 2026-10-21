@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/types/sensors.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 export type SourceStatusType = 
   | 'Active' 
@@ -36,6 +19,7 @@ export interface BaseDataSource {
   latest_value?: number | string | null;
   quarantine_count?: number;
   associated_element?: string;
+  associated_element_name?: string | null;
   source_type?: string;
   connection_string?: string;
 }
@@ -73,3 +57,36 @@ export interface EngineDataPayload {
   sensor_snapshot?: Record<string, any>;
   source_values?: Record<string, number>;
 }
+
+export interface BatchPreviewItem {
+  line: number;
+  name: string;
+  location: string;
+  resolved_type: 'NODE' | 'EDGE' | 'UNKNOWN' | 'INVALID';
+  error?: string | null;
+}
+
+export interface BatchPreviewResult {
+  total: number;
+  valid_count: number;
+  error_count: number;
+  parse_errors?: string[];
+  items: BatchPreviewItem[];
+}
+
+export interface BatchExportItem {
+  id: string;
+  name: string;
+  location: string;
+  resolved_type: string;
+  push_url: string;
+}
+
+export interface BatchImportResult {
+  success: boolean;
+  message?: string;
+  imported_count: number;
+  items: BatchExportItem[];
+  errors?: string[];
+}
+

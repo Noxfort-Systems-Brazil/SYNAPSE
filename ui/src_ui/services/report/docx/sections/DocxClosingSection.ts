@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/report/docx/sections/DocxClosingSection.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-02
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { Paragraph, TextRun, AlignmentType } from 'docx';
 import { OfficialReportData } from '../../../../types/report';
@@ -49,7 +32,7 @@ export class DocxClosingSection {
 
       new Paragraph({ spacing: { before: 200 } }),
 
-      // Linha de Assinatura Centralizada (Padrão Carina)
+      // Centralized Signature Line (Carina Standard)
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 200, after: 40 },
@@ -104,7 +87,7 @@ export class DocxClosingSection {
         spacing: { after: 240 },
         children: [
           new TextRun({
-            text: `Este laudo foi gerado de forma determinística pelo motor de auditoria semafórica SYNAPSE Core v2.0 Enterprise (Certificação: ${report.digitalCertification || 'HOMOLOGADO'}). Ele atesta as métricas operacionais e a conformidade pericial da malha em tempo real.`,
+            text: `Este laudo foi gerado de forma determinística pelo motor de auditoria semafórica SYNAPSE v2.0 Enterprise (Certificação: ${report.digitalCertification || 'HOMOLOGADO'}). Ele atesta as métricas operacionais e a conformidade pericial da malha em tempo real.`,
             italics: true,
             size: config.microSize,
             font: config.font,
@@ -132,13 +115,13 @@ export class DocxClosingSection {
 
       new Paragraph({ spacing: { before: 200 } }),
 
-      // Nota Final de Encerramento (Padrão Carina)
+      // Final Closing Note (Carina Standard)
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 120, after: 60 },
         children: [
           new TextRun({
-            text: 'Fim do Laudo Técnico Oficial de Auditoria de Tráfego – SYNAPSE Core v2.0 Enterprise',
+            text: 'Fim do Laudo Técnico Oficial de Auditoria de Tráfego – SYNAPSE v2.0 Enterprise',
             bold: true,
             size: config.bodySize,
             font: config.font,

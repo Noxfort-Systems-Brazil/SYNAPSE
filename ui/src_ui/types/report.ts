@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/types/report.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-01
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 /**
  * Domain types and contracts for Official Municipal Traffic Reports & Technical Audits.
@@ -88,6 +71,29 @@ export interface ReportLocationData {
   baselineSignalPlan: string;
 }
 
+export interface ComparativeEvolutionData {
+  hasPrevious: boolean;
+  isBaseline: boolean;
+  previousTimestamp?: string | null;
+  previousProtocol?: string | null;
+  previousSpeed: number;
+  currentSpeed: number;
+  deltaSpeed: number;
+  percentChangeSpeed: number;
+  previousFlow: number;
+  currentFlow: number;
+  deltaFlow: number;
+  percentChangeFlow: number;
+  previousSaturation: number;
+  currentSaturation: number;
+  deltaSaturation: number;
+  previousSensorsCount: number;
+  currentSensorsCount: number;
+  previousFlowRegime: string;
+  currentFlowRegime: string;
+  summaryText: string;
+}
+
 export interface OfficialReportData {
   protocol: string;
   processNumber: string;
@@ -102,6 +108,7 @@ export interface OfficialReportData {
   networkSummary: TrafficNetworkMacroSummary;
   auditObjective: string;
   observedTrafficDiagnosis: string;
+  comparativeEvolution?: ComparativeEvolutionData;
   adaptiveActionExecuted: string;
   sensors: TrafficSensorItem[];
   safetyInterventions: TrafficSafetyInterventionItem[];

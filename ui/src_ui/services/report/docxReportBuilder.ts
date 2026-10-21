@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/report/docxReportBuilder.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-02
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import {
   Document,
@@ -53,7 +36,7 @@ export class DocxReportBuilder {
     const config = getDocxTypographyConfig(options);
 
     const doc = new Document({
-      creator: 'SYNAPSE Core v2.0 Enterprise',
+      creator: 'SYNAPSE v2.0 Enterprise',
       title: `Relatório Técnico de Tráfego - ${report.protocol}`,
       description: 'Laudo Técnico e Relatório de Auditoria de Tráfego conforme normas da ABNT e CTB Art. 24',
       sections: [
@@ -70,39 +53,39 @@ export class DocxReportBuilder {
             default: this.createDocumentFooter(config),
           },
           children: [
-            // 1. Timbre Institucional, Título e Autuação do Processo
+            // 1. Institutional Letterhead, Title, and Case Docketing
             ...DocxHeaderSection.build(report, config),
 
             new Paragraph({ spacing: { before: 240 } }),
 
-            // 2. PARTE I — Sumário Executivo para Gestão Pública e Tabela de Desempenho
+            // 2. PART I — Executive Summary for Public Management and Performance Table
             ...DocxExecutiveSummarySection.build(report, config),
 
-            // Quebra de Página Formal para Parte II
+            // Formal Page Break for Part II
             new Paragraph({ children: [new PageBreak()] }),
 
-            // 3. PARTE II — Relatório Técnico, Panorama HCM e Tabela de Detectores
+            // 3. PART II — Technical Report, HCM Overview, and Sensor Detector Table
             ...DocxTechnicalAuditSection.build(report, config),
 
             new Paragraph({ spacing: { before: 180 } }),
 
-            // 4. Auditoria de Segurança do CONTRAN e Atribuição Causal de Tráfego
+            // 4. CONTRAN Safety Audit and Causal Traffic Attribution
             ...DocxSafetyAttributionSection.build(report, config),
 
-            // Quebra de Página para Formulações Matemáticas e Quesitos
+            // Page Break for Mathematical Formulations and Legal Quesitos
             new Paragraph({ children: [new PageBreak()] }),
 
-            // 5. Memorial de Cálculo Matemático (Fórmulas 1 a 6) e Contrafactual
+            // 5. Mathematical Calculation Memorial (Formulas 1 to 6) and Counterfactual
             ...DocxMathFormulasSection.build(report, config),
 
             new Paragraph({ spacing: { before: 180 } }),
 
-            // 6. Resposta aos Quesitos Técnicos e Enquadramento Normativo
+            // 6. Response to Technical Quesitos and Regulatory Framework
             ...DocxQuesitosLegalSection.build(report, config),
 
             new Paragraph({ spacing: { before: 240 } }),
 
-            // 7. Parecer Técnico Conclusivo, Bloco de Assinaturas e Referências ABNT
+            // 7. Conclusive Technical Opinion, Signature Block, and ABNT References
             ...DocxClosingSection.build(report, config),
           ],
         },

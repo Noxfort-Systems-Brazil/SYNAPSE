@@ -11,7 +11,7 @@
 
 ## 🖥️ Overview
 
-The **SYNAPSE UI** is an enterprise-grade desktop application engineered for municipal traffic control rooms and Smart City operators. It provides a real-time, hardware-accelerated dashboard to inspect the urban road topology, monitor the 11 MARKVART™ neural models, audit XAI decisions, and manage heterogeneous sensor ingestion feeds.
+The **SYNAPSE UI** is an enterprise-grade desktop application engineered for municipal traffic control rooms and Smart City operators. It provides a real-time, hardware-accelerated dashboard to inspect the urban road topology, monitor the 10 MARKVART™ neural models, audit XAI decisions, and manage heterogeneous sensor ingestion feeds.
 
 ---
 
@@ -183,7 +183,9 @@ Users can switch languages on-the-fly via the Settings view without reloading th
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE Desktop UI — Noxfort Systems Frontend Engineering</sub><br/>
-  <sub><a href="#synapse-desktop-ui--modern-desktop-frontend">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

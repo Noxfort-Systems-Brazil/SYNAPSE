@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/stores/useSecurityStore.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-03
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { create } from 'zustand';
 import { securityService, UserAccount } from '../services/api';
@@ -54,8 +37,9 @@ interface SecurityState {
   checkLockdown: () => Promise<boolean>;
   setLockedDown: (locked: boolean) => void;
   fetchUsers: () => Promise<void>;
-  addUser: (username: string, password: string, role: 'OPERATOR' | 'SUPERUSER') => Promise<boolean>;
+  addUser: (username: string, password: string, role: 'OPERATOR' | 'SUPERUSER') => Promise<{ success: boolean; error?: string }>;
   removeUser: (username: string) => Promise<boolean>;
+
   fetchAuditLogs: (limit?: number) => Promise<void>;
   logout: () => void;
 }
@@ -212,14 +196,16 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
       const res = await securityService.addUser(username, password, role);
       if (res && res.success) {
         set({ registeredUsers: res.users || [] });
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch (err) {
+      return { success: false, error: 'Falha ao cadastrar usuário.' };
+    } catch (err: any) {
       console.error('[SecurityStore] Failed to add user:', err);
-      return false;
+      const errMsg = err?.message || 'Falha de comunicação ao adicionar usuário.';
+      return { success: false, error: errMsg };
     }
   },
+
 
   removeUser: async (username) => {
     try {

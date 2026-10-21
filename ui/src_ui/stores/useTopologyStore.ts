@@ -1,27 +1,10 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/stores/useTopologyStore.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { create } from 'zustand';
 import { MapNodeData, MapEdgeData } from '../types/topology';
 
-interface TopologyState {
+export interface TopologyState {
   nodes: MapNodeData[];
   edges: MapEdgeData[];
   mapLoaded: boolean;
@@ -29,15 +12,26 @@ interface TopologyState {
   selectedEdgeId: string | null;
   isAssociatingSourceId: string | null;
 
+  // Road / Element Picker Mode (e.g. for wizard sensor location selection)
+  isPickingElement: boolean;
+  pickingPrompt: string | null;
+  onElementPicked: ((elementId: string, type: 'node' | 'edge') => void) | null;
+
   // Actions
   setTopology: (nodes: MapNodeData[], edges: MapEdgeData[]) => void;
   setSelectedNodeId: (id: string | null) => void;
   setSelectedEdgeId: (id: string | null) => void;
   setAssociatingSourceId: (id: string | null) => void;
+  startPickingElement: (options?: {
+    prompt?: string;
+    onPicked?: (elementId: string, type: 'node' | 'edge') => void;
+  }) => void;
+  cancelPickingElement: () => void;
+  confirmElementPicked: (elementId: string, type: 'node' | 'edge') => void;
   clearTopology: () => void;
 }
 
-export const useTopologyStore = create<TopologyState>((set) => ({
+export const useTopologyStore = create<TopologyState>((set, get) => ({
   nodes: [],
   edges: [],
   mapLoaded: false,
@@ -45,9 +39,51 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   selectedEdgeId: null,
   isAssociatingSourceId: null,
 
+  isPickingElement: false,
+  pickingPrompt: null,
+  onElementPicked: null,
+
   setTopology: (nodes, edges) => set({ nodes, edges, mapLoaded: nodes.length > 0 }),
   setSelectedNodeId: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
   setSelectedEdgeId: (id) => set({ selectedEdgeId: id, selectedNodeId: null }),
   setAssociatingSourceId: (id) => set({ isAssociatingSourceId: id }),
-  clearTopology: () => set({ nodes: [], edges: [], mapLoaded: false, selectedNodeId: null, selectedEdgeId: null }),
+
+  startPickingElement: (options) =>
+    set({
+      isPickingElement: true,
+      pickingPrompt: options?.prompt || null,
+      onElementPicked: options?.onPicked || null,
+    }),
+
+  cancelPickingElement: () =>
+    set({
+      isPickingElement: false,
+      pickingPrompt: null,
+      onElementPicked: null,
+    }),
+
+  confirmElementPicked: (elementId, type) => {
+    const cb = get().onElementPicked;
+    if (cb) {
+      cb(elementId, type);
+    }
+    set({
+      isPickingElement: false,
+      pickingPrompt: null,
+      onElementPicked: null,
+    });
+  },
+
+  clearTopology: () =>
+    set({
+      nodes: [],
+      edges: [],
+      mapLoaded: false,
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      isAssociatingSourceId: null,
+      isPickingElement: false,
+      pickingPrompt: null,
+      onElementPicked: null,
+    }),
 }));

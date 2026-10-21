@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/utils/chartOptions.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { TelemetryPoint } from '../types/sensors';
 import { getThemeTokens } from '../theme';
@@ -141,66 +124,120 @@ export function createDriftPsiChartOption(points: TelemetryPoint[], isDark: bool
   };
 }
 
+// Domain attribution aggregator imported from specialized service (Clean Architecture / SRP)
+import {
+  aggregateTopSensorAttributions,
+  type AggregatedFeatureItem,
+} from '../services/xai';
+
+export { aggregateTopSensorAttributions, type AggregatedFeatureItem };
+
 export function createAttributionChartOption(
   attributions: number[],
   isDark: boolean = true,
-  featureNames?: string[]
+  featureNames?: string[],
+  otherLabel?: string
 ) {
   const tokens = getThemeTokens(isDark ? 'dark' : 'light');
   const { charts } = tokens.colors;
 
-  const xAxisData =
-    featureNames && featureNames.length === attributions.length
-      ? featureNames
-      : attributions.map((_, i) => `t-${attributions.length - 1 - i}`);
+  const aggregated = aggregateTopSensorAttributions(
+    attributions,
+    featureNames,
+    6,
+    otherLabel || 'Demais Sensores (Agregados)'
+  );
+
+  // ECharts horizontal bar charts: reverse so the highest rank is at the top
+  const reversed = [...aggregated].reverse();
+  const yData = reversed.map((item) => item.name);
+  const xData = reversed.map((item) => item.percentage);
+  const weights = reversed.map((item) => item.weight);
 
   return {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
+      axisPointer: { type: 'shadow' },
       backgroundColor: charts.tooltipBg,
       borderColor: charts.tooltipBorder,
       textStyle: { color: charts.tooltipText, fontSize: 12 },
       extraCssText: isDark ? 'box-shadow: 0 4px 12px rgba(0,0,0,0.5);' : 'box-shadow: 0 4px 12px rgba(0,0,0,0.1);',
+      formatter: (params: any) => {
+        const item = Array.isArray(params) ? params[0] : params;
+        if (!item) return '';
+        const idx = item.dataIndex;
+        const weightVal = weights[idx] ?? 0;
+        return `
+          <div style="font-family: inherit; font-size: 12px; line-height: 1.5;">
+            <div style="font-weight: bold; margin-bottom: 2px;">${item.name}</div>
+            <div style="color: #38bdf8;">Contribuição Relativa: <b>${item.value}%</b></div>
+            <div style="color: #94a3b8; font-size: 11px;">Peso Acumulado: ${weightVal}</div>
+          </div>
+        `;
+      },
     },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+    grid: { left: '3%', right: '8%', bottom: '4%', top: '6%', containLabel: true },
     xAxis: {
-      type: 'category',
-      data: xAxisData,
+      type: 'value',
+      name: 'Influência Relativa (%)',
+      nameTextStyle: { color: charts.axisLabel, fontSize: 10, padding: [0, 0, 0, 10] },
       axisLine: { lineStyle: { color: charts.axisLine } },
+      splitLine: { lineStyle: { color: charts.splitLine, type: 'dashed' } },
       axisLabel: {
         color: charts.axisLabel,
         fontSize: 10,
-        interval: 0,
-        rotate: xAxisData.length > 8 ? 20 : 0,
+        formatter: '{value}%',
       },
+      max: (value: { max: number }) => Math.min(100, Math.ceil((value.max + 5) / 10) * 10),
     },
     yAxis: {
-      type: 'value',
-      name: 'Peso de Atribuição',
-      nameTextStyle: { color: charts.axisLabel, fontSize: 10 },
-      splitLine: { lineStyle: { color: charts.splitLine, type: 'dashed' } },
-      axisLabel: { color: charts.yAxisLabel, fontSize: 10 },
+      type: 'category',
+      data: yData,
+      axisLine: { lineStyle: { color: charts.axisLine } },
+      axisTick: { show: false },
+      axisLabel: {
+        color: charts.axisLabel,
+        fontSize: 11,
+        fontWeight: 'bold',
+        formatter: (val: string) => (val.length > 25 ? `${val.substring(0, 23)}...` : val),
+      },
     },
     series: [
       {
-        name: 'Importância Temporal (Integrated Gradients)',
+        name: 'Influência na Decisão',
         type: 'bar',
-        barWidth: '45%',
-        data: attributions,
+        barWidth: 20,
+        data: xData,
+        label: {
+          show: true,
+          position: 'right',
+          formatter: '{c}%',
+          color: isDark ? '#e2e8f0' : '#1e293b',
+          fontWeight: 'bold',
+          fontSize: 11,
+        },
         itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#3b82f6' },
-              { offset: 1, color: '#0ea5e9' },
-            ],
+          color: (params: any) => {
+            const isTop = params.dataIndex === reversed.length - 1;
+            return {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 1,
+              y2: 0,
+              colorStops: isTop
+                ? [
+                    { offset: 0, color: '#38bdf8' },
+                    { offset: 1, color: '#0ea5e9' },
+                  ]
+                : [
+                    { offset: 0, color: '#3b82f6' },
+                    { offset: 1, color: '#6366f1' },
+                  ],
+            };
           },
-          borderRadius: [4, 4, 0, 0],
+          borderRadius: [0, 6, 6, 0],
         },
       },
     ],

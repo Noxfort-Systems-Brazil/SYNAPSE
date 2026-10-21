@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/report/docx/sections/DocxHeaderSection.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-02
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import {
   Paragraph,
@@ -48,13 +31,13 @@ export class DocxHeaderSection {
     });
 
     return [
-      // 1. Tabela 1 de Cabeçalho Institucional (Timbre Municipal)
+      // 1. Table 1 Institutional Header (Municipal Letterhead)
       this.createInstitutionalHeaderTable(report, config),
 
-      // Linha em branco separadora
+      // Blank separator line
       new Paragraph({ spacing: { before: 120, after: 120 } }),
 
-      // Data e Localidade Alinhada à Direita
+      // Date and Location Right-Aligned
       new Paragraph({
         alignment: AlignmentType.RIGHT,
         spacing: { after: 140 },
@@ -68,7 +51,7 @@ export class DocxHeaderSection {
         ],
       }),
 
-      // Título do Laudo
+      // Report Title
       new Paragraph({
         alignment: AlignmentType.LEFT,
         spacing: { after: 80 },
@@ -104,7 +87,7 @@ export class DocxHeaderSection {
         ],
       }),
 
-      // 2. Seção 1: IDENTIFICAÇÃO E AMBIENTE OPERACIONAL
+      // 2. Section 1: IDENTIFICATION AND OPERATIONAL ENVIRONMENT
       createSectionHeading('1. IDENTIFICAÇÃO E AMBIENTE OPERACIONAL', config),
       this.createOperationalEnvironmentTable(report, config),
     ];
@@ -208,7 +191,7 @@ export class DocxHeaderSection {
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: ABNT_TABLE_BORDERS.carinaGrid,
       rows: [
-        row('Identificador do Agente / Sistema:', 'SYNAPSE Core v2.0 Enterprise', false),
+        row('Identificador do Agente / Sistema:', 'SYNAPSE v2.0 Enterprise', false),
         row('Cenário de Operação:', 'Sessão de Operação e Supervisão em Tempo Real (CCO)', true),
         row('Motor Analítico de Percepção:', 'SYNAPSE Adaptive Traffic Perception Engine', false),
         row('Processo Administrativo:', report.processNumber, true),

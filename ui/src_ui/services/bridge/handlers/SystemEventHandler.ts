@@ -1,25 +1,9 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/bridge/handlers/SystemEventHandler.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-04
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { IBridgeEventHandler, LogLevel } from '../types';
 import { SystemPhase } from '../../../types/system';
+import { useSystemStore } from '../../../stores';
 
 export interface ISystemEventSink {
   setConnected: (connected: boolean) => void;
@@ -33,9 +17,11 @@ export interface ISystemEventSink {
 export class SystemEventHandler implements IBridgeEventHandler {
   readonly events = [
     'synapse:ready',
+    'synapse:disconnected',
     'synapse:log_message',
     'synapse:status_message',
     'synapse:phase_transition',
+    'synapse:error_occurred',
   ] as const;
 
   constructor(
@@ -53,6 +39,11 @@ export class SystemEventHandler implements IBridgeEventHandler {
         }
         break;
 
+      case 'synapse:disconnected':
+        this.sink.setConnected(false);
+        this.sink.addLog('ERROR', '🔴 Backend Daemon Offline: canal IPC encerrado.');
+        break;
+
       case 'synapse:log_message':
         this.sink.addLog(payload?.level || 'INFO', payload?.message || String(payload));
         break;
@@ -67,6 +58,20 @@ export class SystemEventHandler implements IBridgeEventHandler {
           this.sink.addLog('SYSTEM', `Phase transitioned to: ${payload.phase}`);
         }
         break;
+
+      case 'synapse:error_occurred': {
+        const errorMsg = payload?.error || String(payload);
+        this.sink.addLog('ERROR', errorMsg);
+        const currentPhase = useSystemStore.getState().phase;
+        if (currentPhase === 'RUNNING_OPTIMIZATION') {
+          this.sink.setPhase('IDLE_OPTIMIZATION');
+        } else if (currentPhase === 'RUNNING_OFFLINE') {
+          this.sink.setPhase('IDLE_OFFLINE');
+        } else if (currentPhase === 'RUNNING_ONLINE') {
+          this.sink.setPhase('IDLE_ONLINE');
+        }
+        break;
+      }
     }
   }
 }

@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/api/XaiService.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { ITransportClient, getTransportClient } from '../transport';
 import { OfficialReportData } from '../../types/report';
@@ -38,11 +21,30 @@ export class XaiService {
 
   async generateOfficialReport(params?: Record<string, any>): Promise<{
     success: boolean;
-    report: OfficialReportData;
+    ready?: boolean;
+    status?: string;
+    message?: string;
+    report?: OfficialReportData;
     formatted_markdown?: string;
+    preview_html?: string;
     error?: string;
   }> {
-    return await this.transport.invoke('generate_official_report', params || {});
+    return await this.transport.invoke('generate_official_report', params || {}, 120000);
+  }
+
+  async exportOfficialReportDocx(params: {
+    output_path?: string;
+    report?: OfficialReportData;
+    municipal_config?: Record<string, any>;
+    typography_options?: Record<string, any>;
+  }): Promise<{
+    success: boolean;
+    ready?: boolean;
+    output_path?: string;
+    protocol?: string;
+    error?: string;
+  }> {
+    return await this.transport.invoke('export_official_report_docx', params);
   }
 }
 

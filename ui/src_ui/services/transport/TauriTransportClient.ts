@@ -1,22 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/services/transport/TauriTransportClient.ts
-// Author: Gabriel Moraes
-// Date: 2026-08-29
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { ITransportClient, UnlistenFn } from './ITransportClient';
 
@@ -30,9 +13,32 @@ export class TauriTransportClient implements ITransportClient {
     );
   }
 
+  /**
+   * Resolves appropriate timeout in milliseconds based on action type and custom override.
+   */
+  private resolveTimeoutMs(action: string, customTimeoutMs?: number): number {
+    if (typeof customTimeoutMs === 'number' && customTimeoutMs > 0) {
+      return customTimeoutMs;
+    }
+    if (action === 'ping') {
+      return 5000;
+    }
+    if (action === 'generate_official_report') {
+      return 120000; // 120s (2 min) for SLM / Qwen neural reasoning and document synthesis
+    }
+    if (action === 'start_offline_bootstrap') {
+      return 180000; // 180s (3 min) for offline neural models bootstrap
+    }
+    if (action === 'export_official_report_docx' || action.startsWith('explain_')) {
+      return 60000; // 60s for DOCX disk exports and deep neural XAI explainability
+    }
+    return 30000; // 30s default for standard actions
+  }
+
   async invoke<TPayload = any, TResponse = any>(
     action: string,
-    payload: TPayload = {} as TPayload
+    payload: TPayload = {} as TPayload,
+    timeoutMsOverride?: number
   ): Promise<TResponse> {
     const { invoke } = await import('@tauri-apps/api/core');
     const { listen } = await import('@tauri-apps/api/event');
@@ -40,12 +46,19 @@ export class TauriTransportClient implements ITransportClient {
 
     return new Promise<TResponse>(async (resolve, reject) => {
       let unlisten: (() => void) | undefined;
-      const timeoutMs = 60000;
+      let unlistenDisconnect: (() => void) | undefined;
+      const timeoutMs = this.resolveTimeoutMs(action, timeoutMsOverride);
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        if (unlisten) unlisten();
+        if (unlistenDisconnect) unlistenDisconnect();
+      };
 
       const timer = setTimeout(() => {
-        if (unlisten) unlisten();
+        cleanup();
         console.error(`[TauriTransport] ⏱️ Timeout (${timeoutMs}ms) aguardando comando '${action}' (id=${id})`);
-        reject(new Error(`Command '${action}' timed out after ${timeoutMs}ms`));
+        reject(new Error(`Comando '${action}' excedeu o tempo limite (${timeoutMs / 1000}s)`));
       }, timeoutMs);
 
       try {
@@ -53,8 +66,7 @@ export class TauriTransportClient implements ITransportClient {
           'synapse:response',
           (event) => {
             if (event.payload?.id === id) {
-              clearTimeout(timer);
-              if (unlisten) unlisten();
+              cleanup();
               if (event.payload.success === false) {
                 console.error(`[TauriTransport] ❌ Comando '${action}' falhou:`, event.payload.error);
                 reject(new Error(event.payload.error || 'Command failed'));
@@ -66,11 +78,15 @@ export class TauriTransportClient implements ITransportClient {
           }
         );
 
+        unlistenDisconnect = await listen('synapse:disconnected', () => {
+          cleanup();
+          reject(new Error(`Falha de comunicação: o backend Python foi desconectado antes de responder ao comando '${action}'.`));
+        });
+
         console.debug(`[TauriTransport] 🚀 Enviando comando '${action}' (id=${id}):`, payload);
         await invoke('send_synapse_command', { action, payload, id });
       } catch (err) {
-        clearTimeout(timer);
-        if (unlisten) unlisten();
+        cleanup();
         console.error(`[TauriTransport] ❌ Erro ao invocar comando '${action}':`, err);
         reject(err);
       }

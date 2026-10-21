@@ -1,112 +1,177 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src_ui/stores/useReportStore.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-04
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { create } from 'zustand';
 import { OfficialReportData } from '../types/report';
 import { xaiService } from '../services/api/XaiService';
-import { defaultReportBuilder } from '../services/report/reportBuilder';
+import { useMunicipalSettingsStore } from './useMunicipalSettingsStore';
+import { useReportTypographyStore } from './useReportTypographyStore';
+import { useSystemStore } from './useSystemStore';
 
 interface ReportStoreState {
-  savedReports: OfficialReportData[];
   selectedReport: OfficialReportData | null;
+  previewHtml: string | null;
   isReportModalOpen: boolean;
   isLoadingReport: boolean;
+  isExportingDocx: boolean;
   reportError: string | null;
+  isDataReady: boolean;
+  generatingMessage: string | null;
 
   // Actions
-  saveReport: (report: OfficialReportData) => void;
-  deleteReport: (protocol: string) => void;
-  openReportModal: (report?: OfficialReportData | null) => void;
+  openReportModal: () => void;
   closeReportModal: () => void;
-  isReportSaved: (protocol: string) => boolean;
   fetchOfficialReport: (resultId?: string, xaiResult?: any) => Promise<OfficialReportData | null>;
+  exportDocx: (outputPath?: string) => Promise<{ success: boolean; output_path?: string; error?: string }>;
 }
 
 export const useReportStore = create<ReportStoreState>((set, get) => ({
-  savedReports: [],
   selectedReport: null,
+  previewHtml: null,
   isReportModalOpen: false,
   isLoadingReport: false,
+  isExportingDocx: false,
   reportError: null,
+  isDataReady: true,
+  generatingMessage: null,
 
-  saveReport: (report) =>
-    set((state) => {
-      const exists = state.savedReports.some((r) => r.protocol === report.protocol);
-      if (exists) {
-        return {
-          savedReports: state.savedReports.map((r) =>
-            r.protocol === report.protocol ? report : r
-          ),
-        };
-      }
-      return { savedReports: [report, ...state.savedReports] };
-    }),
-
-  deleteReport: (protocol) =>
-    set((state) => ({
-      savedReports: state.savedReports.filter((r) => r.protocol !== protocol),
-      selectedReport:
-        state.selectedReport?.protocol === protocol ? null : state.selectedReport,
-    })),
-
-  openReportModal: (report = null) => {
+  openReportModal: () => {
     set({
-      selectedReport: report || null,
+      selectedReport: null,
+      previewHtml: null,
       isReportModalOpen: true,
+      isDataReady: true,
+      generatingMessage: null,
+      reportError: null,
     });
-    if (!report) {
-      get().fetchOfficialReport();
-    }
+    get().fetchOfficialReport();
   },
 
   closeReportModal: () =>
     set({
       isReportModalOpen: false,
+      selectedReport: null,
+      previewHtml: null,
+      reportError: null,
     }),
 
-  isReportSaved: (protocol) => {
-    return get().savedReports.some((r) => r.protocol === protocol);
-  },
-
   fetchOfficialReport: async (resultId?: string, xaiResult?: any) => {
-    set({ isLoadingReport: true, reportError: null });
+    const isConnected = useSystemStore.getState().connected;
+    if (!isConnected) {
+      set({
+        isLoadingReport: false,
+        reportError: 'Backend desconectado: o processo Python não está respondendo. Verifique o terminal ou reinicie a aplicação.',
+        generatingMessage: null,
+      });
+      return null;
+    }
+
+    set({
+      isLoadingReport: true,
+      reportError: null,
+      generatingMessage: 'Processando Parecer Técnico Pericial via SLM Jurista (Qwen3 GGUF)... Isso pode levar alguns segundos.',
+    });
     try {
+      const municipal = useMunicipalSettingsStore.getState();
+      const typography = useReportTypographyStore.getState();
+
       const res = await xaiService.generateOfficialReport({
         result_id: resultId,
         xai_result: xaiResult,
+        municipal_config: {
+          cityHall: municipal.cityHall,
+          department: municipal.department,
+          authorityName: municipal.authorityName,
+          authorityRole: municipal.authorityRole,
+          registrationNumber: municipal.registrationNumber,
+          processPrefix: municipal.processPrefix,
+        },
+        typography_options: {
+          fontFamily: typography.fontFamily,
+          fontSize: typography.fontSize,
+          lineSpacing: typography.lineSpacing,
+          alignment: typography.alignment,
+        },
       });
-      if (res && res.success && res.report) {
-        set({ selectedReport: res.report, isLoadingReport: false });
-        return res.report;
-      }
-      throw new Error(res.error || 'Falha ao sintetizar laudo no backend');
-    } catch (e: any) {
-      console.warn('Erro ao buscar laudo do backend, utilizando construtor de fallback:', e);
-      try {
-        const fallback = defaultReportBuilder.build(xaiResult);
-        set({ selectedReport: fallback, isLoadingReport: false, reportError: e?.message || null });
-        return fallback;
-      } catch (fallbackErr) {
-        set({ isLoadingReport: false, reportError: e?.message || 'Erro ao carregar laudo' });
+
+      if (res && res.ready === false) {
+        set({
+          isDataReady: false,
+          generatingMessage:
+            res.message ||
+            'Os dados de telemetria e fusão neural estão sendo gerados na malha viária.',
+          selectedReport: null,
+          previewHtml: null,
+          isLoadingReport: false,
+        });
         return null;
       }
+
+      if (res && res.success && res.report) {
+        set({
+          isDataReady: true,
+          generatingMessage: null,
+          selectedReport: res.report,
+          previewHtml: res.preview_html || null,
+          isLoadingReport: false,
+        });
+        return res.report;
+      }
+      throw new Error(res.error || res.message || 'Falha ao sintetizar laudo no backend');
+    } catch (e: any) {
+      console.warn('Erro ao carregar laudo pericial oficial:', e);
+      set({
+        isLoadingReport: false,
+        reportError: e?.message || 'Erro ao carregar laudo técnico oficial.',
+      });
+      return null;
+    }
+  },
+
+  exportDocx: async (outputPath?: string) => {
+    const isConnected = useSystemStore.getState().connected;
+    if (!isConnected) {
+      const err = 'Backend desconectado: o Core Python não está respondendo. Exportação bloqueada.';
+      set({ reportError: err });
+      return { success: false, error: err };
+    }
+
+    const { isDataReady, generatingMessage } = get();
+    if (!isDataReady) {
+      const msg = generatingMessage || 'Dados de telemetria em processamento. Exportação bloqueada.';
+      set({ reportError: msg });
+      return { success: false, error: msg };
+    }
+    set({ isExportingDocx: true, reportError: null });
+    try {
+      const { selectedReport } = get();
+      const municipal = useMunicipalSettingsStore.getState();
+      const typography = useReportTypographyStore.getState();
+
+      const res = await xaiService.exportOfficialReportDocx({
+        output_path: outputPath,
+        report: selectedReport || undefined,
+        municipal_config: {
+          cityHall: municipal.cityHall,
+          department: municipal.department,
+          authorityName: municipal.authorityName,
+          authorityRole: municipal.authorityRole,
+          registrationNumber: municipal.registrationNumber,
+          processPrefix: municipal.processPrefix,
+        },
+        typography_options: {
+          fontFamily: typography.fontFamily,
+          fontSize: typography.fontSize,
+          lineSpacing: typography.lineSpacing,
+          alignment: typography.alignment,
+        },
+      });
+
+      set({ isExportingDocx: false });
+      return res;
+    } catch (e: any) {
+      set({ isExportingDocx: false, reportError: e?.message || 'Erro ao exportar DOCX' });
+      return { success: false, error: e?.message || 'Erro ao exportar DOCX' };
     }
   },
 }));
