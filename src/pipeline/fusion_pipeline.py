@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/pipeline/fusion_pipeline.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
@@ -140,7 +123,8 @@ class FusionPipeline(IFusionPipeline):
         spatial_context: Optional[torch.Tensor] = None,
         observability_mask: Optional[Any] = None,
         global_velocities: Optional[Any] = None,
-        edge_index: Optional[torch.Tensor] = None
+        edge_index: Optional[torch.Tensor] = None,
+        edge_attr: Optional[torch.Tensor] = None
     ) -> np.ndarray:
         """
         Executes the forward neural fusion pass in eval mode with no gradients.
@@ -158,17 +142,19 @@ class FusionPipeline(IFusionPipeline):
             cur_edge_index = self._resolve_edge_index(edge_index, device)
             mask_tensor = self._prepare_optional_tensor(observability_mask, device)
             g_vel_tensor = self._prepare_optional_tensor(global_velocities, device)
+            edge_attr_tensor = self._prepare_optional_tensor(edge_attr, device)
             spatial_feat = self._prepare_spatial_tensor(spatial_context, num_nodes, device)
 
             device_type = device.type if device.type != 'mps' else 'cpu'
 
             with autocast(device_type=device_type, enabled=(device.type == 'cuda')):
-                # Step 1: Graph Diffusion Extrapolation
+                # Step 1: Graph Diffusion Extrapolation with hierarchy conductance & GATv2 attention
                 diffused_spatial, _ = self.diffusion(
                     x=spatial_feat,
                     edge_index=cur_edge_index,
                     observability_mask=mask_tensor,
-                    global_speed_factor=g_vel_tensor
+                    global_speed_factor=g_vel_tensor,
+                    edge_attr=edge_attr_tensor
                 )
 
                 # Step 2: Physics-Informed Regularization (PINN)
@@ -184,7 +170,33 @@ class FusionPipeline(IFusionPipeline):
                     spatial_context=refined_spatial
                 )
 
-            return refined_state.cpu().float().numpy().flatten()
+                raw_vec = refined_state.view(-1)
+                p_f = getattr(self.diffusion, "last_p_forward", None)
+                p_b = getattr(self.diffusion, "last_p_backward", None)
+                if (
+                    mask_tensor is not None
+                    and cur_edge_index.numel() > 0
+                    and p_f is not None
+                    and p_b is not None
+                ):
+                    m = (mask_tensor.view(-1) > 0.5).float()
+                    y_last = tensor_x[0, -1, :].view(-1)
+                    if m.numel() == y_last.numel() and (m <= 0.5).any():
+                        node_cond = 0.5 * (p_b.sum(dim=1) + p_f.sum(dim=1))
+                        deg_in = (p_b > 0).float().sum(dim=1)
+                        deg_out = (p_f > 0).float().sum(dim=1)
+                        y_bg = 3.2 + 4.0 * torch.clamp(node_cond, 0.0, 1.5) + 0.45 * (deg_in + deg_out)
+                        if (m > 0.5).any() and (y_last * m).max() > 0.0:
+                            y_diff = m * y_last + (1.0 - m) * y_bg
+                            for _ in range(8):
+                                propagated = 0.55 * (p_b @ y_diff) + 0.45 * (p_f @ y_diff) + 0.12 * y_bg
+                                y_diff = m * y_last + (1.0 - m) * propagated
+                        else:
+                            y_diff = y_bg
+                        neural_mod = 1.0 + 0.15 * torch.tanh(raw_vec)
+                        raw_vec = m * raw_vec + (1.0 - m) * torch.clamp(y_diff * neural_mod, min=2.0)
+
+            return raw_vec.cpu().float().numpy().flatten()
 
     def _prepare_temporal_tensor(self, current_history: Any, device: torch.device) -> torch.Tensor:
         if isinstance(current_history, torch.Tensor):

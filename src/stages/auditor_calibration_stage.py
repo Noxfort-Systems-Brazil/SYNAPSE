@@ -1,33 +1,16 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/stages/auditor_calibration_stage.py
-# Author: Gabriel Moraes
-# Date: 2026-04-27
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import torch
 import numpy as np
-import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.stages.base_stage import BaseStage
 from src.agents.auditor_agent import AuditorAgent
-from src.services.checkpoint_service import CheckpointService
 from src.utils.convergence_tracker import MarginalConvergenceTracker
+from src.stages.auditor_window_preparer import AuditorWindowPreparer
+from src.stages.auditor_threshold_calibrator import AuditorThresholdCalibrator
 
 
 class AuditorCalibrationStage(BaseStage):
@@ -57,7 +40,6 @@ class AuditorCalibrationStage(BaseStage):
 
     def execute(self, shared_context: Dict[str, Any]) -> bool:
         """Trains the Auditor on golden data and saves calibrated checkpoint."""
-        
         checkpoint_path = shared_context.get("auditor_checkpoint_path")
         golden_path = shared_context.get("golden_path")
 
@@ -86,11 +68,31 @@ class AuditorCalibrationStage(BaseStage):
 
             self.log(f"[AuditorCalibrationStage] 📊 Prepared {len(windows)} training windows (size={self.WINDOW_SIZE}).")
 
-            # 2. Create Agent
+            # 2. Create Agent (Load Phase Zero Hparams if available)
+            aud_cfg: Dict[str, Any] = {}
+            hparams_candidates = [
+                os.path.join(self.synapse_root, "Checkpoint", "best_hparams.pth"),
+                os.path.join("checkpoints", "best_hparams.pth"),
+            ]
+            for hp_path in hparams_candidates:
+                if os.path.exists(hp_path):
+                    try:
+                        hp_all = torch.load(hp_path, map_location="cpu")
+                        if isinstance(hp_all, dict):
+                            aud_cfg = hp_all.get("auditor", {}) if isinstance(hp_all.get("auditor"), dict) else hp_all
+                        break
+                    except Exception:
+                        pass
+
+            j_val = int(aud_cfg.get("J", aud_cfg.get("auditor_J", 2)))
+            q_val = int(aud_cfg.get("Q", aud_cfg.get("auditor_Q", 1)))
+            latent_val = int(aud_cfg.get("latent_dim", aud_cfg.get("auditor_latent", 16)))
+            lr_val = float(aud_cfg.get("lr", aud_cfg.get("learning_rate", 1e-3)))
+
             agent = AuditorAgent(
                 input_len=self.WINDOW_SIZE,
-                J=2, Q=1, latent_dim=16,
-                learning_rate=1e-3
+                J=j_val, Q=q_val, latent_dim=latent_val,
+                learning_rate=lr_val
             )
 
             # 3. Dynamic Training Loop
@@ -158,148 +160,22 @@ class AuditorCalibrationStage(BaseStage):
             traceback.print_exc()
             return True  # Non-fatal: don't break the pipeline
 
-    def _prepare_windows(self, golden_path: str) -> np.ndarray:
-        """
-        Loads the Golden Dataset and creates sliding windows for training.
-        
-        Returns:
-            np.ndarray of shape [N, WINDOW_SIZE] — flattened feature windows.
-        """
-        df = pd.read_parquet(golden_path)
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-
-        if not numeric_cols:
-            return None
-
-        # Clean NaN/Inf in the dataframe
-        df_clean = df[numeric_cols].ffill().bfill().fillna(0.0)
-        data = df_clean.values.astype(np.float32)
-        data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
-
-        # If total features per row >= WINDOW_SIZE, use rows directly
-        if data.shape[1] >= self.WINDOW_SIZE:
-            # Truncate to WINDOW_SIZE
-            return data[:, :self.WINDOW_SIZE]
-
-        # Otherwise, create sliding windows from each column independently
-        windows = []
-        for col_idx in range(data.shape[1]):
-            series = data[:, col_idx]
-            n_windows = len(series) - self.WINDOW_SIZE + 1
-            if n_windows <= 0:
-                continue
-            for start in range(0, n_windows, self.WINDOW_SIZE // 2):  # 50% overlap
-                end = start + self.WINDOW_SIZE
-                if end > len(series):
-                    break
-                windows.append(series[start:end])
-
-        if not windows:
-            return None
-
-        return np.array(windows, dtype=np.float32)
+    def _prepare_windows(self, golden_path: str) -> Optional[np.ndarray]:
+        """Loads Golden Dataset and prepares feature windows."""
+        return AuditorWindowPreparer.prepare_windows(golden_path, window_size=self.WINDOW_SIZE)
 
     def _calibrate_threshold(self, agent: AuditorAgent, windows: np.ndarray):
-        """
-        Runs validation on all training windows to set threshold = percentile 95.
-        This replaces the arbitrary 0.5 default with a data-driven cutoff.
-        """
-        agent.model.eval()
-        device = getattr(agent.pipeline, "device", getattr(agent, "device", torch.device("cpu")))
-        calibrator = getattr(agent.pipeline, "calibrator", getattr(agent.trainer, "calibrator", None))
-        physics_engine = getattr(agent.pipeline, "physics_engine", getattr(agent.trainer, "physics_engine", None))
-        physics_weight = getattr(agent.pipeline, "physics_weight", getattr(agent, "physics_weight", 0.5))
-        enable_pinn = getattr(agent.pipeline, "enable_pinn", getattr(agent, "enable_pinn", True))
-
-        all_scores = []
-
-        with torch.no_grad():
-            for i in range(0, len(windows), self.BATCH_SIZE):
-                batch = torch.tensor(
-                    windows[i:i + self.BATCH_SIZE], dtype=torch.float32
-                ).to(device)
-
-                from src.utils.normalization import TensorNormalizer
-                batch = TensorNormalizer.sanitize(batch)
-                batch, _, _ = TensorNormalizer.instance_norm(batch)
-                batch = TensorNormalizer.sanitize(batch)
-
-                feats, z, rec_feats, time_recon = agent.model(batch, return_time_recon=True)
-                feats = feats.to(device)
-                z = z.to(device)
-                rec_feats = rec_feats.to(device)
-                time_recon = time_recon.to(device)
-
-                rec_err = torch.mean((rec_feats - feats) ** 2, dim=1)
-                time_err = torch.mean((time_recon - batch) ** 2, dim=1)
-
-                if calibrator is not None and calibrator.center is not None:
-                    center = calibrator.center.to(device)
-                    dist_center = torch.sum((z - center) ** 2, dim=1)
-                else:
-                    dist_center = torch.zeros(batch.shape[0], device=device)
-
-                if physics_engine is not None and enable_pinn:
-                    physics_res = physics_engine.compute_losses(time_recon, orig_x=batch)
-                    phys_val = physics_res.get("total_physics_loss", torch.tensor(0.0, device=device))
-                    if isinstance(phys_val, torch.Tensor):
-                        phys_val = phys_val.to(device)
-                else:
-                    phys_val = torch.tensor(0.0, device=device)
-
-                scores = rec_err + (0.5 * time_err) + (0.1 * dist_center) + (physics_weight * phys_val)
-                all_scores.append(scores.cpu())
-
-        if all_scores:
-            all_scores = torch.cat(all_scores).numpy()
-            valid_scores = all_scores[np.isfinite(all_scores)]
-            if len(valid_scores) > 0:
-                raw_pct = float(np.percentile(valid_scores, self.CALIBRATION_PERCENTILE))
-                calibrated_threshold = max(self.MIN_THRESHOLD_FLOOR, raw_pct * self.SAFETY_HEADROOM)
-            else:
-                calibrated_threshold = self.MIN_THRESHOLD_FLOOR
-        else:
-            calibrated_threshold = self.MIN_THRESHOLD_FLOOR
-
-        # Override threshold with the statistical one in calibrator and model
-        if calibrator is not None:
-            calibrator.threshold = calibrated_threshold
-        agent.model.threshold = torch.tensor(calibrated_threshold)
-        if hasattr(agent, "threshold"):
-            agent.threshold = torch.tensor(calibrated_threshold)
+        """Runs validation on all training windows to set data-driven threshold."""
+        return AuditorThresholdCalibrator.calibrate_threshold(
+            agent=agent,
+            windows=windows,
+            batch_size=self.BATCH_SIZE,
+            calibration_percentile=self.CALIBRATION_PERCENTILE,
+            safety_headroom=self.SAFETY_HEADROOM,
+            min_threshold_floor=self.MIN_THRESHOLD_FLOOR,
+        )
 
     def _save_checkpoint(self, agent: AuditorAgent, checkpoint_path: str):
         """Saves the full calibrated state using CheckpointService pattern."""
-        os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
-
-        calibrator = getattr(agent.pipeline, "calibrator", getattr(agent.trainer, "calibrator", None))
-        center = calibrator.center if (calibrator and calibrator.center is not None) else getattr(agent.model, 'center', None)
-        center_init = calibrator.center_initialized if calibrator else getattr(agent.model, 'center_initialized', False)
-        threshold = calibrator.threshold if calibrator else getattr(agent.model, 'threshold', 0.5)
-        if isinstance(threshold, torch.Tensor):
-            threshold = threshold.item()
-
-        state = {
-            'model_state_dict': agent.model.state_dict(),
-            'threshold': threshold,
-            'center': center,
-            'center_initialized': center_init,
-            'input_len': getattr(agent.model, 'input_len', self.WINDOW_SIZE),
-            'latent_dim': getattr(agent.model, 'latent_dim', 16),
-        }
-
-        # Atomic save (temp → move)
-        temp_path = checkpoint_path + ".tmp"
-        torch.save(state, temp_path)
-
-        import shutil
-        shutil.move(temp_path, checkpoint_path)
-
-        try:
-            from src.managers.storage_manager import StorageManager
-            sm = StorageManager()
-            sm.sync_file_to_vault(checkpoint_path)
-        except Exception:
-            pass
-
+        AuditorThresholdCalibrator.save_checkpoint(agent, checkpoint_path, window_size=self.WINDOW_SIZE)
         self.log(f"[AuditorCalibrationStage] 💾 Checkpoint saved: {checkpoint_path}")

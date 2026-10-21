@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/stages/sanitization_stage.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import pandas as pd
@@ -99,8 +82,45 @@ class SanitizationStage(BaseStage):
 
         self.log(f"[SanitizationStage] 🧹 Initializing VAE-TCN and PatchTST agents for {len(available_cols)} features...")
         num_features = len(available_cols)
-        corrector_agent = CorrectorAgent(input_dim=num_features)
-        imputer_agent = ImputerAgent(feature_dim=num_features, seq_len=24)
+
+        corr_cfg: Dict[str, Any] = {}
+        imp_cfg: Dict[str, Any] = {}
+        hparams_candidates = [
+            os.path.join(self.synapse_root, "Checkpoint", "best_hparams.pth"),
+            os.path.join("checkpoints", "best_hparams.pth"),
+        ]
+        for hp_path in hparams_candidates:
+            if os.path.exists(hp_path):
+                try:
+                    import torch
+                    hp_all = torch.load(hp_path, map_location="cpu")
+                    if isinstance(hp_all, dict):
+                        if isinstance(hp_all.get("corrector"), dict):
+                            corr_cfg = hp_all["corrector"]
+                        if isinstance(hp_all.get("imputer"), dict):
+                            imp_cfg = hp_all["imputer"]
+                    break
+                except Exception:
+                    pass
+
+        corrector_agent = CorrectorAgent(
+            input_dim=num_features,
+            latent_dim=int(corr_cfg.get("latent_dim", 16)),
+            kernel_size=int(corr_cfg.get("kernel_size", 3)),
+            learning_rate=float(corr_cfg.get("lr", 1e-3)),
+        )
+        imp_patch_len = int(imp_cfg.get("patch_len", 8))
+        imputer_agent = ImputerAgent(
+            feature_dim=num_features,
+            seq_len=24,
+            patch_len=imp_patch_len,
+            stride=max(1, imp_patch_len // 2),
+            d_model=int(imp_cfg.get("d_model", 64)),
+            n_heads=int(imp_cfg.get("n_heads", 4)),
+            n_layers=int(imp_cfg.get("n_layers", 2)),
+            dropout=float(imp_cfg.get("dropout", 0.1)),
+            learning_rate=float(imp_cfg.get("lr", 1e-4)),
+        )
 
         groups = df_golden.groupby('sensor_id')
         total_gaps = 0
@@ -131,7 +151,7 @@ class SanitizationStage(BaseStage):
         if self.check_interruption(): return False
 
         # Reassemble and Enrich
-        if 'timestamp' in df_golden.columns:
+        if 'timestamp' in df_golden.columns or 'event_timestamp' in df_golden.columns:
             df_golden = self._enrich_time_features(df_golden)
             
         # Clean up fallback if needed
@@ -189,7 +209,8 @@ class SanitizationStage(BaseStage):
 
     def _enrich_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Extracts standard temporal markers needed for downstream analysis."""
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-        df['hour'] = df['timestamp'].dt.hour
-        df['day_of_week'] = df['timestamp'].dt.dayofweek
+        time_col = 'timestamp' if 'timestamp' in df.columns else 'event_timestamp'
+        df[time_col] = pd.to_datetime(df[time_col], errors='coerce')
+        df['hour'] = df[time_col].dt.hour
+        df['day_of_week'] = df[time_col].dt.dayofweek
         return df

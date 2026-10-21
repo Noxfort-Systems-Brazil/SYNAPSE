@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/pipeline/auditor_pipeline.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import numpy as np
@@ -94,8 +77,13 @@ class AuditorPipeline:
     def reset_history(self):
         """Resets anomaly sliding window after Fênix N1 Hot-Reset."""
         self._anomaly_history.clear()
-        self._consecutive_catastrophic = 0
-        logger.info("[AuditorPipeline] Anomaly history reset.")
+        dyn_cal = getattr(self.calibrator, "dynamic_calibrator", None)
+        if dyn_cal is not None:
+            try:
+                dyn_cal.reset()
+            except Exception:
+                pass
+        logger.info("[AuditorPipeline] Anomaly history and dynamic calibrator reset.")
 
     def to(self, device: Any) -> 'AuditorPipeline':
         self.device = torch.device(device) if isinstance(device, str) else device
@@ -131,7 +119,10 @@ class AuditorPipeline:
             if sig_dim != target_len:
                 if sig_dim < target_len:
                     import torch.nn.functional as F
-                    x = F.pad(x, (0, target_len - sig_dim))
+                    if sig_dim >= 1:
+                        x = F.pad(x.unsqueeze(1), (0, target_len - sig_dim), mode='replicate').squeeze(1)
+                    else:
+                        x = F.pad(x, (0, target_len - sig_dim))
                 else:
                     x = x[:, :target_len]
 
@@ -166,10 +157,26 @@ class AuditorPipeline:
                     physics_loss = physics_loss.to(x.device)
 
                 total_score = rec_err + (0.5 * time_err) + (0.1 * dist_center) + (self.physics_weight * physics_loss)
-                threshold = self.calibrator.threshold
-                is_anomaly_val = bool((total_score > threshold).item() if (total_score > threshold).numel() == 1 else (total_score > threshold)[0].item())
                 score_val = float(total_score.mean().item())
                 physics_val = float(physics_loss.mean().item())
+
+                # Dynamic Tri-Modal Ensemble Evaluation (Zero Hardcoded Thresholds)
+                dyn_cal = getattr(self.calibrator, "dynamic_calibrator", None)
+                if dyn_cal is not None:
+                    try:
+                        eval_res = dyn_cal.evaluate(score_val)
+                        if isinstance(eval_res, tuple) and len(eval_res) >= 2:
+                            is_anomaly_val = bool(eval_res[0])
+                            threshold = eval_res[1]
+                        else:
+                            threshold = getattr(self.calibrator, "threshold", 1.0)
+                            is_anomaly_val = bool(score_val > float(threshold))
+                    except Exception:
+                        threshold = getattr(self.calibrator, "threshold", 1.0)
+                        is_anomaly_val = bool(score_val > float(threshold))
+                else:
+                    threshold = getattr(self.calibrator, "threshold", 1.0)
+                    is_anomaly_val = bool((total_score > threshold).item() if (total_score > threshold).numel() == 1 else (total_score > threshold)[0].item())
 
                 # Check for catastrophic numerical or physical violation
                 is_catastrophic = (

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/stages/classification_stage.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import pandas as pd
@@ -62,18 +45,41 @@ class ClassificationStage(BaseStage):
             # Dynamic sequence length based on the dataset size
             seq_len = len(golden_df)
             
+            # Load Phase Zero Hyperparameters if available
+            clf_cfg: Dict[str, Any] = {}
+            hparams_candidates = [
+                os.path.join(self.synapse_root, "Checkpoint", "best_hparams.pth"),
+                os.path.join("checkpoints", "best_hparams.pth"),
+            ]
+            for hp_path in hparams_candidates:
+                if os.path.exists(hp_path):
+                    try:
+                        import torch
+                        hp_all = torch.load(hp_path, map_location="cpu")
+                        if isinstance(hp_all, dict) and isinstance(hp_all.get("classifier"), dict):
+                            clf_cfg = hp_all["classifier"]
+                        break
+                    except Exception:
+                        pass
+
+            d_model_val = int(clf_cfg.get("d_model", 64))
+            top_k_val = int(clf_cfg.get("top_k", 3))
+            lr_val = float(clf_cfg.get("lr", 1e-3))
+
             # Define Neural Network Configurations for ADAGIO Phase 1
             itrans_cfg = {
                 'num_variates': 2, 
                 'seq_len': seq_len, 
                 'pred_len': seq_len, 
-                'd_model': 64
+                'd_model': d_model_val
             }
             tnet_cfg = {
                 'enc_in': 1, 
                 'seq_len': seq_len, 
                 'pred_len': seq_len, 
-                'd_model': 64
+                'd_model': d_model_val,
+                'top_k': top_k_val,
+                'learning_rate': lr_val
             }
             
             # Initialize and execute the updated Peak Classifier Agent

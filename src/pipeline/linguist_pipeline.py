@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/pipeline/linguist_pipeline.py
-# Author: Gabriel Moraes
-# Date: 2026-08-20
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import torch
@@ -27,7 +10,7 @@ from transformers import AutoTokenizer
 from torch.amp import autocast
 
 from src.models.neuro_symbolic import NeuroSymbolicModel
-from src.utils.model_paths import get_distilroberta_base_path
+from src.utils.model_paths import get_modernbert_path
 
 logger = logging.getLogger("Synapse.LinguistPipeline")
 
@@ -42,14 +25,20 @@ class LinguistPipeline:
         self,
         model: Optional[NeuroSymbolicModel] = None,
         model_name: Optional[str] = None,
+        latent_dim: int = 64,
+        kernel_size: int = 3,
         anomaly_threshold: float = 0.85,
         device: Optional[torch.device] = None,
         **kwargs: Any
     ):
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        resolved_name = model_name or get_distilroberta_base_path()
+        resolved_name = model_name or get_modernbert_path()
         self.model_name = resolved_name
-        self.model = model or NeuroSymbolicModel(model_name=resolved_name)
+        self.model = model or NeuroSymbolicModel(
+            model_name=resolved_name,
+            latent_dim=latent_dim,
+            kernel_size=kernel_size
+        )
         self.model.to(self.device)
 
         is_local = os.path.isdir(resolved_name)

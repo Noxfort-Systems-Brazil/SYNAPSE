@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/pipeline/peak_pipeline.py
-# Author: Gabriel Moraes
-# Date: 2026-04-26
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import json
@@ -28,33 +11,27 @@ import torch
 import torch.nn.functional as F
 from torch.amp import autocast
 from sklearn.mixture import GaussianMixture
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from src.models.distilroberta import DistilRobertaSemanticExtractor
+from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class ColumnDiscovery:
     """
-    Single Responsibility: Semantic column matching using NLP embeddings.
-    
-    Uses DistilRoBERTa to match dataset columns to traffic concepts
-    (volume/flow vs speed/velocity) by cosine similarity.
+    Discovers volume/flow and speed/velocity columns from Golden Parquet or historical datasets.
+    Prioritizes canonical Golden Parquet columns ('flow_val', 'speed_val') with fast keyword fallback,
+    completely eliminating the heavy ModernBERT transformer dependency.
     """
 
-    VOLUME_CONCEPT = ["traffic volume, vehicle count, vehicle flow, intensity, amount of cars"]
-    SPEED_CONCEPT = ["traffic speed, vehicle velocity, average speed, km/h, mph"]
-
-    def __init__(self):
-        self._extractor: Optional['DistilRobertaSemanticExtractor'] = None
-
-    def _ensure_extractor(self):
-        if self._extractor is None:
-            from src.models.distilroberta import DistilRobertaSemanticExtractor
-            logger.info("Loading DistilRobertaSemanticExtractor for Column Discovery...")
-            self._extractor = DistilRobertaSemanticExtractor()
+    VOLUME_CANDIDATES = [
+        "flow_val", "flow", "currentflow", "current_flow", "fluxo",
+        "volume", "intensity_val", "intensity", "count", "vehicle_count",
+        "veic", "q", "vol"
+    ]
+    SPEED_CANDIDATES = [
+        "speed_val", "speed", "currentspeed", "current_speed", "velocidade",
+        "vel", "speed_kmh", "kmh", "v"
+    ]
 
     def discover(self, columns: list) -> Tuple[str, str]:
         """
@@ -63,26 +40,31 @@ class ColumnDiscovery:
         Returns:
             Tuple of (volume_column, speed_column).
         """
-        self._ensure_extractor()
+        col_lower = {str(c).lower(): c for c in columns}
 
-        vol_emb = self._get_embedding(self.VOLUME_CONCEPT)
-        spd_emb = self._get_embedding(self.SPEED_CONCEPT)
-        col_embs = self._get_embedding(columns)
+        # 1. Exact canonical Golden Parquet check
+        vol_col = None
+        for cand in self.VOLUME_CANDIDATES:
+            if cand in col_lower:
+                vol_col = col_lower[cand]
+                break
 
-        vol_scores = F.cosine_similarity(vol_emb.expand_as(col_embs), col_embs, dim=1)
-        spd_scores = F.cosine_similarity(spd_emb.expand_as(col_embs), col_embs, dim=1)
+        spd_col = None
+        for cand in self.SPEED_CANDIDATES:
+            if cand in col_lower:
+                spd_col = col_lower[cand]
+                break
 
-        best_vol_col = columns[torch.argmax(vol_scores).item()]
-        best_spd_col = columns[torch.argmax(spd_scores).item()]
+        # 2. Fallbacks if custom columns are provided
+        if not vol_col and columns:
+            vol_col = columns[0]
+        if not spd_col and len(columns) > 1:
+            remaining = [c for c in columns if c != vol_col]
+            spd_col = remaining[0] if remaining else columns[0]
+        elif not spd_col and columns:
+            spd_col = columns[0]
 
-        return best_vol_col, best_spd_col
-
-    def _get_embedding(self, texts: list) -> torch.Tensor:
-        embeddings = []
-        for text in texts:
-            emb = self._extractor._get_embedding([text])
-            embeddings.append(emb)
-        return torch.cat(embeddings, dim=0)
+        return vol_col, spd_col
 
 
 class PeakPipeline:
@@ -125,7 +107,7 @@ class PeakPipeline:
 
         # 3. Canonical week
         logger.info("Building canonical week (168 blocks)...")
-        canonical_week = self._build_canonical_week(df, neural_scores)
+        canonical_week = self._build_canonical_week(df, neural_scores, vol_col=vol_col)
 
         # 4. GMM classification
         logger.info("Applying GMM classification...")
@@ -133,8 +115,21 @@ class PeakPipeline:
         self.gmm.fit(scores_matrix)
         cluster_labels = self.gmm.predict(scores_matrix)
 
-        cluster_means = self.gmm.means_.flatten()
-        peak_cluster_index = np.argmax(cluster_means)
+        # Anchor cluster polarity to actual physical traffic volume so negative random
+        # projections never invert daytime peak hours with midnight low-flow hours.
+        if 'mean_volume' in canonical_week.columns and len(np.unique(cluster_labels)) > 1:
+            vol_by_cluster = [
+                float(canonical_week.loc[cluster_labels == c, 'mean_volume'].mean())
+                for c in range(self.gmm.n_components)
+            ]
+            if not np.allclose(vol_by_cluster[0], vol_by_cluster[1]):
+                peak_cluster_index = int(np.argmax(vol_by_cluster))
+            else:
+                cluster_means = self.gmm.means_.flatten()
+                peak_cluster_index = int(np.argmax(cluster_means))
+        else:
+            cluster_means = self.gmm.means_.flatten()
+            peak_cluster_index = int(np.argmax(cluster_means))
         is_peak = (cluster_labels == peak_cluster_index)
 
         # 5. Export
@@ -179,8 +174,8 @@ class PeakPipeline:
         return np.concatenate(all_features)
 
     @staticmethod
-    def _build_canonical_week(df: pd.DataFrame, neural_scores: np.ndarray) -> pd.DataFrame:
-        """Groups neural scores by day-of-week and hour."""
+    def _build_canonical_week(df: pd.DataFrame, neural_scores: np.ndarray, vol_col: Optional[str] = None) -> pd.DataFrame:
+        """Groups neural scores and physical volume by day-of-week and hour."""
         df = df.copy()
         df['neural_score'] = neural_scores
 
@@ -188,6 +183,10 @@ class PeakPipeline:
         df[time_col] = pd.to_datetime(df[time_col])
         df['day_of_week'] = df[time_col].dt.dayofweek
         df['hour'] = df[time_col].dt.hour
+
+        if vol_col and vol_col in df.columns:
+            df['mean_volume'] = pd.to_numeric(df[vol_col], errors='coerce').fillna(0.0)
+            return df.groupby(['day_of_week', 'hour'])[['neural_score', 'mean_volume']].mean().reset_index()
 
         return df.groupby(['day_of_week', 'hour'])['neural_score'].mean().reset_index()
 

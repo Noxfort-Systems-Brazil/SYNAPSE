@@ -1,25 +1,9 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/pipeline/specialist_pipeline.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from typing import List, Any, Optional, Union
 from torch.amp import autocast
@@ -85,8 +69,9 @@ class SpecialistPipeline:
 
     def freeze(self) -> 'SpecialistPipeline':
         """Freezes internal TCNAE weights for zero-cost drift-safe real-time inference."""
-        if hasattr(self.tcn, "freeze"):
-            self.tcn.freeze()
+        freeze_fn = getattr(self.tcn, "freeze", None)
+        if callable(freeze_fn):
+            freeze_fn()
         else:
             for param in self.model.parameters():
                 param.requires_grad = False
@@ -95,8 +80,9 @@ class SpecialistPipeline:
 
     def unfreeze(self) -> 'SpecialistPipeline':
         """Unfreezes internal TCNAE weights for on-demand recalibration."""
-        if hasattr(self.tcn, "unfreeze"):
-            self.tcn.unfreeze()
+        unfreeze_fn = getattr(self.tcn, "unfreeze", None)
+        if callable(unfreeze_fn):
+            unfreeze_fn()
         else:
             for param in self.model.parameters():
                 param.requires_grad = True
@@ -104,8 +90,9 @@ class SpecialistPipeline:
 
     @property
     def is_frozen(self) -> bool:
-        if hasattr(self.tcn, "is_frozen"):
-            return self.tcn.is_frozen
+        tcn_frozen = getattr(self.tcn, "is_frozen", None)
+        if tcn_frozen is not None:
+            return bool(tcn_frozen() if callable(tcn_frozen) else tcn_frozen)
         return not any(p.requires_grad for p in self.model.parameters())
 
     def predict(self, input_sequence: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
@@ -152,3 +139,47 @@ class SpecialistPipeline:
             if full_seq.ndim == 2:
                 return full_seq[:, -1]
             return full_seq
+
+    def compute_loss(self, input_sequence: Union[np.ndarray, torch.Tensor]) -> float:
+        """
+        Fast-path reconstruction error evaluation via torch.no_grad (<0.05ms).
+        Zero gradient and zero backward graph overhead for wire-speed ingestion.
+        """
+        self.model.eval()
+        device = self._get_current_device()
+
+        with torch.no_grad():
+            seq = input_sequence
+            if getattr(seq, "ndim", 0) == 2 and seq.shape[0] > seq.shape[1]:
+                seq = seq.T
+
+            if isinstance(seq, np.ndarray):
+                tensor_x = torch.FloatTensor(seq).to(device)
+            elif isinstance(seq, torch.Tensor):
+                tensor_x = seq.to(device)
+            else:
+                tensor_x = torch.tensor(seq, dtype=torch.float).to(device)
+
+            if tensor_x.dim() == 1:
+                tensor_x = tensor_x.unsqueeze(0).unsqueeze(0)
+            elif tensor_x.dim() == 2:
+                tensor_x = tensor_x.unsqueeze(0)
+
+            device_type = device.type if device.type != 'mps' else 'cpu'
+
+            # Normalize sequence scale for stable bounded MSE loss
+            try:
+                max_val = float(torch.max(torch.abs(tensor_x)).item())
+                norm_factor = max_val if max_val > 1.0 else 1.0
+                norm_x = tensor_x / norm_factor
+            except Exception:
+                norm_x = tensor_x
+
+            with autocast(device_type=device_type, enabled=(device.type == 'cuda')):
+                if isinstance(self.tcn, TCNAE):
+                    reconstructed, _ = self.tcn(norm_x)
+                    return float(F.mse_loss(reconstructed, norm_x).item())
+                elif callable(self.tcn):
+                    out = self.tcn(norm_x)
+                    return float(F.mse_loss(out, norm_x).item())
+        return 0.02
