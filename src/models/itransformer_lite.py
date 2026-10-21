@@ -1,25 +1,9 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/models/itransformer_lite.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
+from src.utils.attention_utils import get_sdp_context
 
 # Enable Tensor Cores globally for matrix multiplications and cuDNN operations
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -73,7 +57,11 @@ class iTransformerLite(nn.Module):
         
         # Step 2: Apply Cross-Context Attention
         # The network learns to pay attention to Speed when Volume drops to 0 during a jam.
-        attn_out, _ = self.attention(hidden, hidden, hidden)
+        if hidden.is_cuda:
+            with get_sdp_context(enable_flash=True, enable_mem_efficient=True, enable_math=True):
+                attn_out, _ = self.attention(hidden, hidden, hidden, need_weights=False)
+        else:
+            attn_out, _ = self.attention(hidden, hidden, hidden, need_weights=False)
         
         # Add & Norm (Residual connection for stable gradients)
         fused_hidden = self.norm(hidden + attn_out)

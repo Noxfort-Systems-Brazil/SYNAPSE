@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/models/pino_traffic.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Optional, Dict, Tuple, Union, Any
 import torch
@@ -26,11 +9,13 @@ import torch.nn.functional as F
 from src.interfaces.physics import IFundamentalDiagram
 from src.physics.fundamental_diagrams import GreenshieldsDiagram
 from src.physics.continuum import SpatialGraphConservation
-from src.blocks.spectral_blocks import SpectralConv1d, SpectralConv2d
-
-# Enable Tensor Cores globally for matrix multiplications and cuDNN operations
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+from src.physics.pino_residuals import PINOTrafficResidualEngine
+from src.blocks.spectral_blocks import SpectralConv1d, SpectralConv2d, GraphLaplacianSpectralConv
+from src.blocks.feature_blocks import SpectralFeatureBlock, SpectralFeatureExtractor
+from src.physics.constants import (
+    DEFAULT_JAM_DENSITY_PER_LANE,
+    DEFAULT_URBAN_SPEED_LIMIT_KMH,
+)
 
 
 class PINOTrafficFlow1D(nn.Module):
@@ -49,10 +34,14 @@ class PINOTrafficFlow1D(nn.Module):
         hidden_dim: int = 64,
         modes: int = 16,
         num_layers: int = 4,
-        v_free_default: float = 60.0,
-        k_jam_default: float = 120.0,
+        v_free_default: float = DEFAULT_URBAN_SPEED_LIMIT_KMH,
+        k_jam_default: float = DEFAULT_JAM_DENSITY_PER_LANE,
         q_max_default: float = 1800.0,
         fundamental_diagram: Optional[IFundamentalDiagram] = None,
+        graph_conservation: Optional[SpatialGraphConservation] = None,
+        residual_engine: Optional[PINOTrafficResidualEngine] = None,
+        operator_mode: str = "auto",
+        cheb_k: int = 3,
         **kwargs
     ):
         super().__init__()
@@ -60,20 +49,30 @@ class PINOTrafficFlow1D(nn.Module):
         self.hidden_dim = hidden_dim
         self.modes = modes
         self.num_layers = num_layers
+        self.operator_mode = operator_mode
+        self.cheb_k = cheb_k
 
         self.v_free_default = v_free_default
         self.k_jam_default = k_jam_default
         self.q_max_default = q_max_default
 
         self.fundamental_diagram = fundamental_diagram or GreenshieldsDiagram()
-        self.graph_conservation = SpatialGraphConservation()
+        self.graph_conservation = graph_conservation or SpatialGraphConservation()
+        self.residual_engine = residual_engine or PINOTrafficResidualEngine(
+            fundamental_diagram=self.fundamental_diagram,
+            graph_conservation=self.graph_conservation,
+        )
 
         # 1. Lifting projection: In -> Hidden Width
         self.p_lifting = nn.Linear(in_channels, hidden_dim)
 
-        # 2. Stack of Fourier Neural Operator Blocks
+        # 2. Fourier Neural Operator Blocks (for 1D ordered corridor cells)
         self.spectral_layers = nn.ModuleList([
             SpectralConv1d(hidden_dim, hidden_dim, modes) for _ in range(num_layers)
+        ])
+        # Graph Laplacian Spectral Blocks (permutation-equivariant for road graphs)
+        self.graph_spectral_layers = nn.ModuleList([
+            GraphLaplacianSpectralConv(hidden_dim, hidden_dim, K=cheb_k) for _ in range(num_layers)
         ])
         self.w_layers = nn.ModuleList([
             nn.Conv1d(hidden_dim, hidden_dim, 1) for _ in range(num_layers)
@@ -98,24 +97,44 @@ class PINOTrafficFlow1D(nn.Module):
             nn.Tanh()
         )
 
-    def forward_operator(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_operator(
+        self,
+        x: torch.Tensor,
+        edge_index: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
-        FNO core operator forward pass:
+        Spectral operator forward pass.
+        - In graph mode (or auto when edge_index is provided): uses Graph Laplacian
+          spectral convolutions, preserving physical topology and permutation equivariance.
+        - In corridor mode (or auto when edge_index is None): uses 1D FFT convolutions
+          along spatially ordered cells of a roadway corridor.
+        
         Args:
             x: [Batch, Num_Nodes, in_channels]
+            edge_index: Optional [2, Num_Edges] connectivity
         Returns:
             x_latent: [Batch, Num_Nodes, hidden_dim]
         """
-        # Lifting: [Batch, Num_Nodes, Hidden] -> [Batch, Hidden, Num_Nodes]
-        x_lifted = self.p_lifting(x).permute(0, 2, 1)
+        use_graph = (self.operator_mode == "graph") or (
+            self.operator_mode == "auto" and edge_index is not None and edge_index.numel() > 0
+        )
 
-        for spec_conv, w_conv in zip(self.spectral_layers, self.w_layers):
-            x1 = spec_conv(x_lifted)
-            x2 = w_conv(x_lifted)
-            x_lifted = F.gelu(x1 + x2)
-
-        # [Batch, Num_Nodes, Hidden]
-        return x_lifted.permute(0, 2, 1)
+        if use_graph:
+            # Graph Laplacian spectral operator
+            x_lifted = self.p_lifting(x)
+            for graph_conv, w_conv in zip(self.graph_spectral_layers, self.w_layers):
+                x1 = graph_conv(x_lifted, edge_index=edge_index)
+                x2 = w_conv(x_lifted.permute(0, 2, 1)).permute(0, 2, 1)
+                x_lifted = F.gelu(x1 + x2)
+            return x_lifted
+        else:
+            # 1D Corridor spectral operator along ordered cells
+            x_lifted = self.p_lifting(x).permute(0, 2, 1)
+            for spec_conv, w_conv in zip(self.spectral_layers, self.w_layers):
+                x1 = spec_conv(x_lifted)
+                x2 = w_conv(x_lifted)
+                x_lifted = F.gelu(x1 + x2)
+            return x_lifted.permute(0, 2, 1)
 
     def project_physical_states(self, x_latent: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -132,8 +151,13 @@ class PINOTrafficFlow1D(nn.Module):
         x_embedding: torch.Tensor,
         edge_index: Optional[torch.Tensor] = None,
         global_velocities: Optional[torch.Tensor] = None,
-        dt: float = 1.0
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        dt: float = 1.0,
+        dx: float = 1.0,
+        k_next: Optional[torch.Tensor] = None,
+        k_prev: Optional[torch.Tensor] = None,
+        boundary_tolerance: Optional[float] = None,
+        assume_stationary: bool = False,
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """
         Compatible with FusionPipeline:
         Args:
@@ -141,6 +165,11 @@ class PINOTrafficFlow1D(nn.Module):
             edge_index: Graph connectivity [2, Num_Edges]
             global_velocities: Optional macroscopic speeds
             dt: Time differential
+            dx: Spatial differential for corridor discretization
+            k_next: Optional next-timestep density [Batch, Num_Nodes, 1]
+            k_prev: Optional previous-timestep density [Batch, Num_Nodes, 1]
+            boundary_tolerance: Optional tolerance for boundary Kirchhoff imbalances
+            assume_stationary: Explicit flag to enforce dk/dt = 0 when k_next/k_prev are absent
         Returns:
             refined_embedding: [Batch, Num_Nodes, in_channels]
             metrics: Dictionary containing physical variables and PDE residuals
@@ -152,7 +181,7 @@ class PINOTrafficFlow1D(nn.Module):
         device = x_embedding.device
 
         # 1. Neural Operator Pass
-        x_latent = self.forward_operator(x_embedding)
+        x_latent = self.forward_operator(x_embedding, edge_index=edge_index)
 
         # 2. Physical State Projections
         k_est, v_est, q_est = self.project_physical_states(x_latent)
@@ -172,16 +201,22 @@ class PINOTrafficFlow1D(nn.Module):
             valid_mask = (g_vel > 0).float()
             v_est = v_est * (1.0 - 0.5 * valid_mask) + g_vel * (0.5 * valid_mask)
 
-        # 5. Hydrodynamic LWR Residual & Spatial Conservation
-        q_theory = self.fundamental_diagram.compute_flow(k_est, v_free, k_jam)
-        res_flow = torch.abs(q_est - q_theory)
-
-        if edge_index is not None and edge_index.numel() > 0:
-            res_conservation = self.graph_conservation.compute_loss(q_est, edge_index)
-        else:
-            res_conservation = torch.tensor(0.0, device=device)
-
-        physics_residual = res_flow.mean() + 0.1 * res_conservation
+        # 5. Hydrodynamic LWR Conservation PDE & Constitutive Residual (Delegated Engine)
+        metrics = self.residual_engine.compute_residuals(
+            k_est=k_est,
+            v_est=v_est,
+            q_est=q_est,
+            v_free=v_free,
+            k_jam=k_jam,
+            edge_index=edge_index,
+            operator_mode=self.operator_mode,
+            dt=dt,
+            dx=dx,
+            k_next=k_next,
+            k_prev=k_prev,
+            boundary_tolerance=boundary_tolerance,
+            assume_stationary=assume_stationary,
+        )
 
         # 6. Latent Gate Injection
         physics_vector = torch.cat([k_est, v_est, q_est], dim=-1)
@@ -190,69 +225,11 @@ class PINOTrafficFlow1D(nn.Module):
 
         refined_embedding = x_embedding * gate
 
-        metrics = {
-            "density": k_est.squeeze(-1),
-            "speed": v_est.squeeze(-1),
-            "flow": q_est.squeeze(-1),
-            "physics_residual": physics_residual
-        }
-
         return refined_embedding, metrics
 
 
-class SpectralFeatureExtractor(nn.Module):
-    """
-    Fourier Spectral Feature Extractor.
-    Drop-in replacement for TimesNet in PeakClassifierAgent and PeakPipeline.
-    Extracts periodic patterns across multi-scale frequency bands using FFT.
-    """
-
-    def __init__(
-        self,
-        enc_in: int = 2,
-        d_model: int = 64,
-        seq_len: int = 2048,
-        modes: int = 32,
-        **kwargs
-    ):
-        super().__init__()
-        self.enc_in = enc_in
-        self.d_model = d_model
-        self.seq_len = seq_len
-
-        self.conv_in = nn.Conv1d(enc_in, d_model, 1)
-        self.spectral_conv = SpectralConv1d(d_model, d_model, modes1=modes)
-        self.fc_out = nn.Sequential(
-            nn.Conv1d(d_model, d_model, 3, padding=1),
-            nn.GELU(),
-            nn.Conv1d(d_model, enc_in, 1)
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: Input tensor [Batch, SeqLen, Channels] or [Batch, Channels, SeqLen]
-        Returns:
-            features: [Batch, SeqLen, Channels]
-        """
-        is_seq_first = False
-        if x.dim() == 3 and x.size(1) != self.enc_in and x.size(2) == self.enc_in:
-            x = x.permute(0, 2, 1)
-            is_seq_first = True
-
-        h = self.conv_in(x)
-        h_spec = self.spectral_conv(h)
-        out = self.fc_out(F.gelu(h + h_spec))
-
-        if is_seq_first:
-            out = out.permute(0, 2, 1)
-
-        return out
-
-
 __all__ = [
-    "SpectralConv1d",
-    "SpectralConv2d",
     "PINOTrafficFlow1D",
-    "SpectralFeatureExtractor"
+    "SpectralFeatureBlock",
+    "SpectralFeatureExtractor",
 ]

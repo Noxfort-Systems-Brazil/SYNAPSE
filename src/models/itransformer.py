@@ -1,26 +1,10 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/models/itransformer.py
-# Author: Gabriel Moraes
-# Date: 2025-11-22
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from src.utils.attention_utils import get_sdp_context
 
 # Enable Tensor Cores globally for matrix multiplications and cuDNN operations
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -149,7 +133,11 @@ class iTransformer(nn.Module):
         # 3. Self-Attention (Temporal Inter-Variate Correlations)
         # Learns which sensors correlate with each other over time
         # Result: [Batch, Num_Variates, d_model]
-        enc_out = self.encoder(enc_out)
+        if enc_out.is_cuda:
+            with get_sdp_context(enable_flash=True, enable_mem_efficient=True, enable_math=True):
+                enc_out = self.encoder(enc_out)
+        else:
+            enc_out = self.encoder(enc_out)
         
         # 4. Cross-Attention (Spatial Context Injection)
         # Each variate "asks" the spatial graph: "how do my neighbors affect me?"
@@ -166,12 +154,22 @@ class iTransformer(nn.Module):
             spatial_kv = self.spatial_proj(spatial_context)  # [B, Nodes, d_model]
             spatial_kv = self.spatial_norm(spatial_kv)
             
-            # Cross-Attention: Q=temporal, K=V=spatial
-            cross_out, _ = self.cross_attn(
-                query=enc_out,      # [B, Variates, d_model]
-                key=spatial_kv,     # [B, Nodes, d_model]
-                value=spatial_kv    # [B, Nodes, d_model]
-            )
+            # Cross-Attention: Q=temporal, K=V=spatial with FlashAttention / CUTLASS / Math backup
+            if enc_out.is_cuda:
+                with get_sdp_context(enable_flash=True, enable_mem_efficient=True, enable_math=True):
+                    cross_out, _ = self.cross_attn(
+                        query=enc_out,      # [B, Variates, d_model]
+                        key=spatial_kv,     # [B, Nodes, d_model]
+                        value=spatial_kv,   # [B, Nodes, d_model]
+                        need_weights=False  # Crucial: Enables fused SDPA/FlashAttention in PyTorch
+                    )
+            else:
+                cross_out, _ = self.cross_attn(
+                    query=enc_out,
+                    key=spatial_kv,
+                    value=spatial_kv,
+                    need_weights=False
+                )
             enc_out = self.cross_norm(enc_out + cross_out)  # Residual connection
             
             # Feed-forward after cross-attention

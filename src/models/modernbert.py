@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/models/distilroberta.py
-# Author: Gabriel Moraes
-# Date: 2026-08-17
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 from typing import List, Optional, Tuple, Dict, Any
@@ -25,16 +8,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 
-from src.utils.model_paths import get_distilroberta_v1_path
+from src.utils.model_paths import get_modernbert_path
 
 # Enable Tensor Cores globally for matrix multiplications and cuDNN operations
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 
-class DistilRobertaEmbeddingModel(nn.Module):
+class ModernBertEmbeddingModel(nn.Module):
     """
-    Pure Neural Transformer Embedding Model (DistilRoBERTa Backbone).
+    Pure Neural Transformer Embedding Model (ModernBERT Backbone).
     
     A clean PyTorch Module responsible exclusively for:
     1. Processing input IDs and attention masks through transformer layers.
@@ -51,16 +34,23 @@ class DistilRobertaEmbeddingModel(nn.Module):
         transformer: Optional[nn.Module] = None,
         freeze_weights: bool = True
     ):
-        super(DistilRobertaEmbeddingModel, self).__init__()
-        self.model_name = model_name or get_distilroberta_v1_path()
+        super(ModernBertEmbeddingModel, self).__init__()
+        self.model_name = model_name or get_modernbert_path()
         if transformer is not None:
             self.transformer = transformer
         else:
             is_local = os.path.isdir(self.model_name)
-            self.transformer = AutoModel.from_pretrained(
-                self.model_name,
-                local_files_only=is_local
-            )
+            try:
+                self.transformer = AutoModel.from_pretrained(
+                    self.model_name,
+                    local_files_only=is_local,
+                    attn_implementation="sdpa"
+                )
+            except Exception:
+                self.transformer = AutoModel.from_pretrained(
+                    self.model_name,
+                    local_files_only=is_local
+                )
 
         if freeze_weights:
             for param in self.transformer.parameters():
@@ -89,12 +79,12 @@ class DistilRobertaEmbeddingModel(nn.Module):
         return F.normalize(mean_pooled, p=2, dim=-1)
 
 
-# Clean Facade Orchestrator maintained for legacy agent/pipeline integration
-class DistilRobertaSemanticExtractor:
+# Clean Facade Orchestrator maintained for agent/pipeline integration
+class ModernBertSemanticExtractor:
     """
     Semantic Orchestrator Facade.
     
-    Coordinates the pure DistilRobertaEmbeddingModel with tokenization,
+    Coordinates the pure ModernBertEmbeddingModel with tokenization,
     semantic clustering (ISemanticClusterer), and persistence (IOntologyRepository).
     """
 
@@ -103,7 +93,7 @@ class DistilRobertaSemanticExtractor:
         model_name: Optional[str] = None,
         similarity_threshold: float = 0.80,
         tokenizer: Optional[AutoTokenizer] = None,
-        model: Optional[DistilRobertaEmbeddingModel] = None,
+        model: Optional[ModernBertEmbeddingModel] = None,
         clusterer: Optional[Any] = None,
         repository: Optional[Any] = None
     ):
@@ -113,7 +103,7 @@ class DistilRobertaSemanticExtractor:
 
         self.logger = logging.getLogger(self.__class__.__name__)
         self.similarity_threshold = similarity_threshold
-        resolved_model_path = model_name or get_distilroberta_v1_path()
+        resolved_model_path = model_name or get_modernbert_path()
         self.model_name = resolved_model_path
         
         self.clusterer = clusterer or CosineSemanticClusterer(similarity_threshold=similarity_threshold, logger=self.logger)
@@ -128,7 +118,7 @@ class DistilRobertaSemanticExtractor:
                 local_files_only=is_local
             )
 
-        self.model = model or DistilRobertaEmbeddingModel(model_name=resolved_model_path)
+        self.model = model or ModernBertEmbeddingModel(model_name=resolved_model_path)
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
@@ -178,3 +168,4 @@ class DistilRobertaSemanticExtractor:
     def save_ontology(self, filepath: str) -> None:
         tensors = self.clusterer.get_concept_tensors()
         self.repository.save_tensors(tensors, filepath)
+
