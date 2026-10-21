@@ -1,9 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src-tauri/src/backend/mod.rs
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 pub mod state;
 pub mod ipc;
@@ -49,11 +45,6 @@ pub fn find_project_root() -> PathBuf {
         }
     }
 
-    let known_fallback = PathBuf::from("/home/gabriel-moraes/Documentos/SYNAPSE_CORE");
-    if known_fallback.exists() {
-        return known_fallback;
-    }
-
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
@@ -63,7 +54,8 @@ pub fn spawn_python_backend(app_handle: AppHandle, state: &PythonProcessState) {
         root.join(".venv/bin/python3"),
         root.join(".venv/bin/python"),
         root.join(".venv/Scripts/python.exe"),
-        PathBuf::from("/home/gabriel-moraes/Documentos/SYNAPSE_CORE/.venv/bin/python3"),
+        root.join("venv/bin/python3"),
+        root.join("venv/bin/python"),
     ];
 
     let mut python_bin = "python3".to_string();
@@ -80,6 +72,8 @@ pub fn spawn_python_backend(app_handle: AppHandle, state: &PythonProcessState) {
         .args(["-m", "src.ipc.stdio_daemon"])
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONPATH", &root)
+        .env("GRPC_ENABLE_FORK_SUPPORT", "1")
+        .env("GRPC_POLL_STRATEGY", "poll")
         .env_remove("LD_LIBRARY_PATH")
         .env_remove("LD_PRELOAD")
         .current_dir(&root)
@@ -109,7 +103,7 @@ pub fn spawn_python_backend(app_handle: AppHandle, state: &PythonProcessState) {
         *proc_guard = Some(child);
     }
 
-    ipc::spawn_stdout_listener(stdout, app_handle);
+    ipc::spawn_stdout_listener(stdout, app_handle, state.clone());
 }
 
 pub fn kill_backend(state: &PythonProcessState) {

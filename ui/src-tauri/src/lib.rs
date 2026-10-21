@@ -1,30 +1,15 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-//
-// File: ui/src-tauri/src/lib.rs
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 pub mod backend;
 pub mod commands;
+pub mod services;
 pub mod tray;
+pub mod utils;
 
 use backend::ipc::send_synapse_command;
 use backend::{spawn_python_backend, PythonProcessState};
-use commands::dialog::{pick_file_dialog, save_file_dialog, write_file_bytes};
+use commands::dialog::{pick_directory_dialog, pick_file_dialog, save_file_dialog, write_file_bytes};
 use commands::window::{minimize_to_tray, restore_from_tray, toggle_fullscreen};
 use tauri::{Manager, WindowEvent};
 
@@ -59,11 +44,13 @@ pub fn run() {
             send_synapse_command,
             pick_file_dialog,
             save_file_dialog,
+            pick_directory_dialog,
             write_file_bytes,
             toggle_fullscreen,
             minimize_to_tray,
             restore_from_tray
         ])
+
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");
 }

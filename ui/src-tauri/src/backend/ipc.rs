@@ -1,9 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src-tauri/src/backend/ipc.rs
-// Author: Gabriel Moraes
-// Date: 2026-08-31
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 use std::io::{BufRead, BufReader, Write};
 use std::process::ChildStdout;
@@ -48,7 +44,7 @@ pub fn send_synapse_command(
     }
 }
 
-pub fn spawn_stdout_listener(stdout: ChildStdout, app_handle: AppHandle) {
+pub fn spawn_stdout_listener(stdout: ChildStdout, app_handle: AppHandle, state: PythonProcessState) {
     std::thread::spawn(move || {
         let mut first_message = true;
         let reader = BufReader::new(stdout);
@@ -83,5 +79,9 @@ pub fn spawn_stdout_listener(stdout: ChildStdout, app_handle: AppHandle) {
             }
         }
         eprintln!("[Tauri IPC] 🔴 DESCONECTADO: Canal STDOUT com Core Python foi encerrado.");
+        if let Ok(mut stdin_guard) = state.stdin.lock() {
+            *stdin_guard = None;
+        }
+        let _ = app_handle.emit("synapse:disconnected", serde_json::json!({ "connected": false }));
     });
 }
