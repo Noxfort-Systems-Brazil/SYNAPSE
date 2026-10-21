@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/database_importer.py
-# Author: Gabriel Moraes
-# Date: 2026-02-27
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import shutil
@@ -142,9 +125,10 @@ class DatabaseImporter(QObject):
             shutil.copy2(abs_path, target_path)
 
             # 4. Sync to PostgreSQL Cloud File Vault
-            if hasattr(self.storage, "sync_file_to_vault"):
+            sync_fn = getattr(self.storage, "sync_file_to_vault", None)
+            if callable(sync_fn):
                 try:
-                    self.storage.sync_file_to_vault(str(target_path))
+                    sync_fn(str(target_path))
                     self._emit_log("☁️ [ETL] Base histórica sincronizada com o PostgreSQL Cloud Vault.")
                 except Exception as ve:
                     self.logger.debug(f"[ETL] Cloud vault sync notice: {ve}")

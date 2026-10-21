@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/offline_service.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import traceback
@@ -27,9 +10,12 @@ from src.domain.app_state import AppState
 
 # Import Pipeline Stages
 from src.stages.sanitization_stage import SanitizationStage
-from src.stages.translation_stage import TranslationStage
 from src.stages.classification_stage import ClassificationStage
+from src.stages.linguist_calibration_stage import LinguistCalibrationStage
 from src.stages.auditor_calibration_stage import AuditorCalibrationStage
+from src.utils.logging_setup import get_logger
+
+logger = get_logger("OfflineService")
 
 class OfflineService(QThread):
     """
@@ -55,22 +41,18 @@ class OfflineService(QThread):
         self.app_state = app_state
         self.running = True
         
-        # Setup Paths for Ubuntu
-        self.home_dir = os.path.expanduser("~")
-        self.synapse_root = os.path.join(self.home_dir, "Documentos", "Synapse")
-        
-        # Fallback if Documents is used instead of Documentos
-        if not os.path.exists(self.synapse_root):
-            self.synapse_root = os.path.join(self.home_dir, "Documents", "Synapse")
-            
-        self.datalake_dir = os.path.join(self.synapse_root, "datalake")
-        self.base_dir = os.path.join(self.datalake_dir, "base")
-        self.golden_dir = os.path.join(self.datalake_dir, "golden")
-        self.config_dir = os.path.join(self.synapse_root, "data", "config")
+        from src.storage.path_scaffolder import PathScaffolder
+        scaffolder = PathScaffolder()
+        self.home_dir = str(scaffolder.home)
+        self.synapse_root = scaffolder.get_project_root()
+        self.datalake_dir = str(scaffolder.datalake_dir)
+        self.base_dir = scaffolder.get_datalake_base_path()
+        self.golden_dir = scaffolder.get_datalake_golden_path()
+        self.config_dir = scaffolder.get_config_path()
 
     def run(self):
         """Main execution pipeline."""
-        self.log_message.emit("[OfflineService] 🟢 Starting Offline Service Thread...")
+        self._handle_log("[OfflineService] 🟢 Starting Offline Service Thread...")
         self.progress_update.emit(0)
         
         try:
@@ -82,15 +64,15 @@ class OfflineService(QThread):
                 "golden_dir": self.golden_dir,
                 "config_dir": self.config_dir,
                 "golden_path": os.path.join(self.golden_dir, "golden_v1.parquet"),
-                "ontology_path": os.path.join(self.config_dir, "ontology.safetensors"),
                 "json_path": os.path.join(self.config_dir, "peak_schedule.json"),
+                "linguist_checkpoint_path": os.path.join(self.config_dir, "linguist_calibrated.json"),
                 "auditor_checkpoint_path": os.path.join(self.config_dir, "auditor_calibrated.pth")
             }
             
             # --- MASTER SKIP LOCK ---
             if self._check_master_lock(shared_context):
-                self.log_message.emit("[OfflineService] 🏆 All Phase 1 artifacts found and validated (Golden, Ontology, JSON).")
-                self.log_message.emit("[OfflineService] ⏩ Skipping Offline Phase entirely.")
+                self._handle_log("[OfflineService] 🏆 All Phase 1 artifacts found and validated (Golden, JSON, Calibrations).")
+                self._handle_log("[OfflineService] ⏩ Skipping Offline Phase entirely.")
                 self.progress_update.emit(100)
                 self.bootstrap_finished.emit()
                 return
@@ -98,8 +80,8 @@ class OfflineService(QThread):
             # Initialize Pipeline Stages
             stages = [
                 SanitizationStage(self.synapse_root, self._handle_log, self._handle_progress, self._check_stop),
-                TranslationStage(self.synapse_root, self._handle_log, self._handle_progress, self._check_stop),
                 ClassificationStage(self.synapse_root, self._handle_log, self._handle_progress, self._check_stop),
+                LinguistCalibrationStage(self.synapse_root, self._handle_log, self._handle_progress, self._check_stop),
                 AuditorCalibrationStage(self.synapse_root, self._handle_log, self._handle_progress, self._check_stop)
             ]
             
@@ -111,7 +93,7 @@ class OfflineService(QThread):
                     break
 
         except Exception as e:
-            self.log_message.emit(f"[OfflineService] ❌ CRITICAL ERROR: {str(e)}")
+            self._handle_log(f"[OfflineService] ❌ CRITICAL ERROR: {str(e)}")
             traceback.print_exc()
         finally:
             self.bootstrap_finished.emit()
@@ -125,13 +107,14 @@ class OfflineService(QThread):
     def _check_master_lock(self, ctx: dict) -> bool:
         """Verifies if all target artifacts are already generated and valid."""
         golden_valid = os.path.exists(ctx["golden_path"]) and os.path.getsize(ctx["golden_path"]) > 0
-        ontology_valid = os.path.exists(ctx["ontology_path"]) and os.path.getsize(ctx["ontology_path"]) > 0
         json_valid = os.path.exists(ctx["json_path"]) and os.path.getsize(ctx["json_path"]) > 0
+        linguist_valid = os.path.exists(ctx["linguist_checkpoint_path"]) and os.path.getsize(ctx["linguist_checkpoint_path"]) > 0
         auditor_valid = os.path.exists(ctx["auditor_checkpoint_path"]) and os.path.getsize(ctx["auditor_checkpoint_path"]) > 0
-        return golden_valid and ontology_valid and json_valid and auditor_valid
+        return golden_valid and json_valid and linguist_valid and auditor_valid
 
     def _handle_log(self, message: str):
-        """Callback to emit logs from the stages to the UI."""
+        """Callback to emit logs from the stages to the UI and persist to session log."""
+        logger.info(message)
         self.log_message.emit(message)
 
     def _handle_progress(self, value: int):

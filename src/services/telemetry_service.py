@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/telemetry_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Telemetry Service (SOLID: SRP & DIP).
@@ -43,6 +26,28 @@ class TelemetryService(ITelemetryService):
 
     def __init__(self, monitor_client: Optional[MonitorClient] = None):
         self._monitor_client: Optional[MonitorClient] = monitor_client
+        self._ingestion_counts: dict[str, int] = {}
+        if self._monitor_client is None:
+            self._auto_load_from_settings()
+
+    def record_ingestion(self, source_id: str) -> None:
+        """Records a packet ingestion event for a validated source."""
+        if not source_id:
+            return
+        self._ingestion_counts[source_id] = self._ingestion_counts.get(source_id, 0) + 1
+
+    def _auto_load_from_settings(self) -> None:
+        """Loads persistent telemetry settings on service initialization."""
+        try:
+            from src.database.db_settings_manager import DatabaseSettingsManager
+            settings_mgr = DatabaseSettingsManager()
+            cfg = settings_mgr.load_telemetry_settings()
+            if cfg.get("connected"):
+                ip = cfg.get("ip") or cfg.get("host") or "localhost"
+                port = int(cfg.get("port", 1883))
+                self.init_telemetry(enabled=True, host=ip, port=port)
+        except Exception as e:
+            logger.debug(f"[TelemetryService] Could not auto-load telemetry settings: {e}")
 
     @property
     def monitor_client(self) -> Optional[MonitorClient]:
@@ -52,8 +57,8 @@ class TelemetryService(ITelemetryService):
     def enabled(self) -> bool:
         return self._monitor_client.enabled if self._monitor_client else False
 
-    def init_telemetry(self, enabled: bool, host: str, port: int) -> None:
-        """Initializes or restarts the background MonitorClient."""
+    def init_telemetry(self, enabled: bool, host: str, port: int = 1883) -> None:
+        """Initializes or restarts the background MonitorClient (HTTP or MQTT)."""
         if self._monitor_client:
             try:
                 self._monitor_client.stop()
@@ -61,7 +66,8 @@ class TelemetryService(ITelemetryService):
                 logger.warning(f"[TelemetryService] Failed stopping previous monitor client: {e}")
 
         self._monitor_client = MonitorClient(host=host, port=port, enabled=enabled)
-        logger.info(f"[TelemetryService] Telemetry configured (enabled={enabled}, host={host}:{port})")
+        mode = "HTTP" if self._monitor_client.is_http else "MQTT"
+        logger.info(f"[TelemetryService] Telemetry configured (mode={mode}, enabled={enabled}, target={host}:{port})")
 
     def reconfigure_telemetry(self, enabled: bool, host: str, port: int) -> None:
         """Reconfigures telemetry settings."""

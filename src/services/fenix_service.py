@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/fenix_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import threading
 from typing import Dict, Optional, Any
@@ -179,11 +162,13 @@ class FenixService(QObject):
     def bind_transmitter_emergency_flag(self, emergency_flag: Any):
         """Binds an isolated transmitter process emergency Event flag to Fênix fallback signal."""
         def _on_fallback(active: bool):
-            if hasattr(emergency_flag, "set") and hasattr(emergency_flag, "clear"):
+            set_fn = getattr(emergency_flag, "set", None)
+            clear_fn = getattr(emergency_flag, "clear", None)
+            if callable(set_fn) and callable(clear_fn):
                 if active:
-                    emergency_flag.set()
+                    set_fn()
                 else:
-                    emergency_flag.clear()
+                    clear_fn()
         self.request_fallback_activation.connect(_on_fallback)
         logger.info("[FENIX] Bound emergency fallback signal to dedicated transmitter process flag.")
 

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/semantic_classifier.py
-# Author: Gabriel Moraes
-# Date: 2026-08-20
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, List, Tuple, Optional
 import numpy as np
@@ -31,9 +14,9 @@ class SemanticClassifier(ISemanticClassifier):
     independent of rigid numerical magnitude assumptions.
     """
 
-    CAMERA_KEYWORDS = ["camera", "cam", "video", "cftv", "vis", "yolo", "det", "vision"]
+    CAMERA_KEYWORDS = ["camera", "cam", "video", "cftv", "vis", "yolo", "det", "vision", "loop", "laço", "inductive"]
     SPEED_KEYWORDS = ["speed", "vel", "radar", "tomtom", "gps", "kmh", "mph", "currentspeed"]
-    FLOW_KEYWORDS = ["flow", "fluxo", "volume", "loop", "count", "veic", "waze", "currentflow"]
+    FLOW_KEYWORDS = ["flow", "fluxo", "volume", "count", "veic", "waze", "currentflow"]
     DENSITY_KEYWORDS = ["density", "densidade", "occ", "occupancy", "rho"]
 
     def classify(
@@ -58,6 +41,21 @@ class SemanticClassifier(ISemanticClassifier):
         # 1. Inspect Payload Structure if available
         if data_chunk and len(data_chunk) > 0:
             sample_item = data_chunk[0]
+            # Handle list/tuple wrappers like [['2026-10-18,...']] or [{'event_type': ...}]
+            if isinstance(sample_item, (list, tuple)) and len(sample_item) > 0:
+                inner_item = sample_item[0]
+                if isinstance(inner_item, dict):
+                    if any(k in inner_item for k in ["event_type", "detections", "vehicles", "objects", "boxes", "tracks"]):
+                        return "Vehicle Count", "vehicles", 0.95
+                elif isinstance(inner_item, str) and "," in inner_item:
+                    parts = [p.strip() for p in inner_item.split(",")]
+                    if len(parts) >= 8:
+                        return "Vehicle Count", "vehicles", 0.95
+            elif isinstance(sample_item, str) and "," in sample_item:
+                parts = [p.strip() for p in sample_item.split(",")]
+                if len(parts) >= 8:
+                    return "Vehicle Count", "vehicles", 0.95
+
             if isinstance(sample_item, dict):
                 # Computer Vision detections / objects
                 if any(k in sample_item for k in ["detections", "vehicles", "objects", "boxes", "tracks"]):
@@ -87,11 +85,23 @@ class SemanticClassifier(ISemanticClassifier):
         if any(k in name_and_conn for k in self.DENSITY_KEYWORDS):
             return "Traffic Density", "veh/km", 0.95
 
-        # 3. Fallback Heuristic
-        mean_val = float(np.mean(data_np)) if len(data_np) > 0 else 0.0
-        if mean_val > 150.0:
-            return "Traffic Flow", "veh/h", 0.85
-        elif 5.0 <= mean_val <= 150.0:
-            return "Vehicle Speed", "km/h", 0.85
+        # 3. Fallback Statistical Inference (when schema & metadata are unlabelled)
+        if len(data_np) == 0:
+            return "Traffic State", "units", 0.30
+
+        # Discreteness check: Vehicle count is inherently non-negative integer valued
+        is_discrete = bool(np.all(np.equal(np.mod(data_np, 1), 0)) and np.all(data_np >= 0))
+        mean_val = float(np.mean(data_np))
+        max_val = float(np.max(data_np))
+
+        if is_discrete and max_val <= 100.0:
+            return "Vehicle Count", "vehicles", 0.65
+
+        # Beyond physical road vehicle speed ceiling (~180-200 km/h) => Traffic Flow (veh/h)
+        if mean_val > 180.0:
+            return "Traffic Flow", "veh/h", 0.70
+        elif 5.0 <= mean_val <= 180.0:
+            return "Vehicle Speed", "km/h", 0.65
         else:
-            return "Traffic State", "units", 0.80
+            return "Traffic State", "units", 0.40
+

@@ -1,55 +1,41 @@
 # SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
 # Copyright (C) 2026 Noxfort Systems
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
 # File: src/services/traffic_report_service.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
+# Description: Pure Orchestrator for Official Traffic Audit Reports (SOLID / Clean Architecture).
 
-"""
-Official Traffic Engineering & Municipal Operations Audit Report Service.
-
-SOLID Architecture (V2 Refactored):
-- [SRP] Single Responsibility: Exclusively orchestrates live sensor telemetries, XAI weights,
-        and municipal parameters into the official report domain model.
-- [OCP] Formatting is decoupled into IReportFormatter; static norms/templates reside in JSON.
-- [DIP] Relies on IReportFormatter abstraction and configurable template repository.
-- [ISP] Segregated interface ITrafficReportService.
-"""
-
-import os
-import json
 import random
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 from src.interfaces.reports import ITrafficReportService, IReportFormatter
 from src.formatters.abnt_markdown_formatter import AbntMarkdownReportFormatter
+from src.formatters.abnt_docx_exporter import AbntDocxExporter
+from src.formatters.abnt_html_preview_exporter import AbntHtmlPreviewExporter
+from src.storage.traffic_snapshot_store import TrafficSnapshotStore
 from src.utils.logging_setup import get_logger
 
-logger = get_logger("Services.TrafficReport")
-
-DEFAULT_TEMPLATE_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "config", "traffic_report_template.json")
+# Delegated Data Collectors (SOLID / Flat Architecture)
+from src.report import (
+    TrafficReportTemplateLoader,
+    TrafficReportDataCollector,
+    DEFAULT_TEMPLATE_PATH,
 )
+
+logger = get_logger("Services.TrafficReport")
 
 
 class TrafficReportService(ITrafficReportService):
     """
-    Authoritative backend orchestrator for Official Municipal Traffic Reports.
-    Consumes live telemetry from AppState and merges with externalized JSON templates.
+    Pure Orchestrator for Official Municipal Traffic Reports.
+
+    Coordinates:
+    - Lock Guard validation (is_data_ready)
+    - Normative template resolution (TrafficReportTemplateLoader)
+    - Live sensor and telemetry aggregation (TrafficReportDataCollector)
+    - Comparative historical snapshot computation (TrafficSnapshotStore)
+    - SLM Jurist diagnosis execution
+    - Multi-format compilation (Markdown, HTML preview, DOCX)
     """
 
     def __init__(
@@ -58,69 +44,85 @@ class TrafficReportService(ITrafficReportService):
         xai_manager: Optional[Any] = None,
         jurist_agent: Optional[Any] = None,
         formatter: Optional[IReportFormatter] = None,
+        docx_exporter: Optional[AbntDocxExporter] = None,
+        preview_exporter: Optional[AbntHtmlPreviewExporter] = None,
         template_path: Optional[str] = None,
+        snapshot_store: Optional[Any] = None,
     ):
         self.app_state = app_state
         self.xai_manager = xai_manager
         self.jurist_agent = jurist_agent
         self.formatter: IReportFormatter = formatter or AbntMarkdownReportFormatter()
-        self.template_path = template_path or DEFAULT_TEMPLATE_PATH
-        self._cached_template: Optional[Dict[str, Any]] = None
+        self.docx_exporter = docx_exporter or AbntDocxExporter()
+        self.preview_exporter = preview_exporter or AbntHtmlPreviewExporter()
+        self.template_loader = TrafficReportTemplateLoader(template_path or DEFAULT_TEMPLATE_PATH)
+        self.snapshot_store = snapshot_store or TrafficSnapshotStore()
+
+    @property
+    def template_path(self) -> str:
+        return self.template_loader.template_path
 
     def _load_template(self) -> Dict[str, Any]:
-        """Loads and caches the normative template JSON file."""
-        if self._cached_template is not None:
-            return self._cached_template
+        return self.template_loader.load_template()
 
-        if os.path.isfile(self.template_path):
-            try:
-                with open(self.template_path, "r", encoding="utf-8") as f:
-                    self._cached_template = json.load(f)
-                    return self._cached_template
-            except Exception as e:
-                logger.error(f"Failed to load traffic report template from {self.template_path}: {e}")
+    def _extract_sensors(self) -> List[Dict[str, Any]]:
+        return TrafficReportDataCollector.extract_sensors(self.app_state)
 
-        # Fallback minimal template if file is missing
-        return {
-            "systemVersion": "SYNAPSE Core v2.0 Enterprise",
-            "auditObjective": "Auditoria de Operação Semafórica Adaptativa.",
-            "observedTrafficDiagnosis": "Supervisão da malha arterial.",
-            "adaptiveActionExecuted": "Intervenção semafórica dinâmica.",
-            "location": {},
-            "safetyInterventions": [],
-            "quesitos": [],
-            "legalFraming": [],
-            "references": [],
-            "fallbackSensors": [],
-            "fallbackAttributions": [],
-        }
+    def is_data_ready(self, xai_result: Optional[Dict[str, Any]] = None) -> Tuple[bool, str, str]:
+        """Compliance Lock Guard: Asserts whether live sensor telemetry exists."""
+        sensors = self._extract_sensors()
+        if not sensors:
+            return (
+                False,
+                "DATA_GENERATING",
+                "Os dados de telemetria e fusão neural estão sendo gerados na malha viária. "
+                "Nenhum detector com telemetria ativa foi identificado no momento."
+            )
+        return (True, "READY", "Dados prontos para emissão de laudo pericial oficial.")
 
     def build_report(
         self,
         result_id: Optional[str] = None,
         municipal_config: Optional[Dict[str, Any]] = None,
         xai_result: Optional[Dict[str, Any]] = None,
+        typography_options: Optional[Dict[str, Any]] = None,
+        override_sensors: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
-        """
-        Synthesizes the complete OfficialReportData structure and pre-rendered Markdown.
-        """
+        """Synthesizes OfficialReportData, Markdown, and A4 HTML preview."""
+        sensors = override_sensors if override_sensors is not None else self._extract_sensors()
+        if not sensors:
+            _, status, msg = self.is_data_ready(xai_result)
+            return {
+                "ready": False,
+                "status": status,
+                "message": msg,
+                "report": None,
+                "formatted_markdown": f"# LAUDO OFICIAL EM PROCESSAMENTO\n\n{msg}",
+                "preview_html": None,
+            }
+
         template = self._load_template()
-        municipal = self._resolve_municipal_config(municipal_config, template)
+        municipal = TrafficReportDataCollector.resolve_municipal_config(municipal_config, template)
         random_seq = random.randint(1000, 9999)
         protocol = f"RELATORIO-TRAFEGO-2026-{random_seq}"
         process_number = f"{municipal['processPrefix']}0{random_seq}"
         timestamp_str = datetime.now().isoformat()
 
-        # 1. Sensors Inventory (Live from AppState or Template Fallback)
-        sensors = self._extract_sensors(template.get("fallbackSensors", []))
+        network_summary = TrafficReportDataCollector.compute_network_summary(sensors)
+        attributions = TrafficReportDataCollector.extract_attributions(xai_result, sensors)
+        speeds = [float(str(s.get("measuredSpeed", "")).split()[0].replace(",", ".")) for s in sensors if s.get("measuredSpeed")]
+        mean_spd = sum(speeds) / len(speeds) if speeds else 18.4
+        flow_regime = "Regime Forçado" if mean_spd < 15.0 else "Regime Estável de Fluxo"
 
-        # 2. Network Macro Summary (HCM Calculation)
-        network_summary = self._compute_network_summary(sensors)
+        prev_snap = self.snapshot_store.load_previous_snapshot()
+        comparative = self.snapshot_store.compute_comparison(sensors, network_summary, flow_regime, prev_snap)
+        self.snapshot_store.save_current_snapshot(
+            self.snapshot_store.build_snapshot_payload(protocol, sensors, network_summary, flow_regime)
+        )
+        observed_diagnosis = TrafficReportDataCollector.generate_jurist_diagnosis(
+            self.jurist_agent, sensors, network_summary, flow_regime, comparative, xai_result
+        )
 
-        # 3. Attributions (From XAI result or Template Fallback)
-        attributions = self._extract_attributions(xai_result, template.get("fallbackAttributions", []))
-
-        # 4. Assemble Complete Official Report Data DTO
         report_data = {
             "protocol": protocol,
             "processNumber": process_number,
@@ -129,13 +131,14 @@ class TrafficReportService(ITrafficReportService):
             "authorityRole": municipal["authorityRole"],
             "cityHall": municipal["cityHall"],
             "department": municipal["department"],
-            "system": template.get("systemVersion", "SYNAPSE Core v2.0 Enterprise"),
+            "system": template.get("systemVersion", "SYNAPSE v2.0 Enterprise"),
             "timestamp": timestamp_str,
             "location": template.get("location", {}),
             "networkSummary": network_summary,
             "auditObjective": template.get("auditObjective", ""),
-            "observedTrafficDiagnosis": template.get("observedTrafficDiagnosis", ""),
-            "adaptiveActionExecuted": template.get("adaptiveActionExecuted", ""),
+            "observedTrafficDiagnosis": observed_diagnosis,
+            "comparativeEvolution": comparative,
+            "adaptiveActionExecuted": "Fusão neural multi-sensorial por iTransformer + GATv2 com filtragem PI-DVAE-TCN via HFT-Link gRPC.",
             "sensors": sensors,
             "safetyInterventions": template.get("safetyInterventions", []),
             "attributions": attributions,
@@ -147,87 +150,19 @@ class TrafficReportService(ITrafficReportService):
             "digitalCertification": template.get("digitalCertification", ""),
         }
 
-        # 5. Delegate Markdown Presentation to Injected Formatter (SRP / OCP)
         formatted_markdown = self.formatter.format(report_data)
+        preview_html = self.preview_exporter.generate_html(report_data, typography_options)
 
         return {
+            "ready": True,
+            "status": "READY",
             "report": report_data,
             "formatted_markdown": formatted_markdown,
+            "preview_html": preview_html,
         }
 
-    def _resolve_municipal_config(
-        self, cfg: Optional[Dict[str, Any]], template: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        tpl_defaults = (template or {}).get("defaultAttribution", {})
-        defaults = {
-            "cityHall": tpl_defaults.get("cityHall", "PREFEITURA DO MUNICÍPIO DE SÃO PAULO"),
-            "department": tpl_defaults.get("department", "SECRETARIA MUNICIPAL DE MOBILIDADE URBANA E TRÂNSITO (SMT)"),
-            "authorityName": tpl_defaults.get("authorityName", "Gabriel Moraes"),
-            "authorityRole": tpl_defaults.get("authorityRole", "Autoridade Municipal de Trânsito / Secretário de Mobilidade"),
-            "registrationNumber": tpl_defaults.get("registrationNumber", "Matrícula Funcional nº 84.102-3 • Portaria de Nomeação SMT nº 142/2025"),
-            "processPrefix": tpl_defaults.get("processPrefix", "PA-SMT-2026/"),
-        }
-        if cfg:
-            defaults.update({k: v for k, v in cfg.items() if v is not None})
-        return defaults
+    def export_docx(self, report_data: Dict[str, Any], output_path: str, typography_options: Optional[Dict[str, Any]] = None) -> str:
+        return self.docx_exporter.export_to_file(report_data, output_path, typography_options)
 
-    def _extract_sensors(self, fallback_sensors: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Extracts live sensors from AppState or supplies template fallback."""
-        sensors = []
-        if self.app_state and hasattr(self.app_state, "get_all_data_sources"):
-            sources = self.app_state.get_all_data_sources()
-            for s in sources:
-                sid = getattr(s, "id", "")
-                name = getattr(s, "name", sid)
-                stype = getattr(s, "source_type", "Sensor de Tráfego")
-                speed = getattr(s, "last_speed", None) or 14.5
-                sensors.append({
-                    "id": sid,
-                    "junction": f"Eixo Operacional: {name}",
-                    "equipmentType": str(stype),
-                    "measuredSpeed": f"{float(speed):.1f} km/h",
-                    "measuredFlow": "1.380 veíc/h",
-                    "saturationDegree": "0,88 (Fluxo Denso)",
-                    "occupancyRate": "78,5%",
-                    "inmetroReport": f"Certificado INMETRO nº {random.randint(4000, 9999)}/2025",
-                    "operationalStatus": "Operação Nominal",
-                })
-
-        return sensors if sensors else fallback_sensors
-
-    def _compute_network_summary(self, sensors: List[Dict[str, Any]]) -> Dict[str, Any]:
-        return {
-            "corridorsMonitored": 4,
-            "controlledIntersections": 18,
-            "totalSensorsCount": len(sensors),
-            "networkLengthKm": 14.6,
-            "networkMeanSpeed": "18,4 km/h",
-            "networkMeanSaturation": "0,68 (Grau Médio de Saturação)",
-            "totalHourlyFlow": "22.840 veíc/h",
-            "networkLevelOfService": "Nível de Serviço D / E (Regime de Pico de Tráfego - Highway Capacity Manual)",
-        }
-
-    def _extract_attributions(
-        self,
-        xai_result: Optional[Dict[str, Any]],
-        fallback_attributions: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        if xai_result and xai_result.get("attributions") and xai_result.get("feature_names"):
-            attrs = xai_result["attributions"]
-            fnames = xai_result["feature_names"]
-            items = []
-            total = sum(abs(a) for a in attrs) or 1.0
-            for fn, a in zip(fnames, attrs):
-                pct = round((abs(a) / total) * 100, 1)
-                direction = "Positiva (+)" if a >= 0 else "Negativa (-)"
-                items.append({
-                    "parameterName": str(fn),
-                    "junctionLocation": "Malha Semafórica Central",
-                    "detectorId": str(fn).split(" ")[0],
-                    "causalWeightPercent": pct,
-                    "gradientDirection": direction,
-                    "trafficImpactAnalysis": f"Atribuição gradiente {direction} com influência ponderada de {pct}% no ajuste semafórico.",
-                })
-            return items[:5]
-
-        return fallback_attributions
+    def export_docx_bytes(self, report_data: Dict[str, Any], typography_options: Optional[Dict[str, Any]] = None) -> bytes:
+        return self.docx_exporter.export_to_bytes(report_data, typography_options)

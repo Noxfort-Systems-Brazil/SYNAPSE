@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/xai_reporter_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, List, Optional
 
@@ -74,8 +57,28 @@ class XAIReporterService(IXAIReporter):
 
         if self._jurist is not None:
             try:
+                slm_payload: Dict[str, Any] = sig_map
+                if len(sig_map) > 25:
+                    sorted_items = sorted(sig_map.items(), key=lambda kv: abs(float(kv[1])), reverse=True)
+                    top_items = {k: round(float(v), 4) for k, v in sorted_items[:25]}
+                    vals = [float(v) for v in sig_map.values()]
+                    top_items["_summary"] = {
+                        "total_features_analyzed": len(attr_list),
+                        "significant_features": len(sig_map),
+                        "shown_top_k": 25,
+                        "max_attribution": round(max(vals), 4),
+                        "min_attribution": round(min(vals), 4),
+                        "convergence_delta": round(float(delta), 5),
+                    }
+                    slm_payload = top_items
+                else:
+                    slm_payload = {
+                        k: (round(float(v), 4) if isinstance(v, (int, float)) else v)
+                        for k, v in sig_map.items()
+                    }
+
                 report_text = self._jurist.generate_report(
-                    tensor_data=sig_map,
+                    tensor_data=slm_payload,
                     timestamp=timestamp,
                     locale="pt_BR",
                     target=target,

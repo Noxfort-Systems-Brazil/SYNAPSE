@@ -1,26 +1,9 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/drift_monitor.py
-# Author: Gabriel Moraes
-# Date: 2025-11-26
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import numpy as np
 from collections import deque
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, Any, Union
 from src.utils.logging_setup import get_logger
 
 logger = get_logger("DriftMonitor")
@@ -96,6 +79,25 @@ class DriftMonitor:
         self.total_samples += 1
         
         # Auto-Calibration Trigger
+        if not self.is_ready and len(self.window) >= self.min_calibration_samples:
+            self.set_reference_data(np.array(self.window))
+
+    def add_samples(self, values: Any):
+        """Adds a collection/array of sample values into the sliding window."""
+        if values is None:
+            return
+        if isinstance(values, np.ndarray):
+            flat = values.flatten()
+        elif isinstance(values, (list, tuple)):
+            flat = values
+        else:
+            flat = [values]
+        for v in flat:
+            try:
+                self.window.append(float(v))
+                self.total_samples += 1
+            except (ValueError, TypeError):
+                continue
         if not self.is_ready and len(self.window) >= self.min_calibration_samples:
             self.set_reference_data(np.array(self.window))
 

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/knowledge_transfer_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-20
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Optional, Dict
 import numpy as np
@@ -68,17 +51,19 @@ class KnowledgeTransferService(IKnowledgeTransfer):
                 logger.info("ℹ️ [KnowledgeTransfer] Especialista inicializado com pesos nativos.")
 
             # 2. Attach Extractor & Modality to enable autonomous real-time conversion
-            if hasattr(target_agent, "set_extractor") and extractor is not None:
-                target_agent.set_extractor(extractor, semantic_type=semantic_type, unit=unit)
+            set_ext_fn = getattr(target_agent, "set_extractor", None)
+            if callable(set_ext_fn) and extractor is not None:
+                set_ext_fn(extractor, semantic_type=semantic_type, unit=unit)
                 logger.info(f"🔗 [KnowledgeTransfer] Extrator autônomo e modalidade '{semantic_type}' [{unit}] vinculados à TCN Local.")
 
             # 2b. Attach Directional Orientation taught by the CompassAgent
-            if hasattr(target_agent, "set_orientation") and orientation_data is not None:
+            set_ori_fn = getattr(target_agent, "set_orientation", None)
+            if callable(set_ori_fn) and orientation_data is not None:
                 vec = orientation_data.get("vector")
                 edge_id = orientation_data.get("primary_edge_id")
                 channels = orientation_data.get("channels", {})
                 ch_key = next(iter(channels.keys())) if channels else None
-                target_agent.set_orientation(vector=vec, edge_id=edge_id, channel_key=ch_key)
+                set_ori_fn(vector=vec, edge_id=edge_id, channel_key=ch_key)
                 logger.info(f"🧭 [KnowledgeTransfer] Orientação vetorial {vec} e aresta '{edge_id}' vinculadas ao Especialista.")
 
             # 3. TCN Warmup & Calibration (The "Teaching" Phase)
@@ -93,8 +78,9 @@ class KnowledgeTransferService(IKnowledgeTransfer):
     def _warmup_specialist_tcn(self, target_agent: Any, data_series: np.ndarray):
         """Runs a forward prediction pass to calibrate TCN batch norms and embedding dimensions."""
         try:
-            if hasattr(target_agent, "predict"):
-                embedding = target_agent.predict(data_series)
+            pred_fn = getattr(target_agent, "predict", None)
+            if callable(pred_fn):
+                embedding = pred_fn(data_series)
                 logger.info(f"🎓 [KnowledgeTransfer] TCN calibrada com sucesso. Dimensão do embedding: {getattr(embedding, 'shape', len(embedding))}")
         except Exception as e:
             logger.debug(f"[KnowledgeTransfer] TCN warmup pass notice: {e}")
@@ -106,29 +92,37 @@ class KnowledgeTransferService(IKnowledgeTransfer):
             ae = getattr(model, "ae", None)
             if ae is not None:
                 encoder = getattr(ae, "encoder", None)
-                if encoder is not None and hasattr(encoder, "state_dict"):
-                    return encoder.state_dict()
-                if hasattr(ae, "state_dict"):
-                    return ae.state_dict()
-            if hasattr(model, "state_dict"):
-                return model.state_dict()
+                enc_sd_fn = getattr(encoder, "state_dict", None) if encoder is not None else None
+                if callable(enc_sd_fn):
+                    return enc_sd_fn()
+                ae_sd_fn = getattr(ae, "state_dict", None)
+                if callable(ae_sd_fn):
+                    return ae_sd_fn()
+            model_sd_fn = getattr(model, "state_dict", None)
+            if callable(model_sd_fn):
+                return model_sd_fn()
 
-        if hasattr(source_agent, "get_encoder_state_dict"):
-            return source_agent.get_encoder_state_dict()
+        get_enc_fn = getattr(source_agent, "get_encoder_state_dict", None)
+        if callable(get_enc_fn):
+            return get_enc_fn()
 
         return None
 
     def _load_encoder_state(self, target_agent: Any, state_dict: dict):
         """Safely loads state_dict into target agent."""
         tcn = getattr(target_agent, "tcn", None)
-        if tcn is not None and hasattr(tcn, "load_state_dict"):
-            tcn.load_state_dict(state_dict, strict=False)
+        tcn_load_fn = getattr(tcn, "load_state_dict", None) if tcn is not None else None
+        if callable(tcn_load_fn):
+            tcn_load_fn(state_dict, strict=False)
             return
 
-        if hasattr(target_agent, "load_encoder_state"):
-            target_agent.load_encoder_state(state_dict)
+        load_enc_fn = getattr(target_agent, "load_encoder_state", None)
+        if callable(load_enc_fn):
+            load_enc_fn(state_dict)
             return
 
         model = getattr(target_agent, "model", None)
-        if model is not None and hasattr(model, "load_state_dict"):
-            model.load_state_dict(state_dict, strict=False)
+        model_load_fn = getattr(model, "load_state_dict", None) if model is not None else None
+        if callable(model_load_fn):
+            model_load_fn(state_dict, strict=False)
+

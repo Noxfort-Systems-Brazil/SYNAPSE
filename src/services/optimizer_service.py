@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/optimizer_service.py
-# Author: Gabriel Moraes
-# Date: 2026-03-02
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import gc
@@ -54,9 +37,11 @@ class OptimizerService(QObject):
         self.safety_max_trials = 500 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        self.base_dir = os.path.join(os.path.expanduser("~"), "Documentos", "Synapse")
-        self.checkpoint_dir = os.path.join(self.base_dir, "Checkpoint")
-        self.checkpoint_file = os.path.join(self.checkpoint_dir, "best_hparams.pth")
+        from src.storage.path_scaffolder import PathScaffolder
+        scaffolder = PathScaffolder()
+        self.base_dir = scaffolder.get_project_root()
+        self.checkpoint_dir = scaffolder.get_checkpoint_path()
+        self.checkpoint_file = scaffolder.get_checkpoint_file("best_hparams.pth")
         
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 

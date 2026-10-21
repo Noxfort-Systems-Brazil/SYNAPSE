@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/services/fast_map_matcher.py
-# Author: Gabriel Moraes
-# Date: 2026-03-08
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 FastMapMatcher — The First Line of Defense (CPU Heuristic Layer).
@@ -121,7 +104,9 @@ class FastMapMatcher:
             MatchResult with candidates, entropy, and ambiguity flag.
         """
         candidate_ids = self._query_rtree(x, y, radius_m)
-        
+        if not candidate_ids and radius_m < 1000.0:
+            candidate_ids = self._query_rtree(x, y, radius_m * 2.5)
+
         if not candidate_ids:
             return MatchResult(
                 candidates=[], entropy=0.0,
