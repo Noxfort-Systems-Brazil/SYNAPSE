@@ -1,36 +1,19 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/utils/debug_logger.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import json
 import logging
 import threading
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, Any, Optional
 from src.utils.logging_setup import get_log_dir
 
 
 def _create_debug_logger(name: str, subfolder: str, prefix: str) -> logging.Logger:
     """
-    Creates an independent rotating file logger under ~/Documentos/Synapse/logs/<subfolder>/.
+    Creates an independent rotating file logger under <synapse_log_dir>/<subfolder>/.
     
     Each logger:
     - Writes to a session-based file: <prefix>_YYYY-MM-DD_HH-MM-SS.log
@@ -79,6 +62,19 @@ def _create_debug_logger(name: str, subfolder: str, prefix: str) -> logging.Logg
     return dbg_logger
 
 
+def _json_default(obj: Any) -> Any:
+    """Fallback serializer for objects like NumPy arrays, tensors, and dates."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    tolist_fn = getattr(obj, "tolist", None)
+    if callable(tolist_fn):
+        return tolist_fn()
+    item_fn = getattr(obj, "item", None)
+    if callable(item_fn):
+        return item_fn()
+    return str(obj)
+
+
 class JsonLinesLogger:
     """
     Thread-safe, append-only JSON Lines (JSONL) rotating logger for high-frequency telemetry.
@@ -107,7 +103,7 @@ class JsonLinesLogger:
     def log(self, data: Dict[str, Any]) -> None:
         """Appends a single JSON line thread-safely."""
         try:
-            line = json.dumps(data, ensure_ascii=False)
+            line = json.dumps(data, ensure_ascii=False, default=_json_default)
             with self._lock:
                 if self._file_handle is None or self._file_handle.closed:
                     self._init_file()

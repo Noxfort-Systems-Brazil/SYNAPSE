@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/utils/graph_utils.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Optional, Tuple, List
 import torch
@@ -26,20 +9,23 @@ def compute_random_walk_transition_matrices(
     num_nodes: int,
     edge_index: torch.Tensor,
     edge_weight: Optional[torch.Tensor] = None,
-    device: torch.device = torch.device('cpu')
+    device: torch.device = torch.device('cpu'),
+    damping_factor: float = 1.0
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Computes forward and backward normalized random-walk transition matrices.
+    r"""
+    Computes forward and backward normalized random-walk transition matrices with optional damping.
     
     Formulas:
-    1. Forward Random Walk (Downstream flow): P_f = D_o^{-1} * A
-    2. Backward Random Walk (Upstream wave/congestion): P_b = D_i^{-1} * A^T
+    1. Forward Random Walk (Downstream flow): P_f = \gamma * (D_o^{-1} * A)
+    2. Backward Random Walk (Upstream wave/congestion): P_b = \gamma * (D_i^{-1} * A^T)
+    where \gamma is the damping factor representing absorption/permeability (sinks/sources).
     
     Args:
         num_nodes: Total number of nodes in the graph.
         edge_index: Graph connectivity in COO format [2, Num_Edges].
         edge_weight: Optional edge weights [Num_Edges].
         device: Target compute device.
+        damping_factor: Damping/absorption factor \gamma \in (0, 1]. Defaults to 1.0.
         
     Returns:
         p_forward: Normalized forward transition matrix [Num_Nodes, Num_Nodes].
@@ -57,16 +43,16 @@ def compute_random_walk_transition_matrices(
     weights = edge_weight.to(device) if edge_weight is not None else torch.ones_like(src, dtype=torch.float, device=device)
     adj.index_put_((src, dst), weights)
 
-    # Forward transition (Out-degree normalization: P_f = D_out^{-1} * A)
+    # Forward transition (Out-degree normalization: P_f = \gamma * D_out^{-1} * A)
     d_out = adj.sum(dim=1)
     d_out_inv = torch.where(d_out > 0, 1.0 / d_out, torch.zeros_like(d_out))
-    p_forward = torch.diag(d_out_inv) @ adj
+    p_forward = damping_factor * (torch.diag(d_out_inv) @ adj)
 
-    # Backward transition (In-degree normalization of transpose: P_b = D_in^{-1} * A^T)
+    # Backward transition (In-degree normalization of transpose: P_b = \gamma * D_in^{-1} * A^T)
     adj_t = adj.t()
     d_in = adj_t.sum(dim=1)
     d_in_inv = torch.where(d_in > 0, 1.0 / d_in, torch.zeros_like(d_in))
-    p_backward = torch.diag(d_in_inv) @ adj_t
+    p_backward = damping_factor * (torch.diag(d_in_inv) @ adj_t)
 
     return p_forward, p_backward
 

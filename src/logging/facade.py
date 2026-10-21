@@ -1,29 +1,14 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/logging/facade.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Public Facade for the SYNAPSE Logging Subsystem.
 Orchestrates configuration, formatting, handlers, and interceptors cleanly conforming to SOLID.
 """
 
+import os
 import logging
+import multiprocessing as mp
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -79,10 +64,18 @@ def setup_logging(config: Optional[LogConfig] = None) -> logging.Logger:
 
     cfg = config or LogConfig.from_env()
 
-    # 1. Resolve Log File Location
-    log_dir = cfg.log_dir or resolve_log_directory()
-    session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _CURRENT_SESSION_FILE = log_dir / f"session_{session_id}.log"
+    # 1. Resolve Log File Location (reuse parent session file in spawned child processes)
+    default_dir = resolve_log_directory()
+    log_dir = cfg.log_dir or default_dir
+    is_default_dir = (log_dir == default_dir)
+    env_session_file = os.environ.get("SYNAPSE_SESSION_LOG_FILE")
+    if is_default_dir and env_session_file:
+        _CURRENT_SESSION_FILE = Path(env_session_file)
+    else:
+        session_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        _CURRENT_SESSION_FILE = log_dir / f"session_{session_id}.log"
+        if is_default_dir:
+            os.environ["SYNAPSE_SESSION_LOG_FILE"] = str(_CURRENT_SESSION_FILE)
 
     # 2. Base Logger Setup (Root + Synapse)
     root_logger = logging.getLogger()
@@ -127,8 +120,14 @@ def setup_logging(config: Optional[LogConfig] = None) -> logging.Logger:
 
     if not _IS_INITIALIZED:
         _IS_INITIALIZED = True
-        synapse_logger.info(f"=== SYNAPSE LOGGING INITIALIZED (Level: {logging.getLevelName(cfg.console_level)}) ===")
-        synapse_logger.info(f"Session Log File: {_CURRENT_SESSION_FILE}")
+        is_main_proc = (mp.current_process().name == "MainProcess")
+        if is_main_proc:
+            synapse_logger.info(f"=== SYNAPSE LOGGING INITIALIZED (Level: {logging.getLevelName(cfg.console_level)}) ===")
+            synapse_logger.info(f"Session Log File: {_CURRENT_SESSION_FILE}")
+        else:
+            synapse_logger.debug(
+                f"Subprocess '{mp.current_process().name}' (PID={os.getpid()}) attached to session log: {_CURRENT_SESSION_FILE}"
+            )
 
     return synapse_logger
 

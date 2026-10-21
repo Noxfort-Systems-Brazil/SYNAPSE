@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/utils/hardware.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Hardware and CUDA/TensorCore initialization routines.
@@ -24,8 +7,11 @@ Hardware and CUDA/TensorCore initialization routines.
 
 def configure_hardware_acceleration() -> None:
     """
-    Global Hardware Acceleration & Tensor Core (TF32) Configuration for Ampere+ GPUs.
-    Configures PyTorch backends for optimal CUDA / TensorFloat-32 performance.
+    Global Hardware Acceleration & Tensor Core Configuration:
+    - RTX 20xx Series (Turing CC 7.5): Optimizes cuDNN benchmarking to select the fastest
+      FP16 Tensor Core kernels for convolutions and matrix operations.
+    - RTX 30xx/40xx/50xx Series (Ampere / Ada / Hopper / Blackwell CC >= 8.0):
+      Enables TensorFloat-32 (TF32) and high float32 matmul precision for transparent acceleration.
     """
     try:
         import torch
@@ -33,6 +19,7 @@ def configure_hardware_acceleration() -> None:
             torch.set_float32_matmul_precision('high')
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
+            torch.backends.cudnn.benchmark = True
     except Exception:
         pass
 

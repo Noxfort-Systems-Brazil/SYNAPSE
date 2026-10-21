@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/logging/interceptors.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Runtime interceptors for system stdout/stderr streams and uncaught exceptions.
@@ -79,10 +62,17 @@ class StreamToLogger:
                     finally:
                         del frame
 
+                    # Determine effective log level: classify Python warnings as WARNING instead of ERROR
+                    record_level = self.log_level
+                    if self.stream_name.lower() == "stderr":
+                        warning_markers = ("Warning:", "FutureWarning", "UserWarning", "DeprecationWarning", "RuntimeWarning")
+                        if any(marker in clean_line for marker in warning_markers):
+                            record_level = logging.WARNING
+
                     # Construct custom LogRecord to preserve real caller location
                     record = self.logger.makeRecord(
                         name=f"Synapse.{self.stream_name.upper()}",
-                        level=self.log_level,
+                        level=record_level,
                         fn=caller_file,
                         lno=caller_line,
                         msg=clean_line,
@@ -118,15 +108,16 @@ def install_excepthook(target_logger: logging.Logger):
 
     # Also capture unhandled exceptions in background threads
     import threading
-    if hasattr(threading, "excepthook"):
-        def _threading_excepthook(args):
-            if issubclass(args.exc_type, KeyboardInterrupt):
-                return
-            target_logger.critical(
-                f"💥 UNCAUGHT EXCEPTION IN THREAD '{args.thread.name}':",
-                exc_info=(args.exc_type, args.exc_value, args.exc_traceback)
-            )
-        threading.excepthook = _threading_excepthook
+
+    def _threading_excepthook(args):
+        if issubclass(args.exc_type, KeyboardInterrupt):
+            return
+        target_logger.critical(
+            f"💥 UNCAUGHT EXCEPTION IN THREAD '{args.thread.name}':",
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback)
+        )
+
+    threading.excepthook = _threading_excepthook
 
 
 def redirect_system_streams(target_logger: logging.Logger):
