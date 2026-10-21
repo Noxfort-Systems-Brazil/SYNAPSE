@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/main_controller.py
-# Author: Gabriel Moraes
-# Date: 2026-08-19
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Pure High-Level Orchestrator & Controller Aggregator (SOLID Architecture).
@@ -75,33 +58,29 @@ class MainController(QObject):
 
     def _wire_internal_events(self):
         """Wires direct inter-controller notifications without intermediate proxy signals."""
-        if hasattr(self.system, "log_message") and hasattr(self.view, "log"):
-            self.system.log_message.connect(self.view.log)
-        if hasattr(self.system, "status_message") and hasattr(self.view, "status"):
-            self.system.status_message.connect(self.view.status)
-        if hasattr(self.system, "error_occurred"):
-            if hasattr(self.view, "error_alert"):
-                self.system.error_occurred.connect(self.view.error_alert)
-            self.system.error_occurred.connect(self.telemetry.report_error)
-
-        if hasattr(self.project, "log_message") and hasattr(self.view, "log"):
-            self.project.log_message.connect(self.view.log)
-        if hasattr(self.project, "error_occurred"):
-            if hasattr(self.view, "error_alert"):
-                self.project.error_occurred.connect(self.view.error_alert)
-            self.project.error_occurred.connect(self.telemetry.report_error)
-
-        if hasattr(self.system, "online_system_started") and hasattr(self.view, "on_online_system_started"):
-            self.system.online_system_started.connect(self.view.on_online_system_started)
-        if hasattr(self.project, "project_loaded") and hasattr(self.view, "on_project_loaded"):
-            self.project.project_loaded.connect(self.view.on_project_loaded)
+        for src_obj, sig_name, dst_obj, slot_name in [
+            (self.system, "log_message", self.view, "log"),
+            (self.system, "status_message", self.view, "status"),
+            (self.system, "error_occurred", self.view, "error_alert"),
+            (self.system, "error_occurred", self.telemetry, "report_error"),
+            (self.project, "log_message", self.view, "log"),
+            (self.project, "error_occurred", self.view, "error_alert"),
+            (self.project, "error_occurred", self.telemetry, "report_error"),
+            (self.system, "online_system_started", self.view, "on_online_system_started"),
+            (self.project, "project_loaded", self.view, "on_project_loaded"),
+        ]:
+            sig = getattr(src_obj, sig_name, None)
+            slot = getattr(dst_obj, slot_name, None)
+            if sig is not None and slot is not None:
+                sig.connect(slot)
 
     # --- High-Level Orchestration Flows (Cross-Subsystem Operations) ---
     def start_optimization_flow(self) -> bool:
         """Orchestrates starting optimization and notifying the view layer."""
         started = self.system.start_optimization()
-        if started and hasattr(self.view, "on_optimization_started"):
-            self.view.on_optimization_started()
+        on_opt_fn = getattr(self.view, "on_optimization_started", None)
+        if started and callable(on_opt_fn):
+            on_opt_fn()
         return bool(started)
 
     def shutdown(self):

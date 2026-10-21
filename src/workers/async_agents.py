@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/workers/async_agents.py
-# Author: Gabriel Moraes
-# Date: 2025-12-23
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import queue
@@ -106,7 +89,7 @@ class LinguistWorker(QThread):
         logger.info("LinguistWorker thread started (Loading Transformers...).")
         
         try:
-            # Initialize the heavy Linguist Agent (DistilRoBERTa)
+            # Initialize the heavy Linguist Agent (ModernBERT)
             self.agent = LinguistAgent()
             logger.info("LinguistWorker: Neuro-Symbolic Brain Ready.")
         except Exception as e:
@@ -124,8 +107,10 @@ class LinguistWorker(QThread):
                 required_samples = 60 # Default for Physical Brain
                 
                 # Try to fetch dynamic requirement from agent if available
-                if hasattr(self.agent, 'physical_brain') and hasattr(self.agent.physical_brain, 'input_len'):
-                    required_samples = self.agent.physical_brain.input_len
+                phys_brain = getattr(self.agent, "physical_brain", None)
+                brain_len = getattr(phys_brain, "input_len", None) if phys_brain else None
+                if isinstance(brain_len, int) and brain_len > 0:
+                    required_samples = brain_len
 
                 logger.debug(f"LinguistWorker task for '{header_name}' (Sampler: {current_samples}/{required_samples})")
 

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/strategies/node_imputation_strategy.py
-# Author: Gabriel Moraes
-# Date: 2026-08-18
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Optional, Tuple, Any
 from src.interfaces.node import INodeImputationStrategy, IPhysicsEngine
@@ -61,10 +44,12 @@ class HierarchicalImputationStrategy:
 
         # --- PHASE 1: CHECK GOLDEN DATABASE (MEH Cascading Resolution) ---
         if historical_manager is not None:
-            if hasattr(historical_manager, "get_hierarchical_reading"):
-                historical_val = historical_manager.get_hierarchical_reading(source_id, timestamp)
-            if historical_val is None and hasattr(historical_manager, "get_exact_reading"):
-                historical_val = historical_manager.get_exact_reading(source_id, timestamp, tolerance=self.tolerance)
+            hier_fn = getattr(historical_manager, "get_hierarchical_reading", None)
+            if callable(hier_fn):
+                historical_val = hier_fn(source_id, timestamp)
+            exact_fn = getattr(historical_manager, "get_exact_reading", None)
+            if historical_val is None and callable(exact_fn):
+                historical_val = exact_fn(source_id, timestamp, tolerance=self.tolerance)
 
         # Only accept MEH reading if it contains real non-zero traffic profile
         if historical_val is not None and float(historical_val) > 0.1:
@@ -77,8 +62,9 @@ class HierarchicalImputationStrategy:
             # MISS or ZERO profile -> PHASE 2: KSE INERTIAL DEAD RECKONING / PHYSICS PROJECTION
             physics_engine.predict(dt)
             kse_snapshot = physics_engine.get_kinetic_snapshot()
-            raw_p = float(getattr(kse_snapshot, "p", 15.0))
-            if hasattr(kse_snapshot, "p") and raw_p > 0.0:
+            snap_p = getattr(kse_snapshot, "p", None)
+            raw_p = float(snap_p if snap_p is not None else 15.0)
+            if snap_p is not None and raw_p > 0.0:
                 final_val = raw_p
             else:
                 final_val, _ = self.inertial_strategy.project_with_inertia(

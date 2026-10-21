@@ -48,14 +48,13 @@ src/
 ├── meh/               # Micro-Estimation History & Golden Dataset loader
 ├── fenix/             # F.E.N.I.X. drift evaluation & out-of-process supervisor
 ├── memory/            # Episodic, Semantic, Spatial, and Spatiotemporal memory
-├── optimization/      # Optuna AutoML and Population-Based Training (PBT)
+├── optimization/      # Optuna AutoML and Bayesian Hyperparameter Tuning
 ├── trainer/           # Neural training routines for agents
 ├── factories/         # Factory methods & ServiceContainer for IoC
 ├── handlers/          # Command and database event handlers
 ├── managers/          # Graph, Node, Source, Storage, and XAI managers
 ├── services/          # Domain services (MapService, LinguistService, FenixService)
 ├── interfaces/        # Abstract Base Classes and Typing Protocols
-├── mixins/            # Reusable behavior mixins (e.g., PBTMixin)
 ├── prompts/           # LLM Jinja2 prompt configurations (Multi-language)
 ├── templates/         # Prompt templates for Jurist XAI reports
 ├── logging/           # Centralized logging facade and interceptors
@@ -67,9 +66,9 @@ src/
 ## 🔬 Core Subsystems in Detail
 
 ### 1. `domain/` — The Core Domain Model
-- **`entities.py`**: Defines core dataclasses ([`DataSource`, `MapNode`, `MapEdge`, `DataAssociation`](../docs/01_domain_entities.md)).
+- **`entities.py`**: Defines core dataclasses ([`DataSource`, `MapNode`, `MapEdge`, `DataAssociation`](../docs/01_domain_entities.md)), including road hierarchy attributes (`edge_type`, `priority`, `signal_group_id`).
 - **`app_state.py`**: Thread-safe Domain Facade protecting `TopologyRepository` and `SourceRepository`. Ensures atomic state transitions.
-- **`source_repository.py` & `topology_repository.py`**: In-memory, zero-trust repositories storing sensors and the SUMO graph.
+- **`source_repository.py` & `topology_repository.py`**: In-memory, zero-trust repositories storing sensors and the SUMO graph with full OSM road classification metadata.
 - **`model_contracts.py`**: Data contracts and tensor shapes passed between neural models.
 
 ### 2. `models/` — Pure PyTorch Neural Operators & Transformers
@@ -77,8 +76,7 @@ src/
 - **`pi_deeponet.py`**: Dual-network Branch/Trunk Deep Operator Network for continuous spatial-temporal field interpolation.
 - **`pi_dvae_tcn.py`**: Denoising Variational Autoencoder with Dilated Causal Convolutions for trajectory correction.
 - **`itransformer.py`**: Inverted Multi-Variate Transformer embedding time-series as tokens with spatial cross-attention.
-- **`gatv2_lite.py` & `diffusion_gatv2.py`**: Dynamic Graph Attention Networks with spatial graph diffusion.
-- **`sinkhorn_cross_attention.py`**: Differentiable Optimal Transport map matcher.
+- **`gatv2_lite.py` & `diffusion_gatv2.py`**: Dynamic Graph Attention Networks operating over 5D physical edge attributes (`edge_attr`) with anisotropic spatial diffusion.
 - **`wavelet_ae_occ.py`**: Discrete Wavelet Transform Autoencoder with One-Class Deep SVDD anomaly score.
 - **`tcn_ae.py`**: Temporal Convolutional Autoencoder for local sensor temporal embedding.
 - Complete mathematics in [`docs/03_neural_models.md`](../docs/03_neural_models.md).
@@ -89,26 +87,28 @@ Each agent wraps one or more models from `models/`, managing tensor preparation,
 - `CorrectorAgent`: Runs PI-VAE-TCN to clean noisy readings.
 - `LinguistAgent`: Performs semantic validation and schema detection on incoming feeds.
 - `CoordinatorAgent`: Aggregates spatial graph context via GATv2.
-- `CartographerAgent`: Maps raw latitude/longitude points to road graph edges via Sinkhorn matching.
 - `FuserAgent`: Fuses all embeddings into the global "Perfect Snapshot" matrix using iTransformer and PINO.
 - `TranslationAgent`: Uncovers cyclical frequency patterns via TimesNet (FFT).
 - `ImputerAgent`: Generates synthetic traffic sequences for dead sensors via PatchTST.
 - `AuditorAgent`: Flags out-of-distribution patterns using WaveletAE-OCC.
-- `PeakClassifierAgent`: Identifies peak/off-peak schedules using DistilRoBERTa + GMM.
+- `PeakClassifierAgent`: Identifies peak/off-peak schedules using ModernBERT + GMM.
 - `JuristAgent`: Produces explainable XAI audit reports via quantized Qwen3 LLMs.
 
-### 4. `engine/` — High-Throughput Inference Engine
+### 4. `engine/` & `pipeline/` — High-Throughput Inference & Spatial Fusion
 - **`inference_engine.py`**: Coordinates the tick execution loop across all active nodes and agents.
 - **`cycle_processor.py`**: Executes cycle-level tensor concatenation, batching, and fallback dispatching.
-- **`cycle_runner.py`**: High-precision timer thread maintaining exact execution frequencies.
-- **`data_flow_router.py`**: Routes incoming telemetry to active nodes vs. fallback queues.
+- **`snapshot_builder.py`**: Gathers node embeddings, KSE velocity/acceleration states, and `direct_edge_metrics`, sustaining active sensor observability (`fallback_steps <= 75`) across 60s global polling cycles.
+- **`fusion_pipeline.py`**: Combines `DiffusionGATv2` attention with 8-hop damped harmonic graph diffusion and a topological conductance prior (`y_bg`) to reconstruct densities across unobserved junctions.
+- **`data_flow_router.py`**: Resolves canonical sensor IDs (`device_id_map`), converts raw payloads to SI units, and dispatches updates to `GraphManager`.
 - **`gating_policy.py`**: Decides whether a node's output should be sourced from Neural Inference, KSE Dead Reckoning, or MEH Historical Lookup.
 
-### 5. `physics/` — Continuum Mechanics & Kinematics
-- **`continuum.py`**: Spatial graph conservation equations and flux calculations across network junctions.
-- **`fundamental_diagrams.py`**: Implementations of Greenshields, Greenberg, Underwood, and Northwestern traffic flow curves ($q = k \cdot v$).
-- **`sensor_physical_validator.py`**: Hard physical boundary checks (e.g., negative speed, teleportation velocity, non-physical density bounds).
-- **`traffic_loss.py`**: PyTorch custom loss functions enforcing PDE residual penalties $\mathcal{L}_{PINO} = \mathcal{L}_{data} + \lambda \mathcal{L}_{physics}$.
+### 5. `physics/` & `managers/graph/` — Continuum Mechanics, Hierarchy Hydrodynamics & Queues
+- **`traffic_hydrodynamics.py`**: `TrafficHydrodynamicEngine` solving LWR/Greenshields edge states and interpolating unobserved edges using OSM/SUMO road-hierarchy permeability (`edge_type`, `priority`) and geometric impedance.
+- **`queue_dynamics.py`**: `TrafficQueueCalculator` computing physical vehicle storage capacity and queue lengths at signalized and unsignalized bottlenecks.
+- **`managers/graph/hydrodynamics_engine.py`**: `EdgeHydrodynamicsEngine` converting speed, flow, and passage count telemetry (with `measured_speed_ms`) into continuum edge kinetics.
+- **`managers/graph/payload_extractor.py` & `element_resolver.py`**: Multi-format telemetry extraction (JSON, CV recognition lists, inductive loop CSVs) and R-Tree/coordinate element resolution.
+- **`continuum.py` & `fundamental_diagrams.py`**: Spatial graph conservation equations and Greenshields/Greenberg/Underwood fundamental curves ($q = k \cdot v$).
+- **`sensor_physical_validator.py` & `traffic_loss.py`**: Hard physical boundary checks and PDE residual loss penalties $\mathcal{L}_{PINO} = \mathcal{L}_{data} + \lambda \mathcal{L}_{physics}$.
 
 ### 6. `ipc/` — Headless Daemon & Sidecar Bridge
 - **`stdio_daemon.py`**: Zero-port IPC server listening to JSON-RPC on `sys.stdin` and emitting events to `sys.stdout`. Uses `QCoreApplication` strictly as an event loop (no GUI dependencies).
@@ -116,15 +116,28 @@ Each agent wraps one or more models from `models/`, managing tensor preparation,
 - **`command_router.py`**: Dispatches incoming desktop UI commands to domain handlers.
 - **`event_bridge.py`**: Bridges internal signals and telemetry events to frontend IPC payloads.
 
-### 7. `infrastructure/` — External Network & Storage I/O
-- **`grpc_connector.py` / `hft_grpc_client.py`**: High-Frequency Transport client streaming `TrafficFrame` protobuf messages ([`proto/synapse_hft.proto`](../proto/README.md)).
-- **`hft_streamer.py`**: Non-blocking streaming loop with backpressure management.
-- **`hft_recovery.py`**: Background auto-recovery worker that re-establishes dropped gRPC connections and re-syncs maps.
+### 7. `go/` — Go Gateway IPC Subprocess Management
+- **`binary_manager.py`**: Binary compilation and lifecycle manager for `synapse-gateway`.
+- **`pipe_process.py`**: Subprocess execution and line-buffered anonymous `STDIN`/`STDOUT` pipe communication.
+- **`pipe_dispatcher.py`**: Event-driven NDJSON packet dispatcher with extensible event handlers (OCP).
+- **`subprocess_transport.py`**: Pure Facade coordinating binary lifecycle, pipe process, and event dispatching.
+
+### 8. `hft/` — High-Frequency Transport (CARINA gRPC Link)
+- **`grpc_connector.py`**: Pure Facade orchestrating CARINA HFT streaming, lifecycle, and recovery.
+- **`hft_grpc_client.py`**: Low-level gRPC channel, stub, and RPC client.
+- **`hft_streamer.py`**: Non-blocking frame queue with 150ms batch throttling and 250ms heartbeats.
+- **`hft_recovery.py`**: Self-healing background auto-recovery worker that re-establishes dropped gRPC connections and re-syncs maps.
+- **`hft_serializers.py`**: Protobuf serializers for scenarios and traffic frames.
+
+### 9. `infrastructure/` — Storage & Persistence I/O
 - **`sensor_gateway.py`**: Unified gateway for physical and simulated data sources.
 - **`postgres_manager.py`**: PostgreSQL database connector for historical persistence.
 - **`safetensors_repository.py`**: Zero-copy tensor persistence using the HuggingFace `safetensors` format.
+- **`json_source_storage.py`**: Local JSON persistence for data sources and configurations.
+- **`parsers.py`**: Ingestion payload parsers and polyglot deserializers.
+- **`sensor_id_extractor.py`**: Dynamic sensor ID heuristic extraction.
 
-### 8. `afb/`, `kse/`, `meh/`, & `fenix/` — Resilience Quadriad
+### 10. `afb/`, `kse/`, `meh/`, & `fenix/` — Resilience Quadriad
 - **`kse/` (Kinematic State Estimation)**: Extended Kalman Filtering and dead reckoning estimating vehicle counts and queue lengths during network packet drops.
 - **`meh/` (Micro-Estimation History)**: High-resolution historical lookup tables extracted from the Golden Dataset.
 - **`afb/` (Adaptive Fallback System)**: Fault-tolerant sensor protection engine that dynamically downgrades failing sensors from `ACTIVE` to `FALLBACK` and recovers them through `PROBATION`.
@@ -164,7 +177,7 @@ SYNAPSE executes with a dedicated multi-threaded concurrency architecture:
 ┌───────────────▼───────────────┐        ┌───────────────▼───────────────┐
 │     Ingestion Worker Thread   │        │   Standby Linguist Thread     │
 │  - Consumes HTTP, MQTT, WS    │        │  - Validates quarantined feeds│
-│  - Pushes raw queues          │        │  - Runs DistilRoBERTa embed   │
+│  - Pushes raw queues          │        │  - Runs ModernBERT embed      │
 └───────────────────────────────┘        └───────────────────────────────┘
 ┌───────────────────────────────┐        ┌───────────────────────────────┐
 │   Neural Core Engine Thread   │        │     XAI Jurist Worker Thread  │
@@ -191,7 +204,9 @@ SYNAPSE executes with a dedicated multi-threaded concurrency architecture:
 
 ---
 
-<p align="center">
-  <sub>SYNAPSE CORE — Noxfort Systems Engineering</sub><br/>
-  <sub><a href="#synapse-core--backend-architecture--subsystems">Back to top ↑</a></sub>
-</p>
+<div align="center">
+  <img src="../docs/assets/noxfort-logo.png" alt="Noxfort Systems Logo" width="48" /><br/>
+  <b>Noxfort Systems</b> — <i>A State Of Art Company</i><br/>
+  <i>Intelligent Perception & Neural Fusion Gateway • SYNAPSE CORE v2.0</i><br/>
+  <small>SPDX-License-Identifier: <a href="../LICENSE"><code>AGPL-3.0-or-later</code></a> • © 2026 Noxfort Systems</small>
+</div>

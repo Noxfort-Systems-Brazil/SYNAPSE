@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/phases/optimization_phase.py
-# Author: Gabriel Moraes
-# Date: 2026-02-16
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import threading
@@ -107,9 +90,8 @@ class OptimizationPhase(QObject):
             return False
 
         # --- INTELLIGENT SKIP CHECK ---
-        checkpoint_path = os.path.join(os.path.expanduser("~"), "Documentos", "Synapse", "Checkpoint", "best_hparams.pth")
-        if not os.path.exists(checkpoint_path):
-            checkpoint_path = os.path.join(os.path.expanduser("~"), "Documents", "Synapse", "Checkpoint", "best_hparams.pth")
+        from src.storage.path_scaffolder import PathScaffolder
+        checkpoint_path = PathScaffolder().get_checkpoint_file("best_hparams.pth")
         
         if os.path.exists(checkpoint_path) and os.path.getsize(checkpoint_path) > 0:
             self.log_message.emit("💾 Checkpoint found ('best_hparams.pth'). Phase 0 already completed.")
@@ -143,8 +125,8 @@ class OptimizationPhase(QObject):
     def _resolve_parquet_path(self) -> Optional[str]:
         """
         Resolves the Parquet dataset path for Phase 0 Optimization:
-        1. Data Lake Base directory (~/Documentos/Synapse/datalake/base/*.parquet)
-        2. Data Lake Golden directory (~/Documentos/Synapse/datalake/golden/*.parquet)
+        1. Data Lake Base directory (<synapse_root>/datalake/base/*.parquet)
+        2. Data Lake Golden directory (<synapse_root>/datalake/golden/*.parquet)
         """
         try:
             from src.managers.storage_manager import StorageManager

@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/phases/runtime_connector.py
-# Author: Gabriel Moraes
-# Date: 2026-02-13
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import gzip
@@ -60,6 +43,10 @@ class RuntimeConnector(QObject):
         
         self.hft_worker: Optional['HFTBootstrapper'] = None
         self.is_connecting = False
+        self.pipe_sender: Optional[Any] = None
+        self.emergency_flag: Optional[Any] = None
+        self.transmitter_process: Optional[Any] = None
+        self._stop_event: Optional[Any] = None
 
     def start_connection(self):
         """Begins the connection sequence."""
@@ -106,17 +93,17 @@ class RuntimeConnector(QObject):
 
     def stop_connection(self):
         """Terminates the network worker and/or dedicated transmitter process."""
-        if hasattr(self, "pipe_sender") and self.pipe_sender:
+        if self.pipe_sender:
             try:
                 self.pipe_sender.send({"command": "STOP"})
             except Exception:
                 pass
             self.pipe_sender = None
 
-        if hasattr(self, "_stop_event") and self._stop_event:
+        if self._stop_event:
             self._stop_event.set()
 
-        if hasattr(self, "transmitter_process") and self.transmitter_process and self.transmitter_process.is_alive():
+        if self.transmitter_process and self.transmitter_process.is_alive():
             self.transmitter_process.join(timeout=1.0)
             if self.transmitter_process.is_alive():
                 self.transmitter_process.terminate()
@@ -129,15 +116,16 @@ class RuntimeConnector(QObject):
 
     def send_packet(self, packet: dict):
         """Proxy method to send runtime data via the dedicated transmitter pipe or fallback worker."""
-        if hasattr(self, "pipe_sender") and self.pipe_sender is not None:
+        if self.pipe_sender is not None:
             try:
                 self.pipe_sender.send(packet)
                 return
             except Exception as e:
                 self.log_message.emit(f"[HFT] Error sending packet to dedicated transmitter: {e}")
 
-        if self.hft_worker and hasattr(self.hft_worker, 'send_runtime_command'):
-            self.hft_worker.send_runtime_command(packet)
+        send_cmd = getattr(self.hft_worker, "send_runtime_command", None) if self.hft_worker else None
+        if callable(send_cmd):
+            send_cmd(packet)
 
     # =========================================================================
     # STATE MACHINE HANDLERS
@@ -234,12 +222,8 @@ class RuntimeConnector(QObject):
     def _load_peak_schedule_json(self) -> str:
         """Helper to read the peak schedule JSON from the config directory."""
         try:
-            home_dir = os.path.expanduser("~")
-            base_dir = os.path.join(home_dir, "Documentos", "Synapse")
-            if not os.path.exists(base_dir):
-                base_dir = os.path.join(home_dir, "Documents", "Synapse")
-            
-            json_path = os.path.join(base_dir, "data", "config", "peak_schedule.json")
+            from src.storage.path_scaffolder import PathScaffolder
+            json_path = PathScaffolder().get_config_file("peak_schedule.json")
             if os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
                     return f.read()

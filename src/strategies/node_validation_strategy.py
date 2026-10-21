@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/strategies/node_validation_strategy.py
-# Author: Gabriel Moraes
-# Date: 2026-08-18
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import numpy as np
 from typing import Optional, Tuple, Any, Dict
@@ -86,9 +69,10 @@ class AdaptiveValidationStrategy:
         dynamic_tau = self.ensemble.compute_dynamic_threshold(source_id, loss_val, road_context)
         effective_threshold = max(self.loss_convergence_threshold, dynamic_tau)
 
+        freeze_fn = getattr(agent, "freeze", None)
         if not chi2_rejected and loss_val < effective_threshold:
-            if hasattr(agent, "freeze"):
-                agent.freeze()
+            if callable(freeze_fn):
+                freeze_fn()
             logger.info(
                 f"[AdaptiveValidation] ✅ Node/Sensor '{source_id}' converged at sample {step_count} "
                 f"(loss={loss_val:.4f} < {effective_threshold:.4f}). Validated, Frozen & Active!"
@@ -96,6 +80,8 @@ class AdaptiveValidationStrategy:
             return True, False, "Active"
 
         if step_count > self.max_warmup_steps:
+            if callable(freeze_fn):
+                freeze_fn()
             logger.warning(
                 f"[AdaptiveValidation] 🚫 Node/Sensor '{source_id}' rejected after {step_count} samples "
                 f"without convergence (loss={loss_val:.4f} >= {effective_threshold:.4f})."

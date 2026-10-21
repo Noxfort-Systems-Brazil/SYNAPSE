@@ -1,44 +1,21 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/controllers/system_controller.py
-# Author: Gabriel Moraes
-# Date: 2026-02-16
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
-import os
-from pathlib import Path
-from typing import Optional
+from typing import Dict, Any, Optional
+from PyQt6.QtCore import QObject, pyqtSignal
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
-
-# --- Domain ---
+# --- Domain & Managers ---
 from src.domain.app_state import AppState
-
-# --- Managers ---
 from src.managers.storage_manager import StorageManager
+from src.controllers.phase_signal_connector import PhaseSignalConnector
 
-# --- Services (Abstracted interface) ---
-from typing import Dict, Any
 
 class SystemController(QObject):
     """
     The Master Operations Controller.
     
     Refactored V39 (SOLID Architecture):
-    - [SRP] Removed OS folder scaffolding (Moved to StorageManager).
+    - [SRP] OS folder scaffolding delegated to StorageManager, wiring to PhaseSignalConnector.
     - [DIP] Receives initialized `FenixService` and `phases` dictionary via Injection.
     - [OCP] Uses a flexible State Machine ruleset instead of hardcoded if/else rules.
     """
@@ -82,9 +59,9 @@ class SystemController(QObject):
         # [DIP] Injected Dependencies
         self.fenix_service = fenix_service
         self.phases = phases
-        
-        # [OCP] Dynamic State Tracking
         self._completed_phases = set()
+        self._on_demand_xai_manager: Optional[Any] = None
+        self._on_demand_xai_worker: Optional[Any] = None
 
         # Connect Storage
         if self.storage:
@@ -107,10 +84,7 @@ class SystemController(QObject):
         self.log_message.emit("[SystemController] 🟢 Initialized (V39 SOLID Final).")
 
     def _connect_fenix_signals(self):
-        """Bridges FENIX service signals to UI log/status."""
-        self.fenix_service.cycle_started.connect(lambda msg: self.log_message.emit(f"[FENIX] 🔥 {msg}"))
-        self.fenix_service.cycle_finished.connect(self._on_fenix_finished)
-        self.fenix_service.progress_update.connect(lambda msg, pct: self.status_message.emit(f"FENIX: {msg} ({pct}%)"))
+        PhaseSignalConnector.connect_fenix_signals(self, self.fenix_service)
 
     def _on_fenix_finished(self, success, msg):
         status_icon = '✅' if success else '❌'
@@ -121,44 +95,19 @@ class SystemController(QObject):
     # =========================================================================
 
     def _connect_optimization_phase(self, phase_obj):
-        phase_obj.log_message.connect(self.log_message)
-        phase_obj.error_occurred.connect(self.error_occurred)
-        phase_obj.optimization_finished.connect(self._on_optimization_finished)
+        PhaseSignalConnector.connect_optimization_phase(self, phase_obj)
 
     def _connect_bootstrap_phase(self, phase_obj):
-        phase_obj.log_message.connect(self.log_message)
-        phase_obj.bootstrap_finished.connect(self._on_bootstrap_finished)
+        PhaseSignalConnector.connect_bootstrap_phase(self, phase_obj)
 
     def _connect_runtime_phase(self, phase_obj):
-        # Telemetry
-        phase_obj.log_message.connect(self.log_message)
-        phase_obj.status_message.connect(self.status_message)
-        phase_obj.error_occurred.connect(self.error_occurred)
-        
-        # Lifecycle
-        phase_obj.system_started.connect(self.online_system_started)
-        phase_obj.system_stopped.connect(self.online_system_stopped)
-        
-        # Data Streams
-        phase_obj.engine_data_processed.connect(self.engine_data_processed)
-        phase_obj.engine_global_results.connect(self.engine_global_results)
-        phase_obj.kinetic_data_ready.connect(self.kinetic_data_ready)
-        phase_obj.audit_update.connect(self.audit_update)
-        phase_obj.linguist_update.connect(self.linguist_update)
-        phase_obj.drift_update.connect(self.drift_update)
-        phase_obj.xai_result_received.connect(self.xai_result_received)
+        PhaseSignalConnector.connect_runtime_phase(self, phase_obj)
 
     def _connect_commands(self, runtime_obj):
-        """Routes external commands (e.g. from UI) to the Runtime Phase with On-Demand fallback."""
-        self.cmd_process_data.connect(lambda t, p: runtime_obj.handle_command("process_data", p))
-        self.cmd_run_cycle.connect(lambda: runtime_obj.handle_command("run_cycle"))
-        self.cmd_update_model.connect(lambda p: runtime_obj.handle_command("update_model", p))
-        self.cmd_explain_buffer.connect(lambda: self._handle_explain_buffer_cmd(runtime_obj))
-        self.cmd_explain_local.connect(lambda pid: self._handle_explain_local_cmd(runtime_obj, pid))
-        self.cmd_explain_global.connect(lambda: self._handle_explain_global_cmd(runtime_obj))
+        PhaseSignalConnector.connect_commands(self, runtime_obj)
 
     def _get_on_demand_xai(self):
-        if not hasattr(self, "_on_demand_xai_manager") or self._on_demand_xai_manager is None:
+        if self._on_demand_xai_manager is None:
             from src.workers.xai_worker import XAIWorker
             from src.managers.xai_manager import XAIManager
             from src.services.semantic_enricher import SemanticEnricher
@@ -170,43 +119,13 @@ class SystemController(QObject):
         return self._on_demand_xai_manager
 
     def _handle_explain_buffer_cmd(self, runtime_obj):
-        if runtime_obj and getattr(runtime_obj, "launcher", None) and getattr(runtime_obj.launcher, "_engine_worker", None):
-            runtime_obj.handle_command("explain_buffer")
-        else:
-            xai = self._get_on_demand_xai()
-            nodes = [n.id for n in self.app_state.get_all_nodes()] if hasattr(self.app_state, "get_all_nodes") else []
-            xai.process_buffer_strategy(nodes)
+        PhaseSignalConnector.handle_explain_buffer(self, runtime_obj)
 
     def _handle_explain_local_cmd(self, runtime_obj, sid: str):
-        resolved_sid = sid
-        if not resolved_sid and hasattr(self.app_state, "get_all_nodes"):
-            all_nodes = self.app_state.get_all_nodes()
-            if all_nodes:
-                resolved_sid = all_nodes[0].id
-        if not resolved_sid and hasattr(self.app_state, "get_all_data_sources"):
-            sources = self.app_state.get_all_data_sources()
-            if sources:
-                resolved_sid = sources[0].id
-        if not resolved_sid:
-            resolved_sid = "Sensor_Principal"
-
-        if runtime_obj and getattr(runtime_obj, "launcher", None) and getattr(runtime_obj.launcher, "_engine_worker", None):
-            runtime_obj.handle_command("explain_local", resolved_sid)
-        else:
-            xai = self._get_on_demand_xai()
-            node = self.app_state.get_node(resolved_sid) if hasattr(self.app_state, "get_node") else None
-            xai.explain_local(resolved_sid, node)
+        PhaseSignalConnector.handle_explain_local(self, runtime_obj, sid)
 
     def _handle_explain_global_cmd(self, runtime_obj):
-        if runtime_obj and getattr(runtime_obj, "launcher", None) and getattr(runtime_obj.launcher, "_engine_worker", None):
-            runtime_obj.handle_command("explain_global")
-        else:
-            xai = self._get_on_demand_xai()
-            nodes_dict = {}
-            if hasattr(self.app_state, "get_all_nodes"):
-                for n in self.app_state.get_all_nodes():
-                    nodes_dict[n.id] = n
-            xai.explain_global(None, nodes_dict, seq_len=12)
+        PhaseSignalConnector.handle_explain_global(self, runtime_obj)
 
     # =========================================================================
     # INTERNAL HANDLERS (Dynamic State Completion & Auto-Progression)
@@ -216,9 +135,11 @@ class SystemController(QObject):
         """Inspects disk artifacts via StorageManager to detect previously completed phases."""
         completed = set()
         if self.storage:
-            if hasattr(self.storage, "has_phase0_artifacts") and self.storage.has_phase0_artifacts():
+            p0_fn = getattr(self.storage, "has_phase0_artifacts", None)
+            p1_fn = getattr(self.storage, "has_phase1_artifacts", None)
+            if callable(p0_fn) and p0_fn():
                 completed.add("optimization")
-            if hasattr(self.storage, "has_phase1_artifacts") and self.storage.has_phase1_artifacts():
+            if callable(p1_fn) and p1_fn():
                 if "optimization" in completed:
                     completed.add("bootstrap")
         return completed
@@ -241,8 +162,8 @@ class SystemController(QObject):
         self._completed_phases.add("optimization")
         self.log_message.emit("🔒 Security: Phase 0 (Optimization) Verified.")
 
-        # Check if Phase 1 is also already completed on disk
-        if self.storage and hasattr(self.storage, "has_phase1_artifacts") and self.storage.has_phase1_artifacts():
+        p1_fn = getattr(self.storage, "has_phase1_artifacts", None) if self.storage else None
+        if callable(p1_fn) and p1_fn():
             self._completed_phases.add("bootstrap")
             self.log_message.emit("⚡ Auto-Progression: Phase 1 (Bootstrap) artifacts already present. Skipping directly to Phase 2 (Live Operation).")
             self.status_message.emit("Phase 0 & 1 Complete. Ready for Phase 2 (Live Operation).")
@@ -277,7 +198,6 @@ class SystemController(QObject):
                 
         if phase_name in self.phases:
             result = self.phases[phase_name].start()
-            # If start() returns a bool, respect it; otherwise assume success
             return result if isinstance(result, bool) else True
         else:
             self.error_occurred.emit(f"⛔ Required system phase '{phase_name}' is not registered.")
@@ -287,9 +207,7 @@ class SystemController(QObject):
         if phase_name in self.phases:
             self.phases[phase_name].stop()
 
-    # --- External Invocation API ---
     def start_optimization(self):
-        # We don't blindly wipe completed_phases if artifacts exist, but if starting explicitly, allow rerun
         return self._execute_phase("optimization", prerequisites=[])
 
     def stop_optimization(self):

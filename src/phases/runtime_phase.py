@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/phases/runtime_phase.py
-# Author: Gabriel Moraes
-# Date: 2026-02-13
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -110,9 +93,27 @@ class RuntimePhase(QObject):
             self.log_message.emit(error_msg)
             self.error_occurred.emit(error_msg)
             return False
-        
+
+        # Security & Resilience Guard: Local sensors require active DuckDNS
+        if has_local:
+            try:
+                from src.database.db_settings_manager import DatabaseSettingsManager
+                duck_cfg = DatabaseSettingsManager().load_duckdns_settings()
+                if not duck_cfg.get("enabled", False) or not str(duck_cfg.get("domain", "")).strip():
+                    error_msg = (
+                        "❌ Operação Abortada: Sensores Locais exigem DuckDNS configurado e ativo "
+                        "para ingestão remota resiliente. Acesse Configurações > Acesso Remoto (DuckDNS)."
+                    )
+                    self.log_message.emit(error_msg)
+                    self.error_occurred.emit(error_msg)
+                    return False
+            except Exception as e:
+                logger.warning(f"[RuntimePhase] Falha ao verificar status do DuckDNS: {e}")
+
         logger.info("🚀 [Fase 2: Operação Online] Ativando ingestão de dados ao vivo:")
-        logger.info(f"   📡 Sensores Locais ({sum(1 for s in live_sources if s.is_local)}): Gateway HTTP ativo escutando POSTs na porta 8080.")
+        import os
+        gw_port = int(os.getenv("SYNAPSE_GATEWAY_PORT", "8081"))
+        logger.info(f"   📡 Sensores Locais ({sum(1 for s in live_sources if s.is_local)}): Gateway HTTP ativo escutando POSTs na porta {gw_port}.")
         logger.info(f"   ☁️ Sensores Globais ({sum(1 for s in live_sources if not s.is_local)}): Polling ativo para APIs externas.")
 
         # 1. Start compute & ingestion engines first (SensorGateway + IngestionWorker + Linguist)

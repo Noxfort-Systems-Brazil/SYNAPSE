@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/strategies/xai_strategies.py
-# Author: Gabriel Moraes
-# Date: 2026-08-31
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import torch
 import torch.nn as nn
@@ -50,13 +33,15 @@ class AuditorXAIStrategy(IXAIStrategy):
     ) -> Callable[[torch.Tensor], torch.Tensor]:
         dim = len(input_vector)
         shadow_auditor = AuditorAgent(input_len=dim)
-        if hasattr(shadow_auditor, "model") and shadow_auditor.model is not None:
-            shadow_auditor.model.to(device)
-            shadow_auditor.model.eval()
+        auditor_model = getattr(shadow_auditor, "model", None)
+        if auditor_model is not None:
+            auditor_model.to(device)
+            auditor_model.eval()
 
         def _auditor_loss_wrapper(inputs: torch.Tensor) -> torch.Tensor:
-            if hasattr(shadow_auditor, "model") and shadow_auditor.model is not None:
-                res = shadow_auditor.model(inputs)
+            model_ref = getattr(shadow_auditor, "model", None)
+            if model_ref is not None:
+                res = model_ref(inputs)
                 if isinstance(res, tuple):
                     reconstructed = res[3] if len(res) >= 4 else res[0]
                 else:
@@ -95,18 +80,20 @@ class TCNXAIStrategy(IXAIStrategy):
             output_dim=32,
             num_channels=[16, 32]
         )
-        if hasattr(shadow_tcn, "model") and shadow_tcn.model is not None:
-            shadow_tcn.model.to(device)
-            shadow_tcn.model.eval()
+        tcn_model_dict = getattr(shadow_tcn, "model", None)
+        if tcn_model_dict is not None:
+            tcn_model_dict.to(device)
+            tcn_model_dict.eval()
 
         def _tcn_wrapper(inputs: torch.Tensor) -> torch.Tensor:
             batch_size = inputs.size(0)
             seq_len = inputs.size(1)
             x = inputs.view(batch_size, 1, seq_len)
-            if hasattr(shadow_tcn, "model") and shadow_tcn.model is not None:
+            model_ref = getattr(shadow_tcn, "model", None)
+            if model_ref is not None:
                 try:
-                    tcn_model = shadow_tcn.model["tcn"]
-                    decoder_model = shadow_tcn.model["decoder"]
+                    tcn_model = model_ref["tcn"]
+                    decoder_model = model_ref["decoder"]
                     tcn_out = tcn_model(x)
                     if isinstance(tcn_out, tuple):
                         tcn_out = tcn_out[0]
@@ -147,9 +134,10 @@ class FuserXAIStrategy(IXAIStrategy):
             seq_len=60,
             pred_len=10
         )
-        if hasattr(shadow_fuser, "model") and shadow_fuser.model is not None:
-            shadow_fuser.model.to(device)
-            shadow_fuser.model.eval()
+        fuser_model = getattr(shadow_fuser, "model", None)
+        if fuser_model is not None:
+            fuser_model.to(device)
+            fuser_model.eval()
 
         def _fuser_wrapper(inputs: torch.Tensor) -> torch.Tensor:
             return torch.sum(inputs, dim=1).unsqueeze(1)

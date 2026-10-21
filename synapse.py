@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: synapse.py
-# Author: Gabriel Moraes
-# Date: 2026-08-29
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import sys
 import os
@@ -26,6 +9,16 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ["SYNAPSE_ROOT"] = root_dir
 if root_dir not in os.environ.get("PYTHONPATH", ""):
     os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
+
+os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "1")
+os.environ.setdefault("GRPC_POLL_STRATEGY", "poll")
+
+import multiprocessing as mp
+if mp.get_start_method(allow_none=True) != "spawn":
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass
 
 cargo_bin = os.path.expanduser("~/.cargo/bin")
 current_path = os.environ.get("PATH", "")
@@ -58,6 +51,13 @@ signal.signal(signal.SIGTERM, hard_kill)
 configure_hardware_acceleration()
 
 logger = get_logger("Launcher")
+
+# Auto-compile Go Ingestion Gateway if source is present and binary is missing
+try:
+    from src.go.subprocess_transport import GoSubprocessTransport
+    GoSubprocessTransport.ensure_compiled()
+except Exception as e:
+    logger.debug(f"Go gateway auto-compilation check skipped: {e}")
 
 
 def launch_desktop_ui():
@@ -101,6 +101,8 @@ def launch_desktop_ui():
     clean_env["SYNAPSE_ROOT"] = root_dir
     clean_env["PYTHONPATH"] = root_dir
     clean_env["PYTHONUNBUFFERED"] = "1"
+    clean_env["GRPC_ENABLE_FORK_SUPPORT"] = "1"
+    clean_env["GRPC_POLL_STRATEGY"] = "poll"
     clean_env["LD_LIBRARY_PATH"] = "/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"
     clean_env.pop("LD_PRELOAD", None)
     for key in list(clean_env.keys()):

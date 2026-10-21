@@ -1,27 +1,10 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: src/managers/source_manager.py
-# Author: Gabriel Moraes
-# Date: 2026-08-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from typing import Dict, List, Optional, Union
 
-from src.domain.entities import DataSource
+from src.domain.entities import DataSource, SourceType
 from src.domain.source_repository import SourceRepository
 from src.infrastructure.json_source_storage import JsonSourceStorage
 from src.services.source_probe_service import HttpSourceProbeService
@@ -74,15 +57,15 @@ class SourceManager(QObject):
     # --- Backward compatibility accessors for internal collections ---
     @property
     def _data_sources(self) -> Dict[str, DataSource]:
-        if hasattr(self.repository, "_data_sources"):
-            return self.repository._data_sources
+        ds = getattr(self.repository, "_data_sources", None)
+        if ds is not None:
+            return ds
         return {s.id: s for s in self.repository.get_all()}
 
     @property
     def _associations(self) -> Dict[str, List[str]]:
-        if hasattr(self.repository, "_associations"):
-            return self.repository._associations
-        return {}
+        assoc = getattr(self.repository, "_associations", None)
+        return assoc if assoc is not None else {}
 
     # =========================================================================
     # PUBLIC ORCHESTRATION API
@@ -96,7 +79,7 @@ class SourceManager(QObject):
 
         # Terminal Visual Feedback
         src_type_desc = "LOCAL (PUSH - Porta 8080)" if source.is_local else "GLOBAL (PULL - API Externa)"
-        status_desc = source.status.value if hasattr(source.status, "value") else str(source.status)
+        status_desc = getattr(source.status, "value", str(source.status))
         logger.info(
             f"📝 Sensor Cadastrado: ID='{source.id}' | Nome='{source.name}' | "
             f"Origem='{src_type_desc}' | Status Inicial='{status_desc}'"
@@ -133,12 +116,36 @@ class SourceManager(QObject):
     def get_element_for_source(self, source_id: str) -> Optional[str]:
         return self.repository.get_element_for_source(source_id)
 
+    def get_elements_for_source(self, source_id: str) -> List[str]:
+        return self.repository.get_elements_for_source(source_id)
+
     def toggle_origin(self, source_id: str):
         """Toggle source between Local and Global scope, persist and emit signal."""
         new_is_local = self.repository.toggle_origin(source_id)
         if new_is_local is not None:
             self._save_to_storage()
             self.source_origin_toggled.emit(source_id, new_is_local)
+
+    def update_source(
+        self,
+        source_id: str,
+        name: Optional[str] = None,
+        is_local: Optional[bool] = None,
+        source_type: Optional[SourceType] = None,
+        connection_string: Optional[str] = None,
+    ) -> Optional[DataSource]:
+        """Updates source attributes, persists to storage, and notifies subscribers."""
+        src = self.repository.update_source(
+            source_id=source_id,
+            name=name,
+            is_local=is_local,
+            source_type=source_type,
+            connection_string=connection_string,
+        )
+        if src:
+            self._save_to_storage()
+            self.source_added.emit(src)
+        return src
 
     def get_next_source_id(self) -> str:
         return self.repository.get_next_source_id()
@@ -186,7 +193,9 @@ class SourceManager(QObject):
         sources, associations, map_path = self.storage.load()
         for s in sources.values():
             self.repository.add(s)
-        if hasattr(self.repository, "_associations"):
-            self.repository._associations.update(associations)
+        repo_assoc = getattr(self.repository, "_associations", None)
+        if repo_assoc is not None:
+            repo_assoc.update(associations)
         if map_path:
             self._map_path = map_path
+
