@@ -1,22 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2025 Noxfort Systems
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# File: requirements.txt
-# Author: Gabriel Moraes
-# Date: 2025-11-22
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 # --- Backend: Core and AI (PyTorch & Transformers) ---
 torch
@@ -24,14 +7,19 @@ torchvision
 torchaudio
 torch_geometric
 captum
-transformers             # Required for DistilRoBERTa (The Linguist Agent)
+transformers             # Required for ModernBERT (The Linguist Agent)
 
-# --- Backend: MLOps ---
+# --- Backend: MLOps & Data Processing ---
 optuna
 scipy
 numpy
+pandas
+pyarrow
+scikit-learn
+networkx
+diskcache
 
-# --- Backend: Connectors and Infrastructure ---
+# --- Backend: Connectors, Security and Infrastructure ---
 kafka-python
 psycopg2-binary
 sqlalchemy
@@ -39,15 +27,24 @@ celery
 redis
 prometheus-client
 tensorboard
+grpcio
+grpcio-tools
+protobuf
+python-dotenv
+cryptography
+pycryptodomex
 
-# --- Backend: Application Structure ---
+# --- Backend: Application Structure & Reports ---
 pydantic
 pydantic-settings
 dependency-injector
 click
+python-docx
 
-# --- Backend: Specific Parsers (SUMO) ---
+# --- Backend: Geospatial & Specific Parsers (SUMO) ---
 lxml
+pyproj
+Rtree
 
 # --- UI: PyQt6 (Pinned Versions to 6.4.0) ---
 PyQt6==6.4.0
@@ -55,8 +52,10 @@ PyQt6-Charts==6.4.0
 PyQt6-WebEngine==6.4.0
 httpx
 
-# --- Testing ---
+# --- Testing & Linting ---
 pytest
+pytest-asyncio
 pytest-mock
 pytest-qt
 pytest-cov
+ruff

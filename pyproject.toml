@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synapse-core"
+version = "2.0.0"
+description = "An Intelligent Perception & Neural Fusion Gateway for Smart City Traffic Management"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Gabriel Moraes", email = "suporte@noxfort.com" },
+    { name = "Noxfort Systems", email = "contato@noxfort.com" }
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "benchmark: marks tests as latency or performance benchmarks",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:sipPyTypeDictRef",
+    "ignore:sipPyTypeDict\\(\\) is deprecated:DeprecationWarning",
+    "ignore:`torch_geometric.distributed` has been deprecated:DeprecationWarning",
+    "ignore:datetime.datetime.utcfromtimestamp\\(\\) is deprecated:DeprecationWarning",
+    "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    ".venv/*",
+    "Model_Vault/*",
+    "build/*",
+    "dist/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass"
+]

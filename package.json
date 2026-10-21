@@ -1,11 +1,15 @@
 {
   "name": "synapse-core",
   "version": "2.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "description": "SYNAPSE - A Gateway of Intelligent Perception for Traffic Management",
   "scripts": {
     "dev": "npm run dev --prefix ui",
     "build": "npm run build --prefix ui",
     "tauri": "npm run tauri --prefix ui --"
+  },
+  "devDependencies": {
+    "playwright": "^1.40.0"
   }
 }

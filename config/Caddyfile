@@ -1,0 +1,12 @@
+{
+    admin off
+    auto_https disable_redirects
+    https_port 8443
+}
+
+noxfortsynapse.duckdns.org:8443 {
+    tls {
+        dns duckdns 395ff277-479c-4c06-831b-609d4e6064b2
+    }
+    reverse_proxy localhost:8081
+}

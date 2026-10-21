@@ -25,7 +25,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
 *.manifest
 
 # Installer logs
@@ -97,4 +96,18 @@ pnpm-debug.log*
 # Rust / Tauri
 target/
 **/*.rs.bk
+
+# Local Configuration (Keep settings.ini.example in repo)
+config/settings.ini
+config/vpn_state.json
+
+# Compiled Binaries
+bin/
+synapse-go/synapse-gateway
+
+# Local Presentation / Screenshot Scratch Artifacts
+recordings/
+record_presentation.cjs
+wizard_open.png
+
 
