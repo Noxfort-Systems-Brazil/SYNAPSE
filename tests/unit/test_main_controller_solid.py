@@ -4,7 +4,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 
 from src.main_controller import MainController
 from src.factories.controller_factory import ControllerFactory
@@ -22,9 +22,9 @@ from src.interfaces.controllers import (
 
 @pytest.fixture(scope="session")
 def qapp():
-    app = QApplication.instance()
+    app = QCoreApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QCoreApplication([])
     return app
 
 

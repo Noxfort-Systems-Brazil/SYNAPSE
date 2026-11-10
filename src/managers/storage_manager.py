@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/managers/storage_manager.py
-# Author: Gabriel Moraes
-# Date: 2026-02-16
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import logging
@@ -139,6 +135,7 @@ class StorageManager:
             peak_schedule = config_dir / "peak_schedule.json"
             auditor_checkpoint = config_dir / "auditor_calibrated.pth"
             linguist_checkpoint = config_dir / "linguist_calibrated.json"
+            ontology_checkpoint = config_dir / "ontology.safetensors"
 
             if not peak_schedule.exists():
                 self.restore_file_from_vault("data/config/peak_schedule.json", str(peak_schedule))
@@ -146,6 +143,8 @@ class StorageManager:
                 self.restore_file_from_vault("data/config/auditor_calibrated.pth", str(auditor_checkpoint))
             if not linguist_checkpoint.exists():
                 self.restore_file_from_vault("data/config/linguist_calibrated.json", str(linguist_checkpoint))
+            if not ontology_checkpoint.exists():
+                self.restore_file_from_vault("data/config/ontology.safetensors", str(ontology_checkpoint))
 
             base_parquets = list(base_dir.glob("*.parquet")) if base_dir.exists() else []
             if len(base_parquets) == 0 and base_dir.exists():
@@ -168,6 +167,7 @@ class StorageManager:
                 and peak_schedule.exists() and peak_schedule.stat().st_size > 0
                 and auditor_checkpoint.exists() and auditor_checkpoint.stat().st_size > 0
                 and linguist_checkpoint.exists() and linguist_checkpoint.stat().st_size > 0
+                and ontology_checkpoint.exists() and ontology_checkpoint.stat().st_size > 0
             )
         except Exception as e:
             logger.warning(f"[StorageManager] Error checking Phase 1 artifacts: {e}")

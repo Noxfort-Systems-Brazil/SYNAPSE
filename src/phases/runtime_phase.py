@@ -53,6 +53,7 @@ class RuntimePhase(QObject):
         super().__init__()
         
         self.app_state = app_state
+        self.fenix_service = fenix_service
         
         # 1. Initialize Sub-Components
         self.connector = RuntimeConnector(app_state)
@@ -119,7 +120,11 @@ class RuntimePhase(QObject):
         # 1. Start compute & ingestion engines first (SensorGateway + IngestionWorker + Linguist)
         self.launcher.start_engines()
 
-        # 2. Evaluate 1+1 Rule for HFT Network Transport
+        # 2. Activate FENIX Watchdog Monitoring in Phase 2 (Online Operation)
+        if self.fenix_service:
+            self.fenix_service.activate_monitoring()
+
+        # 3. Evaluate 1+1 Rule for HFT Network Transport
         self._check_one_plus_one_and_connect(initial=True)
         return True
 
@@ -152,6 +157,8 @@ class RuntimePhase(QObject):
 
     def stop(self):
         """Stops both network and compute layers."""
+        if self.fenix_service:
+            self.fenix_service.deactivate_monitoring()
         self.connector.stop_connection()
         self.launcher.stop_engines()
         self.system_stopped.emit()
@@ -172,6 +179,14 @@ class RuntimePhase(QObject):
         # When Linguist updates/promotes or source updates in AppState, re-check 1+1 rule
         self.launcher.linguist_update.connect(lambda *_: self._check_one_plus_one_and_connect())
         self.app_state.data_source_added.connect(lambda *_: self._check_one_plus_one_and_connect())
+
+        # Bind FENIX fallback signal to dedicated transmitter channel if configured
+        self.connector.transmitter_channel_configured.connect(self._on_transmitter_channel_configured)
+
+    def _on_transmitter_channel_configured(self, emergency_flag: Any):
+        """Binds dedicated transmitter emergency event to FENIX fallback signal."""
+        if self.fenix_service and emergency_flag is not None:
+            self.fenix_service.bind_transmitter_emergency_flag(emergency_flag)
 
     def _wire_outputs(self):
         """Connects sub-components signals to this Facade's signals."""

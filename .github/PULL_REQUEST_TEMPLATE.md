@@ -27,3 +27,9 @@ Please describe the tests that you ran to verify your changes:
 - [ ] I have updated the [`docs/`](../docs/README.md) library to reflect any architectural or schema changes
 - [ ] I have added tests that prove my fix is effective or that my feature functions as intended
 - [ ] Any modified Protobuf schemas have been recompiled via `python -m grpc_tools.protoc`
+
+<!--
+SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+-->
+

@@ -32,7 +32,7 @@
 2. **[Domain Entities & Schemas](en/domain_entities.md)**
    - Topology graph nodes/edges, `SourceStatus` state machines, and Bayesian trust scores.
 3. **[MARKVART™ Neural Stack](en/neural_models.md)**
-   - Mathematical formulations of 11 deep networks: PINO, PI-DeepONet, iTransformer, GATv2, WaveletAE.
+   - Mathematical formulations of 10 deep networks and geometric matcher: PINO, PI-DeepONet, iTransformer, DiffusionGATv2, ModernBERT, WaveletAE-OCC.
 4. **[ADAGIO™ Execution Phases](en/execution_phases.md)**
    - Structured lifecycle: Phase 0 (AutoML), Phase 1 (Golden Dataset Bootstrap), Phase 2 (Online Concurrency).
 5. **[Data Ingestion & HFT-Link](en/data_ingestion_and_hft.md)**

@@ -7,6 +7,7 @@ import numpy as np
 import logging
 from typing import Optional, Callable
 from torch.amp import autocast
+from src.utils.hardware import get_optimal_amp_dtype
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ class BatchInferenceEngine:
 
         reconstructed_list = []
         device_type = self.device.type if self.device.type != 'mps' else 'cpu'
+        amp_dtype = get_optimal_amp_dtype(self.device)
+        use_cuda = (self.device.type == 'cuda')
         
         # Prepare Model
         model.eval()
@@ -70,53 +73,48 @@ class BatchInferenceEngine:
         
         logger.info(f"[BatchEngine] Processing {num_samples} samples on {self.device} with batch_size {self.batch_size} (AMP={self.use_amp})...")
 
+        # Zero-copy sliding window view: [num_windows, seq_len, features]
+        all_windows = np.lib.stride_tricks.sliding_window_view(data_matrix, window_shape=seq_len, axis=0)
+        if data_matrix.ndim == 2:
+            all_windows = np.swapaxes(all_windows, 1, 2)
+        total_windows = all_windows.shape[0]
+
         # Disable Gradient Calculation to save memory
         with torch.no_grad():
-            # Main Loop: Slice data into mini-batches
-            for i in range(0, num_samples - seq_len + 1, self.batch_size):
-                
-                # 1. Define Slicing Indices
-                # We want to create a batch of sliding windows
-                batch_indices = range(i, min(i + self.batch_size, num_samples - seq_len + 1))
-                
-                batch_windows = []
-                for idx in batch_indices:
-                    # Create window [idx : idx + seq_len]
-                    window = data_matrix[idx : idx + seq_len]
-                    batch_windows.append(window)
-                
-                if not batch_windows: 
+            # Main Loop: Slice data into vectorized mini-batches
+            for i in range(0, total_windows, self.batch_size):
+                batch_np = np.ascontiguousarray(all_windows[i : i + self.batch_size], dtype=np.float32)
+                if batch_np.shape[0] == 0:
                     break
                 
-                # 2. Upload to GPU
-                # Shape: (Batch, Seq_Len, Features)
-                tensor_batch = torch.tensor(np.array(batch_windows)).float().to(self.device)
+                # 2. Upload to GPU via pinned non-blocking DMA when on CUDA
+                tensor_batch = torch.from_numpy(batch_np)
+                if use_cuda:
+                    tensor_batch = tensor_batch.pin_memory().to(self.device, non_blocking=True)
+                else:
+                    tensor_batch = tensor_batch.to(self.device)
                 
-                # 3. Inference with AMP
-                # Run the forward pass
-                with autocast(device_type=device_type, enabled=(self.use_amp and self.device.type == 'cuda')):
+                # 3. Inference with optimal AMP dtype (BF16 on Ampere+, FP16 on Turing)
+                with autocast(device_type=device_type, dtype=amp_dtype, enabled=(self.use_amp and use_cuda)):
                     recon_batch = model(tensor_batch)
                 
                 # 4. Extract Strategy (Last Point)
-                # Assuming output is (Batch, Seq, Feat), we take the last time step 
-                # as the "corrected" value for the current timestamp.
                 last_point_recon = recon_batch[:, -1, :]
                 
                 # 5. Download to CPU & Store
                 reconstructed_list.append(last_point_recon.cpu().float().numpy())
                 
                 # 6. Immediate Cleanup
-                # Delete tensor references to allow PyTorch to reuse memory block
                 del tensor_batch, recon_batch
                 
-                # 7. Deep Clean (Periodic)
-                # Every ~5000 samples, force Python GC and Empty CUDA Cache
-                # This prevents "Memory Fragmentation" over long runs.
-                if i % 5120 == 0:
+                # 7. Periodic progress reporting (without per-batch blocking CUDA syncs)
+                if i > 0 and i % 5120 == 0:
                     self._force_cleanup()
                     if progress_callback:
                         percent = int((i / num_samples) * 100)
                         progress_callback(percent)
+                elif i == 0 and progress_callback:
+                    progress_callback(0)
 
         # 8. Reassemble
         if not reconstructed_list:

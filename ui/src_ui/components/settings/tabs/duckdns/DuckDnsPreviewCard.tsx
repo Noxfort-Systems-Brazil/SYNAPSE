@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/components/settings/tabs/duckdns/DuckDnsPreviewCard.tsx
-// Description: Card previewing public ingress URL with copy helper and camera instruction.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { Activity, ShieldCheck, Check, Copy } from 'lucide-react';

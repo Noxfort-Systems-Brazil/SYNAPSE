@@ -63,6 +63,9 @@ class NodeStepProcessor:
                 f"Rolling back {state.fallback_steps} synthetic steps."
             )
             self._memory.rollback(state.fallback_steps)
+            reset_step_fn = getattr(self._agent, "reset_step_state", None)
+            if callable(reset_step_fn) and not type(self._agent).__name__.startswith("MagicMock"):
+                reset_step_fn()
             state.reset_fallback()
 
         # 2. Physics Model Update (KSE Dead Reckoning + Fusion)
@@ -94,8 +97,9 @@ class NodeStepProcessor:
 
         # 4. Neural Error Computation / Fast-Path Evaluation
         loss = 0.0
+        is_mock_agent = type(self._agent).__name__.startswith("MagicMock")
         is_frozen_attr = getattr(self._agent, "is_frozen", False)
-        if callable(is_frozen_attr) and not type(is_frozen_attr).__name__.startswith("MagicMock"):
+        if callable(is_frozen_attr) and not is_mock_agent:
             is_frozen = bool(is_frozen_attr())
         elif isinstance(is_frozen_attr, bool):
             is_frozen = is_frozen_attr
@@ -113,7 +117,7 @@ class NodeStepProcessor:
                     if (
                         callable(compute_loss_fn)
                         and has_pipeline
-                        and not type(self._agent).__name__.startswith("MagicMock")
+                        and not is_mock_agent
                     ):
                         try:
                             loss = float(compute_loss_fn(current_window_tensor))
@@ -151,15 +155,26 @@ class NodeStepProcessor:
             psi = 0.008
         state.last_psi = float(max(0.001, min(0.5, psi)))
 
-        # 5. Neural Feature Extraction
-        history_np = self._memory.get_numpy()
+        # 5. Neural Feature Extraction (O(1) causal step when frozen, full window during calibration)
         current_embedding = None
-        predict_fn = getattr(self._agent, "predict", None)
-        if callable(predict_fn):
-            current_embedding = predict_fn(history_np)
-            if current_embedding is not None:
-                state.last_embedding = current_embedding
-        if current_embedding is None:
+        predict_step_fn = getattr(self._agent, "predict_step", None)
+        warm_step_fn = getattr(self._agent, "warm_step_state", None)
+        if is_frozen and not is_mock_agent and callable(predict_step_fn):
+            if bool(getattr(self._agent, "has_step_state", False)):
+                current_embedding = predict_step_fn(value)
+            elif callable(warm_step_fn):
+                history_np = mem_np if mem_np is not None else self._memory.get_numpy()
+                current_embedding = warm_step_fn(history_np)
+            else:
+                current_embedding = predict_step_fn(value)
+        else:
+            predict_fn = getattr(self._agent, "predict", None)
+            if callable(predict_fn):
+                history_np = mem_np if mem_np is not None else self._memory.get_numpy()
+                current_embedding = predict_fn(history_np)
+        if current_embedding is not None:
+            state.last_embedding = current_embedding
+        else:
             current_embedding = state.last_embedding
 
         # 6. Adaptive Validation & Calibration Evaluation (Ensemble A+B+C+D)

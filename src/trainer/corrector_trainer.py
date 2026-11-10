@@ -9,6 +9,8 @@ from torch.amp import autocast, GradScaler
 
 from src.interfaces.trainers import ICorrectorTrainer
 from src.models.pi_dvae_tcn import PIDVAETCN
+from src.physics.adaptive_loss_balancer import AdaptivePhysicsLossBalancer
+from src.utils.hardware import get_optimal_amp_dtype, requires_grad_scaler
 from src.utils.normalization import TensorNormalizer
 from src.utils.convergence_tracker import MarginalConvergenceTracker
 
@@ -28,23 +30,40 @@ class CorrectorTrainer(ICorrectorTrainer):
         physics_weight: float = 0.1,
         noise_std: float = 0.08,
         spike_prob: float = 0.015,
-        device: Optional[torch.device] = None
+        sobolev_weight: float = 0.1,
+        device: Optional[torch.device] = None,
+        adaptive_physics_balance: bool = True,
     ):
         self.model = model
         self.learning_rate = learning_rate
         self.physics_weight = physics_weight
         self.noise_std = noise_std
         self.spike_prob = spike_prob
+        self.sobolev_weight = sobolev_weight
+        self.adaptive_physics_balance = adaptive_physics_balance
+        self.loss_balancer = AdaptivePhysicsLossBalancer(base_weight=physics_weight)
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.scaler = GradScaler('cuda' if self.device.type == 'cuda' else 'cpu', enabled=(self.device.type == 'cuda'))
+        self._amp_dtype = get_optimal_amp_dtype(self.device)
+        self.scaler = GradScaler(
+            'cuda' if self.device.type == 'cuda' else 'cpu',
+            enabled=requires_grad_scaler(self.device, self._amp_dtype),
+        )
 
     def to(self, device: Any) -> 'CorrectorTrainer':
         self.device = torch.device(device) if isinstance(device, str) else device
         self.model.to(self.device)
-        self.scaler = GradScaler('cuda' if self.device.type == 'cuda' else 'cpu', enabled=(self.device.type == 'cuda'))
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+        self._amp_dtype = get_optimal_amp_dtype(self.device)
+        self.scaler = GradScaler(
+            'cuda' if self.device.type == 'cuda' else 'cpu',
+            enabled=requires_grad_scaler(self.device, self._amp_dtype),
+        )
         return self
 
     def train_step(self, batch_data: Any) -> float:
@@ -75,13 +94,25 @@ class CorrectorTrainer(ICorrectorTrainer):
 
         self.optimizer.zero_grad()
         device_type = self.device.type if self.device.type != 'mps' else 'cpu'
+        amp_dtype = get_optimal_amp_dtype(self.device)
 
-        with autocast(device_type=device_type, enabled=(self.device.type == 'cuda')):
+        with autocast(
+            device_type=device_type,
+            dtype=(amp_dtype if self.device.type == 'cuda' else torch.bfloat16),
+            enabled=(self.device.type == 'cuda'),
+        ):
             # Feed corrupted input through model
             recon_x_norm, mu, logvar = self.model(corrupted_input)
             
             # Reconstruction target is the CLEAN ground truth
             recon_loss = torch.nn.functional.mse_loss(recon_x_norm, batch_data_norm, reduction='mean')
+
+            # Sobolev (H1) temporal derivative regularization
+            if self.sobolev_weight > 0.0 and batch_data_norm.size(-1) > 1:
+                diff_target = batch_data_norm[:, :, 1:] - batch_data_norm[:, :, :-1]
+                diff_recon = recon_x_norm[:, :, 1:] - recon_x_norm[:, :, :-1]
+                sobolev_loss = torch.nn.functional.mse_loss(diff_recon, diff_target, reduction='mean')
+                recon_loss = recon_loss + self.sobolev_weight * sobolev_loss
 
             logvar_clamped = torch.clamp(logvar, min=-10.0, max=5.0)
             mu_clamped = torch.clamp(mu, min=-20.0, max=20.0)
@@ -92,7 +123,12 @@ class CorrectorTrainer(ICorrectorTrainer):
             physics_loss = physics_residuals.get("total_physics_loss", torch.tensor(0.0, device=self.device))
 
             beta = 0.001
-            loss = recon_loss + (beta * kl_div) + (self.physics_weight * physics_loss)
+            weighted_phys = (
+                self.loss_balancer(recon_loss, physics_loss)
+                if self.adaptive_physics_balance
+                else (self.physics_weight * physics_loss)
+            )
+            loss = recon_loss + (beta * kl_div) + weighted_phys
 
         if not torch.isfinite(loss):
             logger.warning("[CorrectorTrainer] NaNs/Infs detected in loss computation. Skipping step.")
@@ -144,9 +180,6 @@ class CorrectorTrainer(ICorrectorTrainer):
                 step_loss = self.train_step(batch_x)
                 if step_loss < 1e5:
                     epoch_loss += step_loss
-
-                if self.device.type == 'cuda':
-                    torch.cuda.empty_cache()
 
             avg_loss = epoch_loss / max(1, (dataset_size // batch_size))
             history['loss'].append(avg_loss)

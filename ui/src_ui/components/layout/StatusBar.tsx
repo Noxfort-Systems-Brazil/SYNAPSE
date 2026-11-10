@@ -17,8 +17,10 @@ export const StatusBar: React.FC = () => {
   const latestEngineData = useSensorsStore((s) => s.latestEngineData);
 
   const getStatusText = () => {
-    if (!isNative) return 'WEB BROWSER (SEM BRIDGE NATIVA)';
-    return connected ? 'IPC PIPE: CONNECTED' : 'IPC PIPE: DISCONNECTED';
+    if (!isNative) return t('statusBar.webBrowser');
+    return connected
+      ? t('statusBar.ipcConnected')
+      : t('statusBar.ipcDisconnected');
   };
 
   return (
@@ -58,7 +60,7 @@ export const StatusBar: React.FC = () => {
 
         <div className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-bold shrink-0">
           <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden md:inline">ZERO-TRUST MEMORY</span>
+          <span className="hidden md:inline">{t('statusBar.zeroTrustMemory')}</span>
         </div>
       </div>
     </footer>

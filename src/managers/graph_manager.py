@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/managers/graph_manager.py
-# Description: Pure Orchestrator for Graph Topology and Traffic Node State (SOLID / DDD / Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import torch

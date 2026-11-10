@@ -22,8 +22,8 @@ SYNAPSE_CORE/
 ├── requirements.txt            # Python runtime dependencies
 ├── .env.example                # 12-Factor App environment configuration
 │
-├── config/                     # Configuration Systems
-│   └── default.yaml            # Neural, ingestion, HFT, and IPC configuration parameters
+├── bin/                        # Compiled high-performance binaries (synapse-gateway, caddy)
+├── config/                     # Configuration files (settings.ini, Caddyfile, report templates)
 │
 ├── proto/                      # Protocol Buffers v3 Specifications
 │   ├── README.md               # gRPC HFT-Link Architecture Manual
@@ -56,31 +56,41 @@ SYNAPSE_CORE/
 ├── src/                        # Python Core Cognitive Backend
 │   ├── README.md               # Backend Architecture Guide
 │   ├── domain/                 # Domain Entities (MapNode, MapEdge, AppState, Trust Scores)
-│   ├── models/                 # Pure PyTorch Neural Implementations (PINO, DeepONet, iTrans)
+│   ├── models/                 # Pure PyTorch Neural Implementations (ModernBERT, PINO, DeepONet, iTrans)
 │   ├── agents/                 # Autonomous MARKVART™ Model Orchestration Agents
 │   ├── blocks/                 # Modular Deep Learning Blocks (Spectral, Graph, Temporal)
 │   ├── controllers/            # Hexagonal Application Controllers
+│   ├── database/               # Connection Pool Proxy, Engine, Migrations & Settings
 │   ├── engine/                 # Real-time Inference Engine & Routing
 │   ├── fenix/                  # F.E.N.I.X. Drift Monitor & Out-of-Process Watchdog
-│   ├── infrastructure/         # gRPC Streamer, PostgreSQL Data Lake, SafeTensors IO
+│   ├── formatters/             # ABNT Official Report Formatters (DOCX, HTML, Markdown)
+│   ├── go/                     # Subprocess Lifecycle & Anonymous Pipe Transport for synapse-gateway
+│   ├── handlers/               # Command, Database, DuckDNS, Map, and Parquet Handlers
+│   ├── hft/                    # High-Frequency Transport (gRPC Client, Streamer, Auto-Recovery)
+│   ├── infrastructure/         # PostgreSQL Data Lake, SafeTensors IO, Network Services
 │   ├── ipc/                    # StdioDaemon, JSON-RPC Bridge, Event Routing
 │   ├── kse/                    # Kinematic State Estimation (Kalman Dead Reckoning)
+│   ├── linguist/               # Global Cartographer, Compass Reconciler, Topology Matcher
 │   ├── phases/                 # ADAGIO™ Phases (AutoML, Bootstrap, Online 4-Thread)
 │   ├── physics/                # LWR Equations & Greenshields Fundamental Diagrams
-│   ├── pipeline/               # Multi-Agent Fusion & Specialist Pipelines
-│   └── services/               # Internal Domain Services
+│   ├── pipeline/               # Multi-Agent Fusion, Specialist, Jurist, Imputer Pipelines
+│   ├── report/                 # Traffic Kinematics, Jurist Diagnosis, Network Summaries
+│   ├── security/               # MasterAuth, AccountManager, PasswordPolicy, LockdownManager
+│   ├── services/               # Internal Domain Services (FastMapMatcher, MapService)
+│   ├── slm/                    # Small Language Model Isolation Subsystem (IsolatedJuristManager)
+│   └── storage/                # Checkpoint Store, Path Scaffolder, Snapshot Store, Vault Sync
 │
 ├── ui/                         # Desktop Application (Tauri v2 + React 18)
 │   ├── README.md               # Frontend Engineering Manual
-│   ├── src-tauri/              # Rust Native Backend, Sidecar Manager, IPC Pipes
-│   └── src_ui/                 # React 18, TypeScript, Tailwind CSS, Zustand, ECharts
+│   ├── src-tauri/              # Rust Native Backend, Sidecar Manager, IPC Pipes, Native Dialog Services
+│   └── src_ui/                 # React 18, TypeScript, Tailwind CSS, Zustand, ECharts, ABNT Reports
 │
 ├── Model_Vault/                # Pre-trained Weights & Quantized Models
 │   └── README.md               # SafeTensors & Tokenizer Weights Catalog
 ├── observability/              # Prometheus, Grafana & Metrics Exporting
 │   └── README.md               # Observability Infrastructure
-├── synapse-go/                 # High-Performance Sensor Ingestion Gateway in Go
-│   └── README.md               # Go Gateway Manual
+├── src_go/                     # High-Performance Sensor Ingestion Gateway & HTTPS/DuckDNS Tunnel
+│   └── README.md               # Go Gateway & Reverse Tunnel Manual
 └── tests/                      # Pytest Suites, Synthetic Data & Benchmarks
     └── README.md               # QA & Testing Guide
 ```
@@ -91,16 +101,16 @@ SYNAPSE_CORE/
 
 ### 1. Domain-Driven Design & State Machines
 - **Source of Truth**: [Domain Entities Specification](en/domain_entities.md)
-- **Key Concepts**: `MapNode`, `MapEdge`, `DataSource`, `SourceStatus` state lifecycle (`QUARANTINE` $\rightarrow$ `VALIDATING` $\rightarrow$ `ACTIVE` $\rightleftharpoons$ `FALLBACK`).
+- **Key Concepts**: `MapNode` (projected metric UTM x, y coordinates), `MapEdge` (5D physical attributes and hierarchy), `DataSource`, `SourceStatus` state lifecycle (`QUARANTINE` $\rightarrow$ `VALIDATING` $\rightarrow$ `ACTIVE` $\rightleftharpoons$ `FALLBACK`).
 - **Trust Scores**: Local ground-truth sensors initialized at $0.95$, third-party APIs at $0.60$.
 
 ### 2. MARKVART™ Neural Stack (10 Deep Networks & Geometric Matcher)
 - **Source of Truth**: [Neural Models & Mathematical Formulations](en/neural_models.md)
-- **Continuum Operators**: PINO-Traffic (Fourier Neural Operator constrained by LWR PDE), PI-DeepONet (dual-network branch/trunk).
-- **Time-Series Transformers**: iTransformer (inverted dimension-centric attention), PatchTST, TimesNet.
-- **Spatial & Topological Reasoning**: GATv2 Lite, Diffusion GATv2, FastMapMatcher (deterministic CPU R-Tree + Fréchet alignment).
-- **Anomaly & Gatekeeping**: DistilRoBERTa + GMM, WaveletAE-OCC, PI-DVAE-TCN.
-- **Cognitive Justification**: Qwen3 Jurist (GGUF format offline inference).
+- **Continuum Operators**: PINO-Traffic (Fourier Neural Operator constrained by LWR PDE), PI-DeepONet (dual-network branch/trunk for field estimation and continuous gap imputation).
+- **Time-Series Transformers**: iTransformer (inverted dimension-centric attention over time tokens).
+- **Spatial & Topological Reasoning**: GATv2 Lite, Diffusion GATv2 (5D edge tensor with 8-hop harmonic graph diffusion), FastMapMatcher (deterministic CPU R-Tree + Fréchet alignment).
+- **Anomaly & Gatekeeping**: ModernBERT & NeuroSymbolicModel (with 3D Physics Projection Head $[q, v, \rho]$), WaveletAE-OCC, PI-DVAE-TCN.
+- **Cognitive Justification**: Qwen3 Jurist (isolated SLM sub-process execution).
 
 ### 3. ADAGIO™ Lifecycle & Kinematic Dead Reckoning
 - **Source of Truth**: [Execution Phases & ADAGIO™](en/execution_phases.md)
@@ -109,10 +119,11 @@ SYNAPSE_CORE/
 - **Phase 2**: Online 4-thread runtime concurrency architecture.
 - **Kinematic State Estimation (KSE)**: Kalman-based dead reckoning filling telemetry gaps when packet loss occurs.
 
-### 4. High-Frequency Ingestion & gRPC Stream
+### 4. High-Frequency Ingestion & Reverse Tunneling
 - **Source of Truth**: [Data Ingestion & HFT-Link](en/data_ingestion_and_hft.md)
-- **Protobuf Schemas**: [`proto/synapse_hft.proto`](../proto/synapse_hft.proto).
+- **Protobuf Schemas**: [`proto/synapse_hft.proto`](../proto/synapse_hft.proto) and [`src/hft/`](../src/README.md).
 - **Streaming Pipeline**: Sub-250ms latency snapshot transmission to CARINA controllers with automatic reconnect and backoff.
+- **Go Gateway & Reverse Tunnel**: Compiled `synapse-go` socket ingestion daemon with embedded DuckDNS dynamic IP updater and Caddy automatic Let's Encrypt HTTPS reverse proxy.
 
 ### 5. Desktop Application & Zero-Port Stdio IPC
 - **Source of Truth**: [UI Architecture & Desktop Manual](en/ui_architecture.md)

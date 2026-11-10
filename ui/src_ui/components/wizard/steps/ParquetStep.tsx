@@ -56,14 +56,14 @@ export const ParquetStep: React.FC = () => {
               onClick={() => etl.setStep(1)}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
-              {t('common.cancel', 'Voltar')}
+              {t('wizard.back')}
             </button>
             <button
               type="button"
               onClick={etl.handleExecuteImport}
               className="px-5 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-2"
             >
-              <span>{t('wizard.startImport', 'Iniciar Ingestão Parquet')}</span>
+              <span>{t('wizard.startParquetImport')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

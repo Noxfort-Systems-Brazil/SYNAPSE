@@ -54,17 +54,22 @@ export class SensorService {
     return await this.transport.invoke('associate_source', { source_id: sourceId, element_id: elementId });
   }
 
-  async previewBatchSources(csvContent: string): Promise<BatchPreviewResult> {
-    return await this.transport.invoke('preview_batch_sources', { csv_content: csvContent });
+  async previewBatchSources(csvContent?: string, filePath?: string): Promise<BatchPreviewResult> {
+    return await this.transport.invoke('preview_batch_sources', {
+      csv_content: csvContent,
+      file_path: filePath,
+    });
   }
 
   async importBatchSources(
-    csvContent: string,
+    csvContent?: string,
     host?: string,
-    port?: number
+    port?: number,
+    filePath?: string
   ): Promise<BatchImportResult> {
     return await this.transport.invoke('import_batch_sources', {
       csv_content: csvContent,
+      file_path: filePath,
       host,
       port,
     });

@@ -65,6 +65,7 @@ class ReportCommandHandler:
         municipal_config = payload.get("municipal_config")
         xai_result = payload.get("xai_result")
         typography_options = payload.get("typography_options")
+        language = payload.get("language") or "pt_BR"
 
         service = self._get_service()
         report_output = service.build_report(
@@ -72,6 +73,7 @@ class ReportCommandHandler:
             municipal_config=municipal_config,
             xai_result=xai_result,
             typography_options=typography_options,
+            language=language,
         )
 
         if not report_output.get("ready", True):
@@ -90,7 +92,7 @@ class ReportCommandHandler:
             self.audit_logger.log_action(
                 self._get_current_user(),
                 "GENERATE_OFFICIAL_REPORT",
-                f"Emissão de Laudo Técnico Oficial de Tráfego: {protocol}",
+                f"Emissão de Relatório Técnico Explicativo de Tráfego: {protocol}",
             )
 
         return {
@@ -107,6 +109,7 @@ class ReportCommandHandler:
         report_data = payload.get("report")
         output_path = payload.get("output_path")
         typography_options = payload.get("typography_options")
+        language = payload.get("language") or "pt_BR"
 
         service = self._get_service()
 
@@ -116,6 +119,7 @@ class ReportCommandHandler:
                 municipal_config=payload.get("municipal_config"),
                 xai_result=payload.get("xai_result"),
                 typography_options=typography_options,
+                language=language,
             )
             if not report_output.get("ready", True):
                 return {
@@ -127,6 +131,9 @@ class ReportCommandHandler:
                     ),
                 }
             report_data = report_output["report"]
+
+        if isinstance(report_data, dict):
+            report_data.setdefault("language", language)
 
         if not isinstance(report_data, dict) or not report_data:
             return {

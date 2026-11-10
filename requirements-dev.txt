@@ -46,10 +46,8 @@ lxml
 pyproj
 Rtree
 
-# --- UI: PyQt6 (Pinned Versions to 6.4.0) ---
+# --- Headless Backend Qt Runtime (Pinned Version 6.4.0) ---
 PyQt6==6.4.0
-PyQt6-Charts==6.4.0
-PyQt6-WebEngine==6.4.0
 httpx
 
 # --- Testing & Linting ---

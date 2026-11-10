@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/pipeline/series_extractor_pipeline.py
-# Description: Pure Orchestrator for extracting 1D time-series from sensor streams (SOLID: SRP & Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np

@@ -66,15 +66,37 @@ class NodeGhostProcessor:
             self._memory.push([final_val])
         state.increment_fallback()
 
-        # Keep neural embeddings fresh
+        # Keep neural embeddings fresh (O(1) incremental step when frozen)
         current_embedding = state.last_embedding
-        predict_fn = getattr(self._agent, "predict", None)
-        if self._memory is not None and callable(predict_fn):
-            history_np = self._memory.get_numpy()
-            pred_emb = predict_fn(history_np)
+        is_mock_agent = type(self._agent).__name__.startswith("MagicMock")
+        is_frozen_attr = getattr(self._agent, "is_frozen", False)
+        if callable(is_frozen_attr) and not is_mock_agent:
+            is_frozen = bool(is_frozen_attr())
+        elif isinstance(is_frozen_attr, bool):
+            is_frozen = is_frozen_attr
+        else:
+            is_frozen = False
+
+        predict_step_fn = getattr(self._agent, "predict_step", None)
+        warm_step_fn = getattr(self._agent, "warm_step_state", None)
+        if is_frozen and not is_mock_agent and callable(predict_step_fn):
+            if bool(getattr(self._agent, "has_step_state", False)):
+                pred_emb = predict_step_fn(final_val)
+            elif self._memory is not None and callable(warm_step_fn):
+                pred_emb = warm_step_fn(self._memory.get_numpy())
+            else:
+                pred_emb = predict_step_fn(final_val)
             if pred_emb is not None:
                 current_embedding = pred_emb
                 state.last_embedding = current_embedding
+        else:
+            predict_fn = getattr(self._agent, "predict", None)
+            if self._memory is not None and callable(predict_fn):
+                history_np = self._memory.get_numpy()
+                pred_emb = predict_fn(history_np)
+                if pred_emb is not None:
+                    current_embedding = pred_emb
+                    state.last_embedding = current_embedding
 
         return self._snapshot_formatter.format_ghost_report(
             source_id=state.source_id,

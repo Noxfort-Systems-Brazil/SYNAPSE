@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/services/map_service.py
-# Description: Pure Application Service Orchestrator for Network Topology (Clean Architecture).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 from urllib.parse import unquote, urlparse

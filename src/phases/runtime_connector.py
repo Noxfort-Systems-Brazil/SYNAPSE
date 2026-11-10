@@ -32,6 +32,7 @@ class RuntimeConnector(QObject):
     
     # Critical Success Signal: Emitted when system is fully ARMED and ready for engines
     connection_ready_to_start = pyqtSignal() 
+    transmitter_channel_configured = pyqtSignal(object) 
 
     def __init__(self, app_state: AppState):
         super().__init__()
@@ -81,6 +82,7 @@ class RuntimeConnector(QObject):
         self.pipe_sender = pipe_sender
         self.emergency_flag = emergency_flag
         self.transmitter_process = transmitter_process
+        self.transmitter_channel_configured.emit(emergency_flag)
 
     def start_dedicated_transmitter(self, endpoint: str = "localhost:50051"):
         """Spawns the isolated HFT transmitter process via multiprocessing."""

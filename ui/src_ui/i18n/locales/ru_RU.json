@@ -81,7 +81,18 @@
     "tableOrigin": "Источник",
     "tableSpeed": "Скорость",
     "tableOccupancy": "Занятость",
-    "tableStatus": "Статус"
+    "tableStatus": "Статус",
+    "tableSemantic": "Семантический Тип (NLP)",
+    "tableCurrentValue": "Текущее Значение",
+    "tableQualityConfidence": "Качество / Доверие",
+    "clickToInspect": "Нажмите на строку для проверки телеметрии датчика",
+    "noSensorsRegistered": "Датчики не зарегистрированы. Загрузите сеть SUMO или добавьте датчик.",
+    "cycleLatency": "Задержка Цикла",
+    "monitoredSensors": "отслеживаемых датчиков",
+    "stable": "Стабильно",
+    "reconErrorGlobal": "Ошибка Реконструкции / Глобального Слияния (MSE Loss)",
+    "temporalDriftPsi": "Временной Статистический Дрейф (PSI Score)",
+    "agentLabel": "Агент:"
   },
   "xai": {
     "title": "Интерпретируемость и Аудит Безопасности",
@@ -112,12 +123,23 @@
     "hftHost": "Сервер HFT / CARINA",
     "hftPort": "Порт gRPC",
     "save": "Сохранить Изменения",
-    "cancel": "Отмена"
+    "cancel": "Отмена",
+    "tabs": {
+      "municipal": "Муниципальная Идентификация и Отчеты",
+      "db": "База Данных",
+      "duckdns": "Удаленный Доступ (DuckDNS)",
+      "monitor": "Внешняя Телеметрия",
+      "general": "Общие и Тема",
+      "accounts": "Учетные Записи и Безопасность",
+      "audit": "Аудит и Журналы"
+    }
   },
   "logs": {
     "title": "Консоль Системных Событий",
     "clear": "Очистить Журнал",
-    "filter": "Фильтр событий..."
+    "filter": "Фильтр событий...",
+    "events": "событий",
+    "noEvents": "События пока не зарегистрированы."
   },
   "wizard": {
     "title": "Мастер Интегрированной Загрузки",
@@ -175,7 +197,6 @@
     "strengthStrong": "Надежный",
     "strengthVeryStrong": "Отличный",
     "authenticate": "Войти",
-
     "authenticating": "Проверка данных...",
     "superuser": "Суперпользователь / Пользователь",
     "lockdownTitle": "СИСТЕМА ЗАБЛОКИРОВАНА (LOCKDOWN)",
@@ -194,5 +215,43 @@
     "addUser": "Добавить Пользователя",
     "removeUser": "Удалить",
     "refreshList": "Обновить Список"
+  },
+  "sensors": {
+    "semantics": {
+      "vehicleCount": "Подсчет Транспорта",
+      "vehicleSpeed": "Скорость Транспорта",
+      "trafficFlow": "Транспортный Поток",
+      "trafficDensity": "Плотность Трафика",
+      "trafficState": "Состояние Трафика",
+      "scanning": "Идентификация..."
+    },
+    "status": {
+      "active": "АКТИВЕН",
+      "quarantine": "КАРАНТИН",
+      "validating": "ПРОВЕРКА",
+      "rejected": "ОТКЛОНЕН",
+      "offline": "ОТКЛЮЧЕН"
+    }
+  },
+  "status": {
+    "connected": "ПОДКЛЮЧЕНО",
+    "disconnected": "ОТКЛЮЧЕНО",
+    "standby": "ОЖИДАНИЕ",
+    "receiving": "ПОЛУЧЕНИЕ...",
+    "bootstrap": "BOOTSTRAP",
+    "onlineHft": "ОНЛАЙН (HFT)",
+    "computing": "ВЫЧИСЛЕНИЕ",
+    "idle": "НЕАКТИВНО"
+  },
+  "roles": {
+    "OPERATOR": "Оператор",
+    "SUPERUSER": "Суперпользователь",
+    "MASTER": "Мастер-Ключ"
+  },
+  "statusBar": {
+    "webBrowser": "ВЕБ-БРАУЗЕР (БЕЗ МОСТА)",
+    "ipcConnected": "IPC КАНАЛ: ПОДКЛЮЧЕНО",
+    "ipcDisconnected": "IPC КАНАЛ: ОТКЛЮЧЕНО",
+    "zeroTrustMemory": "ZERO-TRUST ПАМЯТЬ"
   }
 }

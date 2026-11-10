@@ -56,6 +56,16 @@ def test_source_dto_mapper_omits_association_for_global_sensors():
     assert dto["is_local"] is False
     assert dto["associated_element"] is None
     assert dto["associated_element_name"] is None
+    assert dto["connection_string"] == ""
+
+    local_src = DataSource(
+        id="src_local_1",
+        name="Camera 01",
+        is_local=True,
+        connection_string="https://prefeitura-traffic.duckdns.org/src_local_1",
+    )
+    local_dto = SourceDtoMapper.to_summary_dto(local_src, app_state)
+    assert local_dto["connection_string"] == "https://prefeitura-traffic.duckdns.org/src_local_1"
 
 
 def test_compass_reconciler_does_not_associate_global_sources():

@@ -56,6 +56,7 @@ def test_corrector_agent_amp_train_and_inference():
     assert not np.isnan(recon_2d).any()
 
 
+@pytest.mark.heavy_memory
 def test_linguist_agent_amp_train_and_inference():
     """Verifies LinguistAgent (NeuroSymbolic TCN-PINN) runs with AMP and GradScaler."""
     agent = LinguistAgent(learning_rate=1e-4)

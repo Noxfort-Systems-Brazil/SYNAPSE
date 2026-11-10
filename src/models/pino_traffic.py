@@ -96,6 +96,44 @@ class PINOTrafficFlow1D(nn.Module):
             nn.Linear(in_channels, 2),
             nn.Tanh()
         )
+        self._cached_lap_key: Optional[Tuple[Any, ...]] = None
+        self._cached_sparse_lap: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None
+
+    def _get_or_compute_sparse_laplacian(
+        self,
+        num_nodes: int,
+        edge_index: Optional[torch.Tensor],
+        device: torch.device,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if edge_index is None or edge_index.numel() == 0:
+            empty_i = torch.empty(0, dtype=torch.long, device=device)
+            empty_w = torch.empty(0, dtype=torch.float32, device=device)
+            return empty_i, empty_i, empty_w
+
+        if not self.training and not torch.is_grad_enabled():
+            cache_key = (
+                num_nodes,
+                device,
+                edge_index.data_ptr(),
+                edge_index.shape,
+                edge_index._version,
+            )
+            if self._cached_lap_key == cache_key and self._cached_sparse_lap is not None:
+                return self._cached_sparse_lap
+            sparse_lap = GraphLaplacianSpectralConv.compute_sparse_laplacian_edges(
+                num_nodes=num_nodes,
+                edge_index=edge_index,
+                device=device,
+            )
+            self._cached_lap_key = cache_key
+            self._cached_sparse_lap = sparse_lap
+            return sparse_lap
+
+        return GraphLaplacianSpectralConv.compute_sparse_laplacian_edges(
+            num_nodes=num_nodes,
+            edge_index=edge_index,
+            device=device,
+        )
 
     def forward_operator(
         self,
@@ -120,10 +158,15 @@ class PINOTrafficFlow1D(nn.Module):
         )
 
         if use_graph:
-            # Graph Laplacian spectral operator
+            # Graph Laplacian spectral operator (shared O(|E|) sparse Laplacian across all layers)
             x_lifted = self.p_lifting(x)
+            sparse_lap = self._get_or_compute_sparse_laplacian(
+                num_nodes=x_lifted.size(1),
+                edge_index=edge_index,
+                device=x_lifted.device,
+            )
             for graph_conv, w_conv in zip(self.graph_spectral_layers, self.w_layers):
-                x1 = graph_conv(x_lifted, edge_index=edge_index)
+                x1 = graph_conv(x_lifted, sparse_laplacian=sparse_lap)
                 x2 = w_conv(x_lifted.permute(0, 2, 1)).permute(0, 2, 1)
                 x_lifted = F.gelu(x1 + x2)
             return x_lifted

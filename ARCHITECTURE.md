@@ -17,19 +17,30 @@ The SYNAPSE repository is structured strictly around **Domain-Driven Design (DDD
 Synapse/
 ├── [src/](src/README.md)                      # Python Core Backend (Inference, Domain, IPC)
 │   ├── [domain/](docs/01_domain_entities.md)      # Core entities, repositories, AppState facade
-│   ├── [models/](docs/03_neural_models.md)      # Pure PyTorch neural network definitions (PINO, DeepONet, iTransformer)
+│   ├── [models/](docs/03_neural_models.md)      # Pure PyTorch neural network definitions (ModernBERT, PINO, DeepONet)
 │   ├── agents/               # MARKVART™ autonomous agents managing models & training loops
 │   ├── blocks/               # Modular DL blocks (Graph, Spectral, Temporal)
 │   ├── controllers/          # Application controllers (System, Project, View)
+│   ├── database/             # Connection pool proxy, db engine, migrator, settings
 │   ├── engine/               # Real-time inference engine, cycle runner, and routing
 │   ├── fenix/                # F.E.N.I.X. self-healing drift monitor & out-of-process watchdog
-│   ├── infrastructure/       # gRPC HFT-Link connector, Postgres Data Lake, SafeTensors IO
+│   ├── formatters/           # ABNT official report formatters (DOCX, HTML preview, Markdown)
+│   ├── go/                   # Process lifecycle and anonymous pipe transport for synapse-gateway
+│   ├── [hft/](docs/05_data_ingestion_and_hft.md)                # High-Frequency Transport gRPC connector, streamer, recovery
+│   ├── infrastructure/       # PostgreSQL Data Lake, SafeTensors IO, network services
 │   ├── [ipc/](src/README.md#-core-subsystems-in-detail)                 # StdioDaemon, JSON-RPC protocol, and EventBridge
 │   ├── kse/                  # Kinematic State Estimation (Kalman Dead Reckoning)
 │   ├── [phases/](docs/04_execution_phases.md)              # ADAGIO™ execution phases (Phase 0, Phase 1, Phase 2)
 │   ├── physics/              # LWR continuum conservation equations, Fundamental Diagrams
-│   ├── pipeline/             # Multi-agent execution pipelines (Fusion, Specialist)
-│   └── services/             # Domain and infrastructure services
+│   ├── pipeline/             # Multi-agent execution pipelines (Fusion, Specialist, Jurist)
+│   ├── report/               # Municipal kinematics, jurist diagnosis, and attribution extraction
+│   ├── security/             # MasterAuth, account manager, password policy, lockdown manager
+│   ├── services/             # Domain and infrastructure services (FastMapMatcher)
+│   ├── slm/                  # Small Language Model isolation subsystem (IsolatedJuristManager)
+│   └── storage/              # Checkpoint store, path scaffolder, snapshot store, vault sync
+├── [src_go/](src_go/README.md)               # High-Performance Sensor Ingestion Gateway & HTTPS/DuckDNS Tunnel
+├── [bin/](bin/)                          # Pre-compiled high-performance binaries (synapse-gateway, caddy)
+├── [config/](config/)                    # System configurations, Caddyfile, and SQL query templates
 ├── [ui/](ui/README.md)                       # Frontend Desktop Application (Tauri v2 + React 18)
 │   ├── src-tauri/            # Rust native backend, process manager, and Stdio pipes
 │   └── src_ui/               # React 18, TypeScript, Tailwind CSS, Zustand stores, ECharts
@@ -131,13 +142,13 @@ sequenceDiagram
 ```
 
 1. **Ingestion & Alias Resolution (`src/adapters/ingestion_hub.py`, `src/engine/data_flow_router.py`)**: Telemetry arrives via HTTP push/poll, MQTT stream, or WebSocket feed. External device aliases (e.g., `loop_01`) are automatically resolved to canonical source IDs (`src_2`) via `device_id_map`.
-2. **Zero-Trust Validation (`src/agents/linguist_agent.py`)**: If the sensor is in `QUARANTINE`, the `Standby Linguist Thread` processes the schema through `DistilRoBERTa` and symbolic physics rules.
+2. **Zero-Trust Validation (`src/agents/linguist_agent.py`)**: If the sensor is in `QUARANTINE`, the `Standby Linguist Thread` processes the schema through `ModernBERT` and `NeuroSymbolicModel` physics rules.
 3. **Graph State & Multi-Jam Unpacking (`src/managers/graph_manager.py`)**: Validated readings update `MapEdge` hydrodynamics (`EdgeHydrodynamicsEngine`) and propagate physical continuum densities ($\text{veh/km}$) to boundary `MapNode` junctions. Multi-segment cloud feeds (e.g., Waze `jams`) are unpacked per street polyline via `GeoProjectionService` and `FastMapMatcher` (R-Tree).
 4. **Local Feature Extraction (`src/agents/specialist_agent.py`)**: Each node executes its local `TCNAE` autoencoder to generate temporal representations, maintaining active observability across the 60s global polling window (`SnapshotBuilder`).
 5. **Kinematic Protection (`src/kse/`, `src/strategies/kse_inertial_imputation.py`)**: If packets are dropped, the Kalman Filter updates `physics_engine.x[0, 0]` and extrapolates speed and density vectors via Newtonian dead reckoning.
 6. **Topological Aggregation & 8-Hop Diffusion (`src/pipeline/fusion_pipeline.py`)**: `DiffusionGATv2` leverages 5D physical edge attributes (`edge_attr`) alongside 8-hop damped harmonic graph diffusion and a topological conductance prior (`y_bg`) to propagate congestion waves across unobserved intersections.
 7. **Global Neural Fusion & Hierarchy Hydrodynamics (`src/physics/traffic_hydrodynamics.py`)**: `iTransformer` and `PINO` fuse tokens into the global snapshot, while `TrafficHydrodynamicEngine` and `TrafficQueueCalculator` interpolate unobserved edges weighted by OSM/SUMO road hierarchy (`edge_type`, `priority`) and geometric impedance.
-8. **Transport (`src/infrastructure/grpc_connector.py`)**: The 76-edge fluid state is serialized into `TrafficFrame` protobufs and streamed to CARINA over the `HFT-Link` in $< 250\text{ ms}$.
+8. **Transport (`src/hft/grpc_connector.py`)**: The 76-edge fluid state is serialized into `TrafficFrame` protobufs and streamed to CARINA over the `HFT-Link` in $< 250\text{ ms}$.
 9. **Desktop Telemetry (`src/ipc/event_bridge.py`)**: Real-time metrics are streamed over standard I/O pipes to the Tauri interface at 60 FPS.
 
 ---

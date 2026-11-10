@@ -5,6 +5,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, User, Trash2, RefreshCw } from 'lucide-react';
 import { UserAccount } from '../../../../services/api';
+import { formatUserRole } from '../../../../utils/localizationUtils';
 
 interface AccountUserTableProps {
   users: UserAccount[];
@@ -27,14 +28,14 @@ export const AccountUserTable: React.FC<AccountUserTableProps> = ({
         <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Shield className="w-4 h-4 text-accent-cyan" />
           <span>
-            {t('accounts.registeredAccounts', 'Contas Cadastradas:')} ({users.length})
+            {t('accounts.registeredAccounts')} ({users.length})
           </span>
         </h3>
 
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          title={t('accounts.refreshList', 'Atualizar Lista')}
+          title={t('accounts.refreshList')}
           className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-surfaceHover transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
@@ -79,7 +80,7 @@ export const AccountUserTable: React.FC<AccountUserTableProps> = ({
                         : 'bg-primary-500/15 text-primary-600 dark:text-primary-400 border-primary-500/30'
                     }`}
                   >
-                    {user.role}
+                    {formatUserRole(user.role, t)}
                   </span>
 
                   <button

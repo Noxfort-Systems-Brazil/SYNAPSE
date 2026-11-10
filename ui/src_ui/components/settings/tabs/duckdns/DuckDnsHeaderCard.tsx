@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/components/settings/tabs/duckdns/DuckDnsHeaderCard.tsx
-// Description: Presentational header card displaying connection status and toggle.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { Globe, Loader2, Power } from 'lucide-react';

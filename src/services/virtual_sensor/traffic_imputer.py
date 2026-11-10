@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/services/virtual_sensor/traffic_imputer.py
-# Description: Imputation of deterministic SI traffic parameters for unobserved road segments (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, Tuple, List, Set, Any
 from src.domain.entities import MapEdge, SourceStatus

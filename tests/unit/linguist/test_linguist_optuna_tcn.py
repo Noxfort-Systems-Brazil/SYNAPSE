@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: tests/unit/linguist/test_linguist_optuna_tcn.py
-# Author: Gabriel Moraes
-# Date: 2026-09-28
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import torch
@@ -36,7 +32,8 @@ def test_tcnae_standalone_forward():
 
 def test_neuro_symbolic_model_backward_compatibility():
     """Validates that NeuroSymbolicModel still exposes .ae, .encoder, .physics_head, and .decoder."""
-    model = NeuroSymbolicModel(freeze_transformer=True, latent_dim=48, kernel_size=5)
+    dummy_transformer = torch.nn.Identity()
+    model = NeuroSymbolicModel(transformer=dummy_transformer, freeze_transformer=True, latent_dim=48, kernel_size=5)
 
     assert hasattr(model, 'tcnae')
     assert hasattr(model, 'ae')

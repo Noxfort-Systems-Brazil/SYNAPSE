@@ -107,16 +107,15 @@ The **Modular Adaptive Reasoning Kernel with Variational Attention & Recurrent T
 | Model | Subsystem / Agent | Mathematical Formulation / Paradigm | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
 | **PINO-Traffic** | Continuum Operator | Fourier Neural Operator (FNO) + Lighthill-Whitham-Richards (LWR) PDE Constraints | Physics-informed macroscopic traffic flow simulation and shockwave modeling across road networks. |
-| **PI-DeepONet** | Continuous Estimator | Physics-Informed Deep Operator Network with dual Branch/Trunk architectures | Solves infinite-dimensional continuous velocity and density fields over variable spatio-temporal domains. |
+| **PI-DeepONet** | Continuous Estimator & Imputer | Physics-Informed Deep Operator Network with dual Branch/Trunk architectures | Solves continuous velocity/density fields and imputes missing telemetry over prolonged sensor outages. |
 | **PI-DVAE-TCN** | Corrector Agent | Denoising Variational Autoencoder with Dilated Causal Convolutions & Kinetic Loss | Filters sensor noise, eliminates measurement jitter, and reconstructs clean trajectories with physical conservation guarantees. |
 | **iTransformer** | Fuser Agent | Inverted Multi-Variate Transformer with Spatio-Temporal Cross-Attention | Global temporal fusion treating variates as tokens, cross-attending with spatial graph embeddings. |
-| **GATv2 Lite / Diffusion**| Coordinator Agent | Dynamic Graph Attention Networks v2 with Spatial Diffusion Kernel | Captures non-Euclidean spatial relationships, congestion propagation, and arterial bottlenecks across city topology. |
+| **GATv2 Lite / Diffusion**| Coordinator Agent | Dynamic Graph Attention Networks v2 with 5D Physical Edge Tensor & 8-Hop Diffusion | Captures non-Euclidean spatial relationships, congestion propagation, and arterial bottlenecks across city topology. |
 | **FastMapMatcher** | Spatial Alignment (Linguist) | Spatial Indexing (R-Tree) + Fréchet Distance & Directional Vectorization | Performs ultra-fast, deterministic CPU map-matching, aligning external GPS/telemetry traces to exact street graph edges. |
-| **TimesNet** | Translation Agent | 2D Fourier Transformation (FFT) + Multi-Period Inception Blocks | Deconstructs multi-frequency periodic patterns (e.g., morning rush, weekend dips, school holidays). |
-| **TimeGAN** | Imputer Agent | Generative Adversarial Network with Temporal Autoencoder Latents | Imputes prolonged data outages and gaps (> 2 hours) preserving realistic auto-correlation distributions. |
+| **SpectralFeatureBlock** | Periodicity Engine | 1D Fourier Spectral Convolutions (`SpectralConv1d`) | Deconstructs multi-frequency periodic patterns (e.g., morning rush, weekend dips, school holidays). |
 | **WaveletAE-OCC** | Auditor Agent | Discrete Wavelet Transform Autoencoder + Deep One-Class Classification | High-frequency frequency-domain anomaly detection, identifying faulty sensors, hacks, or unusual grid disruptions. |
-| **DistilRoBERTa + GMM** | Peak Classifier & Linguist | Transformer Language Model + Gaussian Mixture Models | Zero-trust semantic validation of incoming sensor schemas and unsupervised clustering of urban peak traffic schedules. |
-| **Qwen3 (1.7B / 2B)** | Jurist Agent | Quantized LLM (GGUF / SafeTensors) + Jinja2 Localization Templates | Generates legal-grade, explainable AI (XAI) audit reports and natural language justifications for automated signal actions. |
+| **ModernBERT & NeuroSymbolic** | Gatekeeper & Classifier | ModernBERT Transformer Backbone + Decoupled TCNAE + 3D Physics Projection Head | Zero-trust semantic and physical validation of incoming sensor schemas with LWR conservation loss penalties. |
+| **Qwen3 (1.7B / 2B)** | Jurist Agent | Quantized LLM (GGUF / SafeTensors) with Sub-Process Fault Isolation | Generates legal-grade, explainable AI (XAI) audit reports and natural language justifications in 6 languages. |
 
 For full mathematical derivations, equations, and loss formulations, refer to the [Neural Models Documentation](docs/03_neural_models.md).
 
@@ -280,6 +279,8 @@ For complete details on testing mocks and fixtures, see [`tests/README.md`](test
 ```text
 Synapse/
 ├── [Model_Vault/](Model_Vault/README.md)       # Foundation neural weights (SafeTensors, GGUF, tokenizers)
+├── [bin/](bin/)                         # Pre-compiled high-performance binaries (synapse-gateway, caddy)
+├── [config/](config/)                    # Configuration files (settings.ini, Caddyfile, report templates)
 ├── [docs/](docs/README.md)              # Technical documentation library (01 to 07)
 ├── [observability/](observability/README.md)     # Prometheus, Grafana, TensorBoard docker orchestration
 ├── [proto/](proto/README.md)             # Protobuf schemas for HFT-Link gRPC
@@ -289,27 +290,41 @@ Synapse/
 │   ├── agents/            # Autonomous MARKVART™ agents (Specialist, Fuser, Jurist, etc.)
 │   ├── blocks/            # Neural building blocks (Graph, Spectral, Temporal)
 │   ├── controllers/       # Business logic controllers (System, Project, View)
+│   ├── database/          # Connection pool proxy, db engine, migrator, settings
 │   ├── domain/            # Core entities, repositories, and AppState facade
 │   ├── engine/            # Real-time inference engine, cycle runner, and routers
 │   ├── factories/         # Factory patterns for agents, models, nodes, phases
 │   ├── fenix/             # Self-healing, drift evaluation, and supervisor watchdog
-│   ├── handlers/          # Command and database handlers
-│   ├── infrastructure/    # gRPC client, Postgres manager, SafeTensors storage
+│   ├── formatters/        # ABNT official report formatters (DOCX, HTML preview, Markdown)
+│   ├── go/                # Subprocess transport, pipe dispatcher, and binary manager
+│   ├── handlers/          # Command, database, DuckDNS, and system handlers
+│   ├── [hft/](docs/05_data_ingestion_and_hft.md)             # High-Frequency Transport gRPC connector, streamer, recovery
+│   ├── infrastructure/    # PostgreSQL data lake, SafeTensors storage, network services
 │   ├── interfaces/        # Formal typing contracts and Abstract Base Classes (ABCs)
 │   ├── ipc/               # StdioDaemon, JSON-RPC protocol, and EventBridge
 │   ├── kse/               # Kinematic State Estimation (Kalman Dead Reckoning)
+│   ├── linguist/          # Global cartographer matcher, compass reconciler, local topology matcher
 │   ├── logging/           # Interceptor-based logging and log facades
 │   ├── managers/          # Graph, Node, Storage, Source, and XAI managers
 │   ├── meh/               # Micro-Estimation History & Golden Dataset loader
 │   ├── memory/            # Episodic, Semantic, Spatial, Spatiotemporal memory
-│   ├── models/            # PyTorch models (PINO, DeepONet, iTransformer, GATv2)
+│   ├── mlops/             # Drift engine, loss engine, and automated MLOps pipelines
+│   ├── models/            # PyTorch models (ModernBERT, PINO, DeepONet, iTransformer, GATv2)
+│   ├── node/              # TrafficNode graph vertices, state, and step processing
 │   ├── optimization/      # Optuna AutoML and Bayesian Hyperparameter Tuning
+│   ├── orchestrators/     # HFT and lifecycle orchestrators
 │   ├── phases/            # ADAGIO™ execution phases (0, 1, 2)
 │   ├── physics/           # LWR continuum physics, fundamental diagrams, physical losses
-│   ├── pipeline/          # Agent orchestration pipelines (Fusion, Specialist, etc.)
-│   ├── services/          # Domain and infrastructure services
+│   ├── pipeline/          # Agent orchestration pipelines (Fusion, Specialist, Jurist)
+│   ├── report/            # Municipal traffic kinematic reporting, jurist diagnosis, and attribution extraction
+│   ├── security/          # Master auth, account manager, password policy, lockdown manager
+│   ├── services/          # Domain services (FastMapMatcher, MapService, VirtualSensorService)
+│   ├── slm/               # Small Language Model isolation subsystem (IsolatedJuristManager)
+│   ├── storage/           # Checkpoint store, path scaffolder, snapshot store, vault sync
 │   ├── strategies/        # Validation, imputation, and clustering strategies
+│   ├── trainer/           # Neural training routines for agents
 │   └── utils/             # Hardware acceleration, geometry, normalization helpers
+├── [src_go/](src_go/README.md)               # High-Performance Sensor Ingestion Gateway & HTTPS/DuckDNS Tunnel
 ├── [tests/](tests/README.md)             # PyTest test suites, mocks, and stress benchmarks
 ├── [ui/](ui/README.md)                # Modern Desktop Frontend (Tauri v2 + React 18 + Vite)
 │   ├── src-tauri/         # Rust native backend & sidecar manager

@@ -98,8 +98,35 @@ class PINOTrafficResidualEngine:
                 physics_residual = res_constitutive.mean() + 0.1 * res_conservation
         else:
             # Corridor Mode: Real LWR conservation law: dk/dt + dq/dx = 0
+            # Uses 2nd-order open-boundary finite differences (O(dx^2), free of periodic FFT Gibbs artifacts)
             res_conservation = torch.tensor(0.0, device=device)
-            if num_nodes > 1:
+            if num_nodes >= 3:
+                inv_2dx = 1.0 / max(2.0 * dx, 1e-6)
+                dq_left = (-3.0 * q_est[:, 0:1, :] + 4.0 * q_est[:, 1:2, :] - q_est[:, 2:3, :]) * inv_2dx
+                dq_mid = (q_est[:, 2:, :] - q_est[:, :-2, :]) * inv_2dx
+                dq_right = (3.0 * q_est[:, -1:, :] - 4.0 * q_est[:, -2:-1, :] + q_est[:, -3:-2, :]) * inv_2dx
+                dq_dx = torch.cat([dq_left, dq_mid, dq_right], dim=1)
+
+                if k_next is not None and k_prev is not None:
+                    k_target = k_next if k_next.dim() == 3 else k_next.unsqueeze(-1)
+                    k_prior = k_prev if k_prev.dim() == 3 else k_prev.unsqueeze(-1)
+                    dk_dt = (k_target - k_prior) / max(2.0 * dt, 1e-6)
+                    res_lwr_pde = torch.abs(dk_dt + dq_dx).mean()
+                    temporal_continuity_active = True
+                elif k_next is not None:
+                    k_target = k_next if k_next.dim() == 3 else k_next.unsqueeze(-1)
+                    dk_dt = (k_target - k_est) / max(dt, 1e-6)
+                    res_lwr_pde = torch.abs(dk_dt + dq_dx).mean()
+                    temporal_continuity_active = True
+                elif k_prev is not None:
+                    k_prior = k_prev if k_prev.dim() == 3 else k_prev.unsqueeze(-1)
+                    dk_dt = (k_est - k_prior) / max(dt, 1e-6)
+                    res_lwr_pde = torch.abs(dk_dt + dq_dx).mean()
+                    temporal_continuity_active = True
+                elif assume_stationary:
+                    res_lwr_pde = torch.abs(dq_dx).mean()
+                    temporal_continuity_active = True
+            elif num_nodes == 2:
                 dq_dx = (q_est[:, 1:, :] - q_est[:, :-1, :]) / max(dx, 1e-6)
                 if k_next is not None and k_prev is not None:
                     k_target = k_next if k_next.dim() == 3 else k_next.unsqueeze(-1)
@@ -118,8 +145,7 @@ class PINOTrafficResidualEngine:
                     res_lwr_pde = torch.abs(dk_dt + dq_dx).mean()
                     temporal_continuity_active = True
                 elif assume_stationary:
-                    dk_dt = torch.zeros_like(dq_dx)
-                    res_lwr_pde = torch.abs(dk_dt + dq_dx).mean()
+                    res_lwr_pde = torch.abs(dq_dx).mean()
                     temporal_continuity_active = True
 
             physics_residual = res_constitutive.mean() + res_lwr_pde

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+
 absl-py==2.3.1
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.2
@@ -129,11 +132,7 @@ pydantic_core==2.41.5
 Pygments==2.19.2
 pyparsing==3.2.5
 PyQt6==6.4.0
-PyQt6-Charts==6.4.0
-PyQt6-Charts-Qt6==6.10.0
 PyQt6-Qt6==6.10.0
-PyQt6-WebEngine==6.4.0
-PyQt6-WebEngine-Qt6==6.10.0
 PyQt6_sip==13.10.2
 pytest==8.4.2
 python-dateutil==2.9.0.post0

@@ -7,12 +7,13 @@ import { useSensorsStore } from '../stores';
 import { BatchPreviewResult, BatchImportResult } from '../types/sensors';
 import {
   SAMPLE_SENSOR_MANIFEST_CSV,
-  triggerBlobDownload,
+  downloadCsvWithPlatformBridge,
   formatCameraConfigCsv,
 } from '../utils/batchCsvUtils';
 
 export interface UseBatchSensorImportReturn {
   fileName: string;
+  filePath: string;
   csvContent: string;
   isProcessing: boolean;
   previewData: BatchPreviewResult | null;
@@ -20,9 +21,10 @@ export interface UseBatchSensorImportReturn {
   errorMessage: string | null;
   setErrorMessage: (msg: string | null) => void;
   handleFile: (file: File) => void;
+  handleFilePath: (path: string) => Promise<void>;
   confirmImport: () => Promise<void>;
-  downloadSample: () => void;
-  downloadExportConfig: () => void;
+  downloadSample: () => Promise<void>;
+  downloadExportConfig: () => Promise<void>;
   reset: () => void;
 }
 
@@ -33,6 +35,7 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
   const setSources = useSensorsStore((s) => s.setSources);
 
   const [csvContent, setCsvContent] = useState<string>('');
+  const [filePath, setFilePath] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<BatchPreviewResult | null>(null);
@@ -41,6 +44,7 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
 
   const reset = useCallback(() => {
     setCsvContent('');
+    setFilePath('');
     setFileName('');
     setPreviewData(null);
     setImportResult(null);
@@ -48,14 +52,35 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
     setIsProcessing(false);
   }, []);
 
-  const downloadSample = useCallback(() => {
-    triggerBlobDownload('sample_sensors_manifest.csv', SAMPLE_SENSOR_MANIFEST_CSV);
+  const downloadSample = useCallback(async () => {
+    try {
+      await downloadCsvWithPlatformBridge(
+        'modelo_sensores_manifesto.csv',
+        SAMPLE_SENSOR_MANIFEST_CSV,
+        'Salvar Modelo CSV de Sensores'
+      );
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Falha ao baixar modelo CSV.');
+    }
   }, []);
 
-  const downloadExportConfig = useCallback(() => {
+  const downloadExportConfig = useCallback(async () => {
     if (!importResult || !importResult.items || importResult.items.length === 0) return;
-    const outputCsv = formatCameraConfigCsv(importResult.items);
-    triggerBlobDownload('config_cameras.csv', outputCsv);
+    const localItems = importResult.items.filter((item) => item.type === 'local');
+    if (localItems.length === 0) {
+      setErrorMessage('Nenhum sensor local no lote para exportação de URLs de envio.');
+      return;
+    }
+    try {
+      const outputCsv = formatCameraConfigCsv(importResult.items);
+      await downloadCsvWithPlatformBridge(
+        'config_cameras_locais.csv',
+        outputCsv,
+        'Salvar Configuração das Câmeras Locais'
+      );
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Falha ao exportar configurações CSV.');
+    }
   }, [importResult]);
 
   const handleFile = useCallback((file: File) => {
@@ -65,6 +90,7 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
     }
 
     setFileName(file.name);
+    setFilePath('');
     setIsProcessing(true);
     setErrorMessage(null);
     setImportResult(null);
@@ -92,8 +118,31 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
     reader.readAsText(file);
   }, []);
 
+  const handleFilePath = useCallback(async (path: string) => {
+    if (!path.toLowerCase().endsWith('.csv')) {
+      setErrorMessage('Por favor, selecione um arquivo com extensão .csv');
+      return;
+    }
+    const cleanName = path.split(/[/\\]/).pop() || path;
+    setFileName(cleanName);
+    setFilePath(path);
+    setCsvContent('');
+    setIsProcessing(true);
+    setErrorMessage(null);
+    setImportResult(null);
+
+    try {
+      const preview = await sensorService.previewBatchSources(undefined, path);
+      setPreviewData(preview);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Falha ao processar e validar o arquivo CSV.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
   const confirmImport = useCallback(async () => {
-    if (!csvContent) return;
+    if (!csvContent && !filePath) return;
     setIsProcessing(true);
     setErrorMessage(null);
 
@@ -102,7 +151,12 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
       const host = netInfo?.local_ip || '127.0.0.1';
       const port = netInfo?.gateway_port || 8081;
 
-      const result = await sensorService.importBatchSources(csvContent, host, port);
+      const result = await sensorService.importBatchSources(
+        csvContent || undefined,
+        host,
+        port,
+        filePath || undefined
+      );
       setImportResult(result);
 
       // Refresh stores
@@ -113,10 +167,11 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
     } finally {
       setIsProcessing(false);
     }
-  }, [csvContent, setSources]);
+  }, [csvContent, filePath, setSources]);
 
   return {
     fileName,
+    filePath,
     csvContent,
     isProcessing,
     previewData,
@@ -124,6 +179,7 @@ export function useBatchSensorImport(): UseBatchSensorImportReturn {
     errorMessage,
     setErrorMessage,
     handleFile,
+    handleFilePath,
     confirmImport,
     downloadSample,
     downloadExportConfig,

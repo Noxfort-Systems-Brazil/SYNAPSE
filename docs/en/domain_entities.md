@@ -8,27 +8,29 @@ This document details the core domain entities, topology graph structures, Bayes
 
 ## 1. Spatial Topology Entities
 
-The urban traffic graph is represented as a directed multigraph $G = (V, E)$, mapped to strongly-typed Python dataclasses:
+The urban traffic graph is represented as a directed multigraph $G = (V, E)$, mapped to strongly-typed Python dataclasses (`src/domain/entities.py`):
 
 ### `MapNode`
-Represents an intersection, roadway decision point, or virtual sensing coordinate:
-- `node_id: str`: Unique UUID or municipal OSM identifier.
-- `latitude: float`, `longitude: float`: WGS84 geographic coordinates.
-- `elevation: float`: Altitude above sea level in meters.
-- `node_type: NodeType`: Enum (`INTERSECTION`, `RAMP`, `MIDBLOCK`, `BRIDGE`, `TUNNEL`).
-- `connected_edges: List[str]`: Outgoing and incoming edge references.
+Represents an urban traffic intersection or junction in the projected metric SUMO network:
+- `id: str`: Unique junction identifier (e.g., `"cluster_12048"`).
+- `x: float`, `y: float`: Projected 2D UTM cartesian coordinates in meters.
+- `node_type: str`: Junction typology (`"traffic_light"`, `"priority"`, `"roundabout"`).
+- `real_name: Optional[str]`: Human-readable street name intersection.
+- `tl_logic_id: Optional[str]`: Controlling Traffic Light Logic ID linking the node to downstream CARINA controllers.
 
 ### `MapEdge`
-Represents a directional roadway segment connecting two nodes:
-- `edge_id: str`: Unique UUID string.
-- `source_node_id: str`, `target_node_id: str`: Directional boundary vertices.
-- `length_meters: float`: Physical segment length.
-- `lanes: int`: Number of active traffic lanes ($N_l \ge 1$).
-- `speed_limit_kmh: float`: Legal maximum speed limit.
-- `edge_type: str`: OSM/SUMO road hierarchy classification extracted from `.net.xml.gz` (`"highway.primary"`, `"highway.secondary"`, `"highway.tertiary"`, `"highway.residential"`, `"highway.living_street"`, `"highway.unclassified"`).
-- `priority: int`: SUMO physical road priority rank (`-1` default).
-- `capacity_veh_per_hour: float`: Maximum roadway capacity derived from the Greenshields model:
-  $$C = v_f \cdot \frac{\rho_{\text{jam}}}{4}$$
+Represents a directional roadway segment connecting two intersections:
+- `id: str`: Unique edge identifier (e.g., `"-edge_4401"`).
+- `from_node: str`, `to_node: str`: Boundary source and target junction node IDs.
+- `shape: List[Tuple[float, float]]`: Detailed polyline geometry coordinates in meters.
+- `real_name: Optional[str]`: Human-readable street name.
+- `weight: float`: Edge traversal cost for routing algorithms (default $1.0$).
+- `length: float`: Physical segment length in meters.
+- `max_speed: float`: Speed limit in m/s (default $13.89\text{ m/s} \approx 50\text{ km/h}$).
+- `lanes: int`: Number of parallel vehicular lanes ($N_l \ge 1$).
+- `edge_type: str`: OSM/SUMO road hierarchy classification (`"highway.primary"`, `"highway.secondary"`, `"highway.tertiary"`, `"highway.residential"`, `"highway.living_street"`, `"highway.unclassified"`).
+- `priority: int`: Physical road priority rank (`-1` default when unspecified).
+- `signal_group_id: int`: NTCIP signal group phase controlling vehicular discharge into the junction (`-1` if uncontrolled).
 - **Physical & Neural Role**: Supplies the 5D physical edge tensor (`edge_attr` $\in \mathbb{R}^{E \times 5}$) consumed by `DiffusionGATv2` and governs road-hierarchy hydrodynamic permeability in `TrafficHydrodynamicEngine`.
 
 ---
@@ -36,13 +38,26 @@ Represents a directional roadway segment connecting two nodes:
 ## 2. Ingestion & Data Source Entities
 
 ### `DataSource`
-Encapsulates physical or virtual telemetry feeds:
-- `source_id: str`: Unique provider identifier.
-- `name: str`: Descriptive human-readable label.
-- `source_type: SourceType`: Enum (`CAMERA`, `RADAR`, `INDUCTION_LOOP`, `BLUETOOTH`, `WAZE_API`, `TOMTOM_API`, `SUMO_SIM`).
-- `protocol: IngestionProtocol`: (`HTTP_POST`, `MQTT_TOPIC`, `WEBSOCKET`, `GRPC`).
-- `trust_score: float`: Dynamic Bayesian reliability weight ($0.0 \le \tau \le 1.0$).
-- `status: SourceStatus`: Current state in the zero-trust validation machine.
+The core ingestion entity representing an internal or external telemetry provider (V5 Flexible Schema):
+- `id: str`: Unique internal source identifier (e.g., `"src_1"`).
+- `name: str`: Descriptive human-readable sensor label.
+- `source_type: SourceType`: Enum (`CSV`, `PARQUET`, `API`, `MQTT`, `DATABASE`, `SUMO_NET_XML`).
+- `connection_string: str`: Endpoint URI, broker connection string, or file path.
+- `is_local: bool`: Distinguishes ground-truth local sensors from global feeds.
+- `status: SourceStatus`: Current state in the zero-trust lifecycle (`QUARANTINE`, `VALIDATING`, `ACTIVE`, `FALLBACK`, `PROBATION`, `REJECTED`, `OFFLINE`).
+- `lat: float`, `lon: float`: WGS84 coordinates for spatial projection.
+- `latest_value: Any`: Flexible payload holder supporting scalar floats, lists, or CV detection dictionaries.
+- `last_update: float`: Unix timestamp of the most recent telemetry tick.
+- `semantic_type: Optional[str]`: Classified semantic category (`"speed"`, `"flow"`, `"occupancy"`).
+- `inferred_unit: Optional[str]`: Classified engineering unit (`"km/h"`, `"m/s"`, `"veh/h"`).
+- `confidence_score: float`: Dynamic Bayesian reliability weight ($0.0 \le \tau \le 1.0$).
+- `metadata: Dict[str, Any]`: Extensible dictionary for device-specific attributes (IPs, camera calibration, loop sensitivity).
+
+### `DataAssociation`
+Represents the logical link connecting a `DataSource` to a `MapNode` or `MapEdge`:
+- `source_id: str`: Reference to the `DataSource.id`.
+- `element_id: str`: Target `MapNode.id` or `MapEdge.id`.
+- `channel: Optional[str]`: Sub-channel or specific lane identifier for multi-lane / bidirectional sensor hardware.
 
 ---
 

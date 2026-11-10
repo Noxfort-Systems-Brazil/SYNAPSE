@@ -53,6 +53,7 @@ class FenixService(QObject):
         self.is_running = False
         self.stop_requested = False
         self.is_monitoring_active = False
+        self._state_lock = threading.Lock()
 
         # Injected or default modular components (DIP / SRP)
         self.maintenance_scheduler = scheduler or MaintenanceScheduler()
@@ -107,22 +108,45 @@ class FenixService(QObject):
         self.maintenance_scheduler.schedule_map = mapping
 
     # --- Lifecycle & Monitoring Facade ---
-    def activate_monitoring(self):
-        """Called by MainController when Phase 2 (Online Operation) begins."""
-        if self.is_monitoring_active:
+    def start_watchdog(self):
+        """Compatibility alias for orchestrator lifecycle boot."""
+        self.activate_monitoring()
+
+    def stop_watchdog(self):
+        """Compatibility alias for orchestrator lifecycle shutdown."""
+        self.deactivate_monitoring()
+
+    def report_health(self, status: Any):
+        """Compatibility method for orchestrator heartbeat telemetry."""
+        if not self.is_monitoring_active or self.is_running:
             return
+        if isinstance(status, dict) and "loss" in status:
+            try:
+                loss_val = float(status["loss"])
+                self.check_health_metrics(loss_val)
+            except (ValueError, TypeError):
+                pass
+
+    def activate_monitoring(self):
+        """Called by MainController / RuntimePhase when Phase 2 (Online Operation) begins."""
+        with self._state_lock:
+            if self.is_monitoring_active:
+                return
+            self.is_monitoring_active = True
 
         logger.info("[FENIX] 🟢 Activating Autonomous Opportunity Scanner...")
         self.maintenance_scheduler.load_schedule()
-        self.is_monitoring_active = True
         self.scheduler.start(600000)  # 10 Minutes
         QTimer.singleShot(5000, self._check_opportunity)
 
     def deactivate_monitoring(self):
         """Called when system stops."""
-        logger.info("[FENIX] 🔴 Hibernating Opportunity Scanner.")
-        self.is_monitoring_active = False
-        self.scheduler.stop()
+        with self._state_lock:
+            logger.info("[FENIX] 🔴 Hibernating Opportunity Scanner.")
+            self.is_monitoring_active = False
+            self.scheduler.stop()
+            if self.is_running:
+                self.stop_requested = True
 
     @pyqtSlot()
     def _check_opportunity(self):
@@ -174,16 +198,18 @@ class FenixService(QObject):
 
     # --- Strategy Execution Engine ---
     def start_fenix_cycle(self, trigger: TriggerType):
-        if self.is_running:
-            return
+        with self._state_lock:
+            if self.is_running:
+                return
 
-        strategy = self.strategies.get(trigger)
-        if not strategy:
-            logger.error(f"[FENIX] No strategy registered for trigger: {trigger}")
-            return
+            strategy = self.strategies.get(trigger)
+            if not strategy:
+                logger.error(f"[FENIX] No strategy registered for trigger: {trigger}")
+                return
 
-        self.is_running = True
-        self.stop_requested = False
+            self.is_running = True
+            self.stop_requested = False
+
         self.cycle_started.emit(f"F.E.N.I.X. Cycle Initiated: {trigger.name}")
 
         self.worker_thread = threading.Thread(target=self._run_strategy, args=(strategy,))
@@ -206,7 +232,8 @@ class FenixService(QObject):
             err_tag = "Hot-Reset" if "Hot-Reset" in strategy.name else "Evolution"
             self.cycle_finished.emit(False, f"{err_tag} Error: {str(e)}")
         finally:
-            self.is_running = False
+            with self._state_lock:
+                self.is_running = False
 
     def stop_cycle(self):
         self.stop_requested = True

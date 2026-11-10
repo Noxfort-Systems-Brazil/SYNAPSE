@@ -1,9 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/components/wizard/add_source/SourceTypeSelector.tsx
-// Author: Gabriel Moraes
-// Date: 2026-09-14
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { Cloud, Radio, Layers, Lock, AlertTriangle } from 'lucide-react';
@@ -119,11 +115,11 @@ export const SourceTypeSelector: React.FC<SourceTypeSelectorProps> = ({
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-              Importação em Lote via CSV (name,location)
+              Importação em Lote via CSV (name,type,id,address)
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               {isDuckDnsActive
-                ? 'Cadastre dezenas ou centenas de câmeras/laços de uma só vez e exporte os perfis.'
+                ? 'Cadastre sensores locais e globais em lote através de planilha padronizada.'
                 : 'Importação em lote de sensores locais bloqueada: ative o DuckDNS primeiro.'}
             </p>
           </div>

@@ -188,16 +188,34 @@ class FenixProcessSupervisor:
                 break
 
             with self._lock:
+                if self._state == ProcessState.CRASHED:
+                    # Supervision halted after exceeding crash threshold
+                    break
+
                 if not self.runner.is_alive and self.runner.pid is None:
                     continue
 
                 exit_code = self.runner.poll()
                 if exit_code is not None:
-                    # Child died!
+                    if exit_code == 0 and not self._stop_requested:
+                        logger.info(
+                            f"[FENIX SUPERVISOR] 🟢 Neural Core Process [PID: {self.child_pid}] "
+                            "exited cleanly with code 0."
+                        )
+                        self.runner.terminate()
+                        self._set_state(ProcessState.STOPPED, "Child process exited cleanly.")
+                        continue
+
+                    # Child died with non-zero or during shutdown
                     self._handle_child_crash(exit_code)
 
     def _handle_child_crash(self, exit_code: int) -> None:
         """Autopsy and auto-resurrection when child process terminates."""
+        if self._stop_requested:
+            self.runner.terminate()
+            self._set_state(ProcessState.STOPPED, "Child exited during requested shutdown.")
+            return
+
         self.recovery_policy.record_crash(exit_code)
 
         logger.critical(
@@ -205,11 +223,8 @@ class FenixProcessSupervisor:
             f"died with exit code {exit_code}! (Active crashes in window: {self.recovery_policy.crash_count})"
         )
 
-        if self._stop_requested:
-            self._set_state(ProcessState.STOPPED, "Child exited during requested shutdown.")
-            return
-
         if not self.recovery_policy.should_restart():
+            self.runner.terminate()
             self._set_state(
                 ProcessState.CRASHED,
                 f"Exceeded max crash limit ({self.config.max_consecutive_crashes}) within {self.config.crash_window_seconds}s. Halting."
@@ -222,7 +237,14 @@ class FenixProcessSupervisor:
             ProcessState.RESTARTING,
             f"Auto-resurrecting Neural Core Process in {backoff}s..."
         )
-        time.sleep(backoff)
+
+        end_time = time.time() + backoff
+        while time.time() < end_time and not self._stop_requested:
+            time.sleep(min(0.05, max(0.001, end_time - time.time())))
+
+        if self._stop_requested:
+            self._set_state(ProcessState.STOPPED, "Shutdown requested during backoff.")
+            return
 
         success = self._spawn_child()
         if success:

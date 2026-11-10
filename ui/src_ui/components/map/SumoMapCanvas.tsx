@@ -75,11 +75,13 @@ export const SumoMapCanvas: React.FC = () => {
     setZoom,
     pan,
     hoveredInfo,
+    resetView,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     handleWheel,
     handleClick,
+    handleAuxClick,
   } = useMapInteraction({
     canvasRef,
     nodes,
@@ -115,6 +117,8 @@ export const SumoMapCanvas: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onClick={handleClick}
+        onAuxClick={handleAuxClick}
+        onContextMenu={(e) => e.preventDefault()}
         onWheel={handleWheel}
         className="w-full h-full"
       />
@@ -138,6 +142,7 @@ export const SumoMapCanvas: React.FC = () => {
         onSelectNode={setSelectedNodeId}
         onZoomIn={() => setZoom((z) => Math.min(z * 1.25, 80))}
         onZoomOut={() => setZoom((z) => Math.max(z * 0.8, 0.05))}
+        onResetView={resetView}
       />
     </div>
   );

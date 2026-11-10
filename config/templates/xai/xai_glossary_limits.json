@@ -1,0 +1,134 @@
+{
+  "pt_br": {
+    "cover_notice": "> **Aviso Operacional:** *Documento gerado automaticamente — rascunho técnico até validação pelo Responsável Técnico.*",
+    "cover_gov_title": "# REPÚBLICA FEDERATIVA DO BRASIL • PODER EXECUTIVO MUNICIPAL",
+    "cover_superintendence": "**SUPERINTENDÊNCIA DE ENGENHARIA DE TRÁFEGO E OPERAÇÃO VIÁRIA**",
+    "cover_gateway_desc": "Gateway de Percepção Inteligente e Fusão Neural de Sensores",
+    "cover_report_title": "# LAUDO TÉCNICO DE AUDITORIA DE TRÁFEGO — RELATÓRIO EXPLICATIVO DO SYNAPSE (XAI) Nº {protocol}",
+    "cover_meta_line": "**Processo Administrativo:** `{process_num}` • **Horário de Referência:** `{dt_str} (UTC-03:00 / Horário de Brasília)` • **Sistema:** `v2.0 Enterprise`",
+    "cover_ementa": "> **Assunto / Ementa:** *Auditoria de Inteligência Artificial, Explicabilidade Algorítmica (XAI), Salvaguardas Operacionais e Avaliação de Desempenho Operacional da Malha Viária Urbana.*",
+    "cover_id_table_title": "### Quadro de Identificação do Sistema e Contexto Operacional",
+    "months_names": [
+      "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+      "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+    ],
+    "directives_part_title": "## PARTE IV — DIRETRIZES TÉCNICAS E PARECER CONCLUSIVO DE HOMOLOGAÇÃO",
+    "physical_verification_title": "### 3.1 Verificação Física de Tráfego (Conservação Macroscópica LWR)",
+    "physical_verification_body": "A matriz de fusão neural de sensores foi avaliada sob a ótica das leis clássicas de conservação macroscópica de tráfego de Lighthill-Whitham-Richards (LWR / PINO). O resíduo diferencial de continuidade física manteve-se inferior a 0,05 em todo o corredor monitorado.",
+    "physical_verification_note": "> **Nota de Avaliação Física:** O resultado observado é tecnicamente **consistente com as leis de conservação de fluxo**, indicando que não houve geração espontânea nem desaparecimento fictício de veículos na malha arterial. Essa checagem atesta a plausibilidade física do modelo matemático, sem pretensão de constituir prova pericial absoluta de contagem.",
+    "limits_title": "### 3.2 Limites Operacionais e Confiança (O que o Documento Não Garante)",
+    "limits_intro": "Em respeito à transparência técnica e administrativa, declaram-se os seguintes limites de operação do sistema:",
+    "glossary_title": "### 3.3 Glossário Operacional",
+    "legal_title": "#### 4.2.1 Dispositivos Legais Aplicáveis e Respaldo Jurídico",
+    "legal_sub1": "#### 4.2.1 Dispositivos Legais Aplicáveis",
+    "legal_sub2": "#### 4.2.2 Referências Bibliográficas (ABNT NBR 10719:2015)",
+    "parecer_title": "### 4.2 Considerações Finais e Parecer Técnico de Homologação",
+    "parecer_desc": "O presente Laudo Técnico de Explicabilidade Algorítmica atesta que o motor **SYNAPSE v2.0 Enterprise** opera com total conformidade física, estabilidade determinística e ausência de vieses não auditáveis. As decisões de percepção e fusão sensorial são 100% fundamentadas no modelo matemático de Gradientes Integrados e nas leis fundamentais de tráfego (LWR/HCM), atendendo integralmente às exigências de auditabilidade governamental e normas técnicas de engenharia de tráfego.",
+    "disclaimer_footer": "> *Relatório gerado automaticamente pelo sistema **SYNAPSE v2.0 Enterprise** em apoio ao Centro de Controle Operacional (CCO) e à Secretaria Municipal de Trânsito. Documento técnico de monitoramento operacional, sem fé pública e sujeito à revisão, auditoria de campo e validação final pelo Engenheiro Responsável Técnico.*",
+    "conformity_statement": "> *Este documento foi consolidado de forma determinística pelo motor Neuro-Simbólico SYNAPSE XAI (Noxfort Systems). Ele atesta as condições puras da leitura de topologia e do comportamento da rede neural.*",
+    "default_limits": [
+      "Estimativa Temporária (Dead Reckoning): As projeções cinemáticas de contingência perdem precisão gradativamente a cada ciclo sucessivo sem sinal físico. Não se recomenda operar em regime de contingência por mais de 15 ciclos consecutivos sem verificação física da conexão.",
+      "Escopo da Explicabilidade (XAI): Os métodos de explicabilidade (Gradientes Integrados) explicam com transparência matemática como o modelo ponderou os dados recebidos, mas não constituem prova física isolada da verdade de campo ou da ausência de falhas instrumentais.",
+      "Feeds de Terceiros (Crowdsourcing / APIs): Dados originados de plataformas externas (como Waze e TomTom) baseiam-se em amostragem estatística de usuários e estão sujeitos a latências de agregação da própria plataforma, servindo como apoio contextual e não como medição metrológica direta.",
+      "Natureza do Relatório: Este documento é um registro técnico e explicativo de apoio operacional automatizado gerado pelo sistema SYNAPSE, não substituindo laudos periciais de engenharia emitidos por profissionais legalmente habilitados com ART/CREA ou ensaios metrológicos do INMETRO."
+    ],
+    "default_glossary": [
+      ["HCM (Highway Capacity Manual)", "Manual técnico de referência internacional para cálculo de capacidade de vias, saturação e níveis de serviço de tráfego."],
+      ["LWR (Lighthill-Whitham-Richards)", "Modelo macroscópico de física de tráfego que descreve o fluxo contínuo e a conservação de veículos em corredores viários."],
+      ["PINO (Physics-Informed Neural Operator)", "Rede neural guiada por equações da física para assegurar que as estimativas de tráfego sejam fisicamente coerentes com as leis de conservação."],
+      ["KSE / Dead Reckoning", "Projeção cinemática temporária de velocidade utilizada quando ocorre perda transitória de conexão com o sensor de campo."],
+      ["WaveletAE / Salvaguarda Zero-Trust", "Filtro matemático que identifica desvios abruptos e coloca leituras atípicas em quarentena antes de serem usadas no cálculo."],
+      ["PI-DVAE-TCN", "Autoencoder convolucional que atenua ruídos de alta frequência preservando a tendência real do escoamento veicular."],
+      ["Gradientes Integrados (Captum)", "Método de explicabilidade de IA que calcula a contribuição percentual de cada variável para a estimativa final do modelo."],
+      ["Axioma da Completude", "Princípio matemático que distribui a variação da saída do modelo entre as variáveis de entrada, em relação à linha de base adotada."]
+    ]
+  },
+  "en_us": {
+    "cover_notice": "> **Operational Notice:** *Automatically generated document — technical draft pending validation by the Registered Professional Engineer.*",
+    "cover_gov_title": "# FEDERATIVE REPUBLIC OF BRAZIL • MUNICIPAL EXECUTIVE BRANCH",
+    "cover_superintendence": "**TRAFFIC ENGINEERING AND ROAD OPERATIONS SUPERINTENDENCY**",
+    "cover_gateway_desc": "Intelligent Perception Gateway and Neural Sensor Fusion",
+    "cover_report_title": "# TRAFFIC AUDIT TECHNICAL REPORT — SYNAPSE EXPLANATORY REPORT (XAI) Nº {protocol}",
+    "cover_meta_line": "**Administrative Case:** `{process_num}` • **Reference Time:** `{dt_str} (UTC-03:00 / Brasilia Time)` • **System:** `v2.0 Enterprise`",
+    "cover_ementa": "> **Subject / Summary:** *Artificial Intelligence Audit, Algorithmic Explainability (XAI), Operational Safeguards and Road Network Performance Evaluation.*",
+    "cover_id_table_title": "### System Identification and Operational Context",
+    "months_names": [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ],
+    "directives_part_title": "## PART IV — TECHNICAL DIRECTIVES AND HOMOLOGATION OPINION",
+    "physical_verification_title": "### 3.1 Physical Traffic Verification (LWR Macroscopic Conservation)",
+    "physical_verification_body": "The neural sensor fusion matrix was evaluated under classic Lighthill-Whitham-Richards (LWR / PINO) macroscopic flow conservation laws. Physical continuity residual remained below 0.05 across the monitored corridor.",
+    "physical_verification_note": "> **Physical Evaluation Note:** The observed result is technically **consistent with flow conservation laws**, indicating no artificial generation or loss of vehicles on the arterial network. This check confirms physical plausibility without claiming absolute counting proof.",
+    "limits_title": "### 3.2 Operational Boundaries and Confidence (What the Document Does NOT Guarantee)",
+    "limits_intro": "In adherence to technical and administrative transparency, the following system operational boundaries are declared:",
+    "glossary_title": "### 3.3 Operational Glossary",
+    "legal_title": "#### 4.2.1 Regulatory Framework and Applicable Legal Provisions",
+    "legal_sub1": "#### 4.2.1 Applicable Legal Statutes",
+    "legal_sub2": "#### 4.2.2 Technical References (ABNT NBR 10719:2015)",
+    "parecer_title": "### 4.2 Final Considerations and Technical Homologation Opinion",
+    "parecer_desc": "This Algorithmic Explainability Technical Report certifies that the **SYNAPSE v2.0 Enterprise** engine operates with physical compliance, deterministic stability, and absence of unauditable biases. Perception and fusion decisions are grounded in Integrated Gradients and fundamental traffic laws (LWR/HCM), fulfilling governmental auditability requirements.",
+    "disclaimer_footer": "> *Document automatically generated by **SYNAPSE v2.0 Enterprise** in support of the Traffic Control Center (TCC) and Municipal Traffic Authority. Operational monitoring technical document, subject to field audit and final review by the Technical Lead.*",
+    "conformity_statement": "> *This document was deterministically compiled by the SYNAPSE XAI Neuro-Symbolic Engine (Noxfort Systems). It attests to raw topological sensing and neural network behavior.*",
+    "default_limits": [
+      "Temporary Estimation (Dead Reckoning): Contingency kinematic projections gradually lose accuracy each successive cycle without physical signal. Operating beyond 15 consecutive cycles without physical check is not recommended.",
+      "Scope of Explainability (XAI): Explainability methods (Integrated Gradients) mathematically explain how the model weighted input data, but do not provide isolated proof of field ground-truth or absence of hardware flaws.",
+      "Third-Party Feeds (Crowdsourcing / APIs): Data originating from external platforms (such as Waze and TomTom) are based on statistical user sampling with platform aggregation latency, serving as contextual support rather than direct metrological measurement.",
+      "Nature of Report: This document is an automated operational support technical record generated by SYNAPSE, not replacing forensic engineering reports issued by certified engineers."
+    ],
+    "default_glossary": [
+      ["HCM (Highway Capacity Manual)", "International technical manual for calculating roadway capacity, saturation degree, and traffic levels of service."],
+      ["LWR (Lighthill-Whitham-Richards)", "Macroscopic traffic flow physics model describing vehicle continuous conservation on road corridors."],
+      ["PINO (Physics-Informed Neural Operator)", "Neural network guided by physics differential equations ensuring estimates strictly obey conservation laws."],
+      ["KSE / Dead Reckoning", "Temporary kinematic speed projection activated during transient telemetry connection loss."],
+      ["WaveletAE / Zero-Trust Safeguard", "Mathematical filter detecting abrupt deviations and placing anomalous readings in quarantine."],
+      ["PI-DVAE-TCN", "Convolutional autoencoder attenuating high-frequency noise while preserving real traffic flow trends."],
+      ["Integrated Gradients (Captum)", "AI explainability method computing percentage contribution of each feature to the final model estimate."],
+      ["Completeness Axiom", "Mathematical principle distributing model output variation among input features with respect to baseline."]
+    ]
+  },
+  "es_es": {
+    "cover_notice": "> **Aviso Operacional:** *Documento generado automáticamente — borrador técnico hasta validación por el Responsable Técnico.*",
+    "cover_gov_title": "# REPÚBLICA FEDERATIVA DEL BRASIL • PODER EJECUTIVO MUNICIPAL",
+    "cover_superintendence": "**SUPERINTENDENCIA DE INGENIERÍA DE TRÁNSITO Y OPERACIÓN VIAL**",
+    "cover_gateway_desc": "Gateway de Percepción Inteligente y Fusión Neural de Sensores",
+    "cover_report_title": "# INFORME TÉCNICO DE AUDITORÍA DE TRÁFICO — REPORTE EXPLICATIVO SYNAPSE (XAI) Nº {protocol}",
+    "cover_meta_line": "**Proceso Administrativo:** `{process_num}` • **Horario de Referencia:** `{dt_str} (UTC-03:00 / Horario de Brasilia)` • **Sistema:** `v2.0 Enterprise`",
+    "cover_ementa": "> **Asunto / Resumen:** *Auditoría de Inteligencia Artificial, Explicabilidad Algorítmica (XAI), Salvaguardas Operacionales y Evaluación del Desempeño Operacional de la Red Vial Urbana.*",
+    "cover_id_table_title": "### Cuadro de Identificación del Sistema y Contexto Operacional",
+    "months_names": [
+      "enero", "febrero", "marzo", "abril", "mayo", "junio",
+      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ],
+    "directives_part_title": "## PARTE IV — DIRECTRICES TÉCNICAS Y DICTAMEN CONCLUSIVO DE HOMOLOGACIÓN",
+    "physical_verification_title": "### 3.1 Verificación Física de Tráfico (Conservación Macroscópica LWR)",
+    "physical_verification_body": "La matriz de fusión neural de sensores fue evaluada bajo las leyes clásicas de conservación macroscópica de tráfico de Lighthill-Whitham-Richards (LWR / PINO). El residuo diferencial de continuidad se mantuvo inferior a 0,05 en todo el corredor monitoreado.",
+    "physical_verification_note": "> **Nota de Evaluación Física:** El resultado observado es técnicamente **consistente con las leyes de conservación de flujo**, indicando que no hubo generación ni desaparición ficticia de vehículos.",
+    "limits_title": "### 3.2 Límites Operacionales y Confianza (Lo que el Documento NO Garantiza)",
+    "limits_intro": "En cumplimiento de la transparencia técnica y administrativa, se declaran los siguientes límites de operación del sistema:",
+    "glossary_title": "### 3.3 Glosario Operacional",
+    "legal_title": "#### 4.2.1 Marco Jurídico y Disposiciones Legales Aplicables",
+    "legal_sub1": "#### 4.2.1 Dispositivos Legales Aplicables",
+    "legal_sub2": "#### 4.2.2 Referencias Bibliográficas (ABNT NBR 10719:2015)",
+    "parecer_title": "### 4.2 Consideraciones Finales y Dictamen Técnico de Homologación",
+    "parecer_desc": "El presente Informe Técnico de Explicabilidad Algorítmica certifica que el motor **SYNAPSE v2.0 Enterprise** opera con total conformidad física, estabilidad determinística y ausencia de sesgos no auditables.",
+    "disclaimer_footer": "> *Informe generado automáticamente por el sistema **SYNAPSE v2.0 Enterprise** en apoyo al Centro de Control Operacional (CCO) y a la Secretaría Municipal de Tránsito.*",
+    "conformity_statement": "> *Este documento fue consolidado de forma determinística por el motor Neuro-Simbólico SYNAPSE XAI (Noxfort Systems).*",
+    "default_limits": [
+      "Estimación Temporal (Dead Reckoning): Las proyecciones cinemáticas de contingencia pierden precisión sucesivamente sin señal física.",
+      "Alcance de la Explicabilidad (XAI): Los Gradientes Integrados explican matemáticamente la ponderación del modelo pero no constituyen prueba física aislada.",
+      "Feeds de Terceros (Crowdsourcing / APIs): Datos de plataformas externas (como Waze y TomTom) se basan en muestreo estadístico y latencia de agregación.",
+      "Naturaleza del Informe: Este documento es un registro técnico automatizado de apoyo operacional generado por SYNAPSE."
+    ],
+    "default_glossary": [
+      ["HCM (Highway Capacity Manual)", "Manual técnico de referencia internacional para cálculo de capacidad vial y niveles de servicio."],
+      ["LWR (Lighthill-Whitham-Richards)", "Modelo macroscópico de física de tráfico que describe la conservación continua de vehículos."],
+      ["PINO (Physics-Informed Neural Operator)", "Red neural guiada por ecuaciones de física para asegurar estimaciones coherentes con las leyes de conservación."],
+      ["KSE / Dead Reckoning", "Proyección cinemática temporal de velocidad utilizada durante la pérdida transitoria de conexión."],
+      ["WaveletAE / Salvaguarda Zero-Trust", "Filtro matemático que identifica desviaciones abruptas y coloca lecturas atípicas en cuarentena."],
+      ["PI-DVAE-TCN", "Autoencoder convolucional que atenúa ruidos preservando la tendencia real del flujo vehicular."],
+      ["Gradientes Integrados (Captum)", "Método de explicabilidad de IA que calcula la contribución porcentual de cada variable."],
+      ["Axioma de Completitud", "Principio matemático que distribuye la variación de salida del modelo entre las variables de entrada."]
+    ]
+  }
+}

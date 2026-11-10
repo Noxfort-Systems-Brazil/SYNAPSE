@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/components/settings/tabs/DuckDnsSettingsTab.tsx
-// Description: Pure UI Orchestrator for DuckDNS and Caddy Proxy Settings (Clean Architecture).
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import React from 'react';
 import { Loader2, Activity, Check, AlertCircle } from 'lucide-react';

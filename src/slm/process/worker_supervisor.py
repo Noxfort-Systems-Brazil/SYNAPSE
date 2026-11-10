@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/slm/process/worker_supervisor.py
-# Description: Low-level OS process supervisor and IPC pipe communicator for LLM worker (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import uuid

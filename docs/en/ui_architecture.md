@@ -43,7 +43,21 @@ The user interface uses modular **Zustand** stores for responsive, boilerplate-f
 - **`useSensorsStore`**: Tracks active physical and virtual sensor feeds, packet rates, Bayesian trust scores, and status flags (`ACTIVE`, `QUARANTINE`, `FALLBACK`).
 - **`useTopologyStore`**: Manages the loaded roadway graph ($V, E$), geographic node coordinates, and segment capacities.
 - **`useSystemStore`**: Tracks CPU/GPU utilization, VRAM usage, inference cycle duration ($< 15\text{ ms}$), and F.E.N.I.X. watchdog status.
+- **`useSecurityStore`**: Handles operator authentication, session tokens, password policies, and lockout counters.
+- **`useReportStore` & `useReportTypographyStore`**: Manages Brazilian ABNT traffic audit reports, live HTML previews, margins, and typography styling.
 - **`useXaiStore`**: Holds Qwen3 Jurist explanations, anomaly alerts, and mathematical formulation breakdowns.
+- **`useEtlStore`**: Coordinates the 3-step Parquet import wizard (`ParquetImportModal`) and Data Lake ingestion.
+
+---
+
+## 3. Dedicated Management & Settings Tabs
+
+The modern desktop frontend organizes configuration into high-security tabbed panels:
+- **`DuckDnsSettingsTab`**: Controls dynamic IP updates and HTTPS port redirection via the Go Gateway tunnel.
+- **`DatabaseSettingsTab`**: Tests PostgreSQL connectivity, manages connection pool parameters, and triggers schema migrations.
+- **`MonitorSettingsTab`**: Configures Prometheus metrics scrape endpoints and Grafana operational dashboards.
+- **`AccountSettingsTab`**: Manages municipal operator credentials, role-based access control, and password resets.
+- **`ParquetImportModal`**: Interactive 3-step ETL wizard (Select File $\rightarrow$ Inspect Schema & Records $\rightarrow$ Ingest Progress with Ghost-File validation).
 
 ---
 

@@ -54,16 +54,19 @@ class TrafficNode:
         ghost_processor: Optional[INodeGhostProcessor] = None,
         status_notifier: Optional[INodeStatusNotifier] = None,
         snapshot_formatter: Optional[INodeSnapshotFormatter] = None,
+        agent_factory: Optional[Callable[[], Any]] = None,
         **kwargs: Any
     ):
         self.source_id = source_id
         self._memory = memory
         self._agent = agent
+        self._agent_factory = agent_factory
         self._historical_manager = historical_manager
         self._physics_engine = physics_engine
 
         # State Holder (SRP)
-        output_dim = getattr(agent, "output_dim", 32) if agent else 32
+        default_dim = int(kwargs.get("output_dim", 32))
+        output_dim = getattr(agent, "output_dim", default_dim) if agent else default_dim
         self.state: NodeState = state or NodeState(
             source_id=source_id,
             last_embedding=np.zeros(output_dim)
@@ -71,47 +74,54 @@ class TrafficNode:
 
         # Strategies
         self.validation_strategy: INodeValidationStrategy = (
-            validation_strategy or AdaptiveValidationStrategy(
-                loss_convergence_threshold=0.15,
-                max_warmup_steps=10
-            )
+            validation_strategy or AdaptiveValidationStrategy(loss_convergence_threshold=0.15, max_warmup_steps=10)
         )
         self.imputation_strategy: INodeImputationStrategy = (
             imputation_strategy or HierarchicalImputationStrategy(tolerance=0.25)
         )
 
         # Output Formatter & Notifier (SRP/ISP)
-        self.snapshot_formatter: INodeSnapshotFormatter = (
-            snapshot_formatter or NodeSnapshotFormatter()
-        )
+        self.snapshot_formatter: INodeSnapshotFormatter = snapshot_formatter or NodeSnapshotFormatter()
         self.status_notifier: INodeStatusNotifier = (
-            status_notifier or NodeStatusNotifier(
-                on_status_change=on_status_change,
-                graph_manager=graph_manager
-            )
+            status_notifier or NodeStatusNotifier(on_status_change=on_status_change, graph_manager=graph_manager)
         )
 
         # Sub-Processors (Pipelines)
-        self._step_processor: INodeStepProcessor = (
-            step_processor or NodeStepProcessor(
-                memory=self._memory,
-                agent=self._agent,
-                physics_engine=self._physics_engine,
-                validation_strategy=self.validation_strategy,
-                status_notifier=self.status_notifier,
-                snapshot_formatter=self.snapshot_formatter
-            )
+        self._step_processor: INodeStepProcessor = step_processor or NodeStepProcessor(
+            memory=self._memory, agent=self._agent, physics_engine=self._physics_engine,
+            validation_strategy=self.validation_strategy, status_notifier=self.status_notifier,
+            snapshot_formatter=self.snapshot_formatter
         )
-        self._ghost_processor: INodeGhostProcessor = (
-            ghost_processor or NodeGhostProcessor(
-                memory=self._memory,
-                agent=self._agent,
-                physics_engine=self._physics_engine,
-                imputation_strategy=self.imputation_strategy,
-                snapshot_formatter=self.snapshot_formatter,
-                historical_manager=self._historical_manager
-            )
+        self._ghost_processor: INodeGhostProcessor = ghost_processor or NodeGhostProcessor(
+            memory=self._memory, agent=self._agent, physics_engine=self._physics_engine,
+            imputation_strategy=self.imputation_strategy, snapshot_formatter=self.snapshot_formatter,
+            historical_manager=self._historical_manager
         )
+
+    def _ensure_agent(self) -> Optional[Any]:
+        """Materializes this node's isolated SpecialistAgent on first active demand."""
+        if self._agent is None and self._agent_factory is not None:
+            self._agent = self._agent_factory()
+            if getattr(self._step_processor, "_agent", None) is None:
+                self._step_processor._agent = self._agent
+            if getattr(self._ghost_processor, "_agent", None) is None:
+                self._ghost_processor._agent = self._agent
+        return self._agent
+
+    def _has_historical_profile(self) -> bool:
+        """Checks in O(1) whether HistoricalManager holds a profile for this node."""
+        hm = self._historical_manager
+        if hm is None:
+            return False
+        fb = getattr(hm, "fallback_engine", None)
+        profiles = getattr(fb, "sensor_profiles", None) if fb is not None else None
+        if isinstance(profiles, dict):
+            if self.source_id in profiles:
+                return True
+            loader = getattr(hm, "loader", None)
+            sids = getattr(loader, "sensor_ids", None) if loader is not None else None
+            return self.source_id in sids if isinstance(sids, (list, set, tuple)) else False
+        return True
 
     # --- Properties for Encapsulation & Backward Compatibility ---
 
@@ -121,7 +131,7 @@ class TrafficNode:
 
     @property
     def agent(self) -> Optional[Any]:
-        return self._agent
+        return self._ensure_agent()
 
     @property
     def kse(self) -> Optional[IPhysicsEngine]:
@@ -195,6 +205,7 @@ class TrafficNode:
         Coordinates the ingestion and processing of a ground-truth sensor reading.
         Delegates completely to NodeStepProcessor.
         """
+        self._ensure_agent()
         return self._step_processor.process(value, self.state)
 
     def ghost_step(self) -> Dict[str, Any]:
@@ -202,14 +213,17 @@ class TrafficNode:
         Coordinates missing data imputation during sensor dropouts.
         Delegates completely to NodeGhostProcessor.
         """
+        self._ensure_agent()
         return self._ghost_processor.process(self.state)
 
     def tick(self) -> None:
         """
         Cycle hook: triggers synthetic imputation if no sensor data was received during this cycle.
+        Uninstrumented intersections without historical profiles fast-path in O(1).
         """
         if not self.state.updated_this_cycle:
-            self.ghost_step()
+            if self.state.steps_processed > 0 or self._has_historical_profile():
+                self.ghost_step()
         self.state.reset_cycle()
 
     # --- State Checkpoint & Persistence Facade ---
@@ -242,8 +256,10 @@ class TrafficNode:
                 except Exception as e:
                     logger.error(f"[TrafficNode] Failed to restore memory for {self.source_id}: {e}")
 
+            if state.get("agent_state"):
+                self._ensure_agent()
             agent_set = getattr(self._agent, "set_state", None) if self._agent is not None else None
-            if "agent_state" in state and callable(agent_set):
+            if state.get("agent_state") and callable(agent_set):
                 try:
                     agent_set(state["agent_state"])
                 except Exception as e:

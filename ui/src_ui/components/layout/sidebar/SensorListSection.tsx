@@ -3,12 +3,13 @@
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Download } from 'lucide-react';
 import { useSensorsStore, useTopologyStore, useSecurityStore } from '../../../stores';
 import { sensorService } from '../../../services/api';
 import { SensorItemRow } from './SensorItemRow';
 import { EditSensorModal } from '../../sensors/edit';
 import { DataSourceItem } from '../../../types/sensors';
+import { exportLocalSensorsCsv } from '../../../utils/batchCsvUtils';
 
 interface SensorListSectionProps {
   openImportWizard: (step?: 1 | 2 | 3) => void;
@@ -32,6 +33,7 @@ export const SensorListSection: React.FC<SensorListSectionProps> = ({
 
   const [activeMenuSourceId, setActiveMenuSourceId] = useState<string | null>(null);
   const [editingSensor, setEditingSensor] = useState<DataSourceItem | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Live IoT sensors (excluding SUMO map elements and parquet historical dataset)
   const liveSensors = sources.filter(
@@ -41,6 +43,19 @@ export const SensorListSection: React.FC<SensorListSectionProps> = ({
       s.source_type !== 'Parquet' &&
       s.id !== 'historical_base'
   );
+
+  const localSensors = liveSensors.filter((s) => s.is_local);
+  const hasLocalSensors = localSensors.length > 0;
+
+  const handleExport = async () => {
+    if (isExporting || !hasLocalSensors) return;
+    setIsExporting(true);
+    try {
+      await exportLocalSensorsCsv(sources);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleStartReassociation = (sourceId: string) => {
     setActiveTab('map');
@@ -65,17 +80,36 @@ export const SensorListSection: React.FC<SensorListSectionProps> = ({
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {t('controls.sourcesTitle')} ({liveSensors.length})
         </span>
-        <button
-          type="button"
-          onClick={() => openImportWizard(3)}
-          disabled={disabled}
-          title="Adicionar Sensor"
-          className={`p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors ${
-            disabled ? 'opacity-50 pointer-events-none' : ''
-          }`}
-        >
-          <PlusCircle className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={disabled || !hasLocalSensors || isExporting}
+            title={
+              !hasLocalSensors
+                ? 'Nenhum sensor local para exportar'
+                : `Exportar Sensores Locais (CSV) (${localSensors.length})`
+            }
+            className={`p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors ${
+              disabled || !hasLocalSensors || isExporting
+                ? 'opacity-40 cursor-not-allowed'
+                : 'cursor-pointer'
+            }`}
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => openImportWizard(3)}
+            disabled={disabled}
+            title="Adicionar Sensor"
+            className={`p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors ${
+              disabled ? 'opacity-50 pointer-events-none' : ''
+            }`}
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {liveSensors.length === 0 ? (

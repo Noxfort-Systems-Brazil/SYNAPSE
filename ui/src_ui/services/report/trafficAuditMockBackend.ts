@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/services/report/trafficAuditMockBackend.ts
-// Description: Pure Backend DTO contract and mock simulator for the Traffic Audit Report.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import {
   TrafficSensorItem,

@@ -3,8 +3,7 @@
 
 import pytest
 from unittest.mock import MagicMock
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QCoreApplication, Qt
 from PyQt6.QtNetwork import QLocalServer
 
 from src.utils.single_instance import SingleInstanceGuard
@@ -13,10 +12,10 @@ from src.utils.single_instance import SingleInstanceGuard
 
 @pytest.fixture(scope="module")
 def qapp():
-    """Ensure a single QApplication instance exists for Qt tests."""
-    app = QApplication.instance()
+    """Ensure a single QCoreApplication instance exists for Qt tests."""
+    app = QCoreApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QCoreApplication([])
     yield app
 
 
@@ -56,10 +55,10 @@ def test_single_instance_blocks_secondary_and_notifies(qapp):
         # Secondary attempts to acquire lock in separate process
         secondary_code = f"""
 import sys
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 from src.utils.single_instance import SingleInstanceGuard
 
-app = QApplication([])
+app = QCoreApplication([])
 guard = SingleInstanceGuard(app_key='{app_key}')
 acquired = guard.try_acquire(message='FOCUS_NOW')
 sys.exit(0 if not acquired else 1)

@@ -34,6 +34,7 @@ interface MapOverlaysProps {
   onSelectNode?: (id: string | null) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onResetView?: () => void;
 }
 
 export const MapOverlays: React.FC<MapOverlaysProps> = ({
@@ -55,6 +56,7 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
   onSelectNode,
   onZoomIn,
   onZoomOut,
+  onResetView,
 }) => {
   const disassociateSource = useSensorsStore((s) => s.disassociateSource);
 
@@ -141,7 +143,7 @@ export const MapOverlays: React.FC<MapOverlaysProps> = ({
       )}
 
       {/* Canvas Zoom Controls */}
-      <MapZoomControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+      <MapZoomControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onResetView={onResetView} />
 
       {/* Empty State Banner */}
       <MapEmptyState mapLoaded={mapLoaded} />

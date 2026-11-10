@@ -43,7 +43,7 @@ export const XaiSemanticPanel: React.FC<XaiSemanticPanelProps> = ({ result, late
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-accent-cyan" />
           <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-            {t('xai.executiveSummary', 'Resumo Executivo da Decisão')}
+            {t('xai.executiveSummary')}
           </h3>
         </div>
 
@@ -63,8 +63,8 @@ export const XaiSemanticPanel: React.FC<XaiSemanticPanelProps> = ({ result, late
             )}
             <span>
               {isSafe
-                ? t('xai.safeVerdict', 'Decisão Validada pelo Zero-Trust (Segura)')
-                : t('xai.vetoVerdict', 'Alerta: Inconsistência Física Detectada (Vetada)')}
+                ? t('xai.safeVerdict')
+                : t('xai.vetoVerdict')}
             </span>
           </span>
 

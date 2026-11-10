@@ -1,0 +1,161 @@
+{
+  "subscript_rules": {
+    "subscript_regex_pattern": "([a-zA-Zα-ωΑ-Ω\\u0370-\\u03ff\\u1f00-\\u1ffe\\']+|\\b[a-zA-Zα-ωΑ-Ω\\u0370-\\u03ff\\u1f00-\\u1ffe]{1,50})_\\{?([a-zA-Z0-9α-ωΑ-Ω\\u0370-\\u03ff\\u1f00-\\u1ffe]+)\\}?|\\b(v)(real|limite|f)\\b|\\b(ρ)(jam)\\b|\\b(d)(model)\\b",
+    "rules": [
+      {"pattern": "(\\b[a-zA-Z]+)_([a-zA-Z0-9]+)", "replacement": "\\1~\\2~"},
+      {"pattern": "([αβγδεθλμπστϕψωΑ-Ω])_([a-zA-Z0-9]+)", "replacement": "\\1~\\2~"},
+      {"pattern": "(\\b[a-zA-Z]+)_\\{([^{}]+)\\}", "replacement": "\\1~\\2~"},
+      {"pattern": "([αβγδεθλμπστϕψωΑ-Ω])_\\{([^{}]+)\\}", "replacement": "\\1~\\2~"}
+    ]
+  },
+  "document_layout": [
+    {
+      "id": "part1_executive_summary",
+      "type": "executive_summary",
+      "title_key": "exec_part_title",
+      "obj_title_key": "exec_obj_title",
+      "obj_desc_key": "exec_obj_desc",
+      "highlights_title_key": "exec_highlights_title",
+      "highlights_desc_key": "exec_highlights_desc",
+      "table_title_key": "exec_table_title",
+      "header_template": "executive_table_header",
+      "row_template": "executive_table_row"
+    },
+    {
+      "id": "part2_technical_intro",
+      "type": "section",
+      "title_key": "part2_vision_title",
+      "content_keys": ["part2_vision_desc"]
+    },
+    {
+      "id": "section2_equations",
+      "type": "equations_block",
+      "title_key": "section2_title",
+      "intro_key": "section2_intro",
+      "equations": [
+        {"title_key": "eq1_title", "desc_key": "eq1_desc", "formula_key": "eq1_formula", "params_key": "eq1_params"},
+        {"title_key": "eq2_title", "desc_key": "eq2_desc", "formula_key": "eq2_formula", "params_key": "eq2_params"},
+        {"title_key": "eq3_title", "desc_key": "eq3_desc", "formula_key": "eq3_formula", "params_key": "eq3_params"},
+        {"title_key": "eq4_title", "desc_key": "eq4_desc", "formula_key": "eq4_formula", "params_key": "eq4_params", "completeness_axiom_key": "completeness_axiom", "completeness_formula_key": "completeness_formula", "completeness_desc_key": "completeness_desc"},
+        {"title_key": "eq5_title", "desc_key": "eq5_desc", "formula_key": "eq5_formula", "params_key": "eq5_params"}
+      ]
+    },
+    {
+      "id": "section4_guardian_table",
+      "type": "guardian_table",
+      "title_key": "guardian_section_title",
+      "desc_key": "guardian_section_desc",
+      "header_template": "guardian_table_header",
+      "row_template": "guardian_table_row"
+    },
+    {
+      "id": "section6_consolidated",
+      "type": "consolidated_summary",
+      "title_key": "section4_title",
+      "desc_key": "section4_desc",
+      "chart_caption": "global_chart_caption",
+      "item_template": "consolidated_item"
+    },
+    {
+      "id": "anexo1_cards",
+      "type": "annex_cards",
+      "title_key": "anexo_title",
+      "desc_key": "anexo_desc",
+      "card_header": "agent_card_header",
+      "card_intro": "agent_card_intro",
+      "card_item": "agent_card_item",
+      "card_missing_data": "agent_card_missing_data",
+      "guardian_card_audit": "guardian_card_audit",
+      "pae_card_audit": "pae_card_audit",
+      "agent_card_opinion": "agent_card_opinion",
+      "agent_card_chart_caption": "agent_card_chart_caption"
+    },
+    {
+      "id": "section7_directives",
+      "type": "section",
+      "title_key": "section5_title",
+      "content_keys": ["section5_guidelines"]
+    },
+    {
+      "id": "section8_final",
+      "type": "closing_directives",
+      "title_key": "section6_title",
+      "content_key": "section6_desc"
+    }
+  ],
+  "pt_br": {
+    "exec_part_title": "## PARTE I — SUMÁRIO EXECUTIVO PARA GESTÃO PÚBLICA E TOMADORES DE DECISÃO",
+    "exec_obj_title": "### 1.1 Objetivo da Auditoria Institucional",
+    "exec_obj_desc": "Apresentar à Prefeitura e ao Centro de Controle Operacional (CCO) a prestação de contas, auditoria de segurança e validação da percepção de tráfego (Protocolo: **{protocol}**, segundo as diretrizes de apresentação da **ABNT NBR 10719:2015**) gerada pelo **SYNAPSE v2.0 Enterprise (Noxfort Systems)**, descrevendo o comportamento observado em **{total_agents} pontos de monitoramento** da malha viária, os fatores que determinaram as estimativas do sistema e as ações recomendadas.",
+    "exec_highlights_title": "### 1.2 Principais Resultados Operacionais (Impacto Urbano)",
+    "exec_highlights_desc": "- **Comportamento Geral da Malha:** A velocidade média no corredor foi de **{network_speed}**, com grau médio de saturação de **{network_saturation}**, operando em **{network_regime}**.\n{critical_bullet}\n- **Salvaguardas Operacionais Aplicadas:** {safeguards_summary}.\n- **Disponibilidade Média Consolidada:** O índice médio real de disponibilidade das fontes de dados foi de **{avg_availability}%**.\n- **Ação Operacional Recomendada:** {action_recommendation}",
+    "exec_table_title": "### 1.3 Quadro Sintético por Ponto de Monitoramento",
+    "exec_thresholds_title": "### 1.4 Critérios de Classificação e Limiares de Tráfego (Equivalência HCM)",
+    "exec_thresholds_desc": "Os regimes operacionais do corredor e de cada ponto de monitoramento são determinados pelos seguintes limiares técnicos parametrizáveis pelo operador com equivalência aproximada ao HCM:\n\n| Nível Operacional | Velocidade (v) | Grau de Saturação (x) | Nível de Serviço (HCM) | Status de Controle |\n| :--- | :---: | :---: | :--- | :--- |\n| **Livre / Fluido** | ≥ 35,0 km/h | < 0,60 | Nível de Serviço A / B | Operação Nominal |\n| **Estável / Moderado** | 20,0 – 34,9 km/h | 0,60 – 0,74 | Nível de Serviço C / D | Fluxo Estável |\n| **Saturado / Retenção** | 10,0 – 19,9 km/h | 0,75 – 0,89 | Nível de Serviço E | Alerta de Retenção |\n| **Crítico / Retenção Severa** | < 10,0 km/h | ≥ 0,90 | Nível de Serviço F | Crítico / Retenção Severa |\n\n> *Critério de desempate operacional: havendo divergência entre os patamares de velocidade e saturação, adota-se o nível de maior gravidade/severidade.*\n> *Nota Metrológica: Para fontes de velocidade pontual, o valor é usado como aproximação da velocidade espacial.*",
+    "part2_vision_title": "## PARTE II — AUDITORIA PERICIAL DE ENGENHARIA DE TRÁFEGO, TI E XAI\n\n### 2.1 Telemetria, Fontes de Amostragem e Qualidade dos Dados",
+    "part2_vision_desc": "{sensing_intro_phrase}\n{present_source_types_description}\n\nNo período analisado, o pipeline coletou telemetria contínua a 1,0 Hz, registrando disponibilidade real consolidada de **{avg_availability}%**.",
+    "section2_title": "### 2.2 Memorial de Cálculo e Formulações Matemáticas de Percepção",
+    "section2_intro": "O motor **SYNAPSE v2.0 Enterprise** fundamenta suas estimativas de estado e explicabilidade em formulações matemáticas determinísticas baseadas nas leis fundamentais de tráfego (LWR/HCM) e métodos de interpretabilidade neural:",
+    "guardian_section_title": "### 2.3 Salvaguardas Zero-Trust, Quarentena e Reconstrução Cinemática",
+    "guardian_section_desc": "Para evitar que dados espúrios ou quedas temporárias de rede distorçam o plano semafórico, o SYNAPSE opera com filtros preventivos. As leituras com desvio atípico entram em quarentena, ruídos de alta frequência são suavizados e, em perdas breves de conexão, o sistema projeta temporariamente a velocidade esperada (Dead Reckoning):",
+    "section4_title": "### 2.4 Resumo Consolidado e Fatores de Maior Peso (XAI)",
+    "section4_desc": "A explicabilidade algorítmica do SYNAPSE via Gradientes Integrados quantifica a influência relativa de cada grandeza física na estimativa de tráfego da malha arterial. O gráfico e os tópicos abaixo consolidam a contribuição proporcional de cada variável por ponto de monitoramento:\n\n> **Aviso de Interdependência Paramétrica:** As grandezas de Ocupação, Volume e Grau de Saturação identificadas com **[Derivado por Modelo]** decorrem de transformações cinemáticas a partir da velocidade informada. Seus pesos refletem a sensibilidade do modelo à dinâmica fundamental de tráfego (HCM/LWR), não se tratando de medições instrumentais estritamente ortogonais.",
+    "global_chart_caption": "Gráfico de Atribuição por Gradientes Integrados — Malha Arterial",
+    "consolidated_item": "- **{name} ({c_label} • `{aid}`):** Importância de **{pct_str}** ({imp:.4f}).",
+    "anexo_title": "## PARTE III — FICHAS TÉCNICAS E PERICIAIS POR PONTO DE MONITORAMENTO (ANEXO I)",
+    "section5_title": "## PARTE IV — DIRETRIZES TÉCNICAS E PARECER CONCLUSIVO DE HOMOLOGAÇÃO\n\n### 4.1 Diretrizes Operacionais de Engenharia de Tráfego e CCO",
+    "section5_guidelines": "1. **Monitoramento Ativo de Saturação:** Priorizar a intervenção operacional nos pontos onde o grau de saturação x ultrapassar os limiares críticos parametrizados;\n2. **Estabilidade de Regime e Onda Verde:** Manter sincronismo arterial entre detectores contíguos para evitar retenções a montante;\n3. **Manutenção Preventiva de Fontes Sensoriais:** Inspecionar e calibrar sensores com disponibilidade inferior a 90% ou leituras em quarentena prolongada.",
+    "section6_title": "### 4.2 Considerações Finais e Parecer Técnico de Homologação",
+    "section6_desc": "O presente Laudo Técnico de Explicabilidade Algorítmica atesta que o motor **SYNAPSE v2.0 Enterprise (Noxfort Systems)** opera com total transparência matemática, estabilidade determinística e ausência de vieses não auditáveis. As decisões e percepções de tráfego são 100% fundamentadas no modelo de Gradientes Integrados e na conservação macroscópica de fluxo (LWR), atendendo integralmente às exigências de transparência pública, governança algorítmica e normas técnicas de engenharia de tráfego."
+  },
+  "en_us": {
+    "exec_part_title": "## PART I — EXECUTIVE SUMMARY FOR PUBLIC MANAGEMENT AND DECISION MAKERS",
+    "exec_obj_title": "### 1.1 Institutional Audit Objective",
+    "exec_obj_desc": "Present to the City Hall and the Traffic Control Center (TCC) the accountability, security audit, and validation of traffic perception (Protocol: **{protocol}**, in compliance with technical report guidelines of **ABNT NBR 10719:2015**) generated by **SYNAPSE v2.0 Enterprise (Noxfort Systems)**, describing the behavior observed at **{total_agents} monitoring stations** across the roadway network, the factors determining the system estimates, and recommended operational actions.",
+    "exec_highlights_title": "### 1.2 Key Operational Results (Urban Impact)",
+    "exec_highlights_desc": "- **Overall Network Behavior:** Average corridor speed was **{network_speed}**, with an average saturation degree of **{network_saturation}**, operating under **{network_regime}**.\n{critical_bullet}\n- **Operational Safeguards Applied:** {safeguards_summary}.\n- **Consolidated Mean Availability:** Real data source availability was **{avg_availability}%**.\n- **Recommended Operational Action:** {action_recommendation}",
+    "exec_table_title": "### 1.3 Synthetic Overview by Monitoring Station",
+    "exec_thresholds_title": "### 1.4 Classification Criteria and Traffic Thresholds (HCM Equivalence)",
+    "exec_thresholds_desc": "Corridor operational regimes are determined by the following technical thresholds with approximate HCM equivalence:\n\n| Operational Level | Speed (v) | Saturation Degree (x) | Level of Service (HCM) | Control Status |\n| :--- | :---: | :---: | :--- | :--- |\n| **Free / Fluid** | ≥ 35.0 km/h | < 0.60 | Level of Service A / B | Nominal Operation |\n| **Stable / Moderate** | 20.0 – 34.9 km/h | 0.60 – 0.74 | Level of Service C / D | Stable Flow |\n| **Saturated / Retained** | 10.0 – 19.9 km/h | 0.75 – 0.89 | Level of Service E | Retention Alert |\n| **Critical / Severe** | < 10.0 km/h | ≥ 0.90 | Level of Service F | Critical / Severe Retention |\n\n> *Tie-breaking criterion: in case of divergence between speed and saturation, the higher severity tier is adopted.*\n> *Metrological Note: For point speed sources, the value is used as an approximation of space mean speed.*",
+    "part2_vision_title": "## PART II — TRAFFIC ENGINEERING, IT AND XAI FORENSIC AUDIT\n\n### 2.1 Telemetry, Sampling Sources and Data Quality",
+    "part2_vision_desc": "{sensing_intro_phrase}\n{present_source_types_description}\n\nDuring the analyzed period, the pipeline collected continuous telemetry at 1.0 Hz, recording a real availability of **{avg_availability}%**.",
+    "section2_title": "### 2.2 Calculation Memorial and Perception Mathematical Formulations",
+    "section2_intro": "The **SYNAPSE v2.0 Enterprise** engine bases its traffic state estimations and explainability on deterministic mathematical formulations rooted in fundamental traffic laws (LWR/HCM) and neural interpretability methods:",
+    "guardian_section_title": "### 2.3 Zero-Trust Safeguards, Quarantine and Kinematic Reconstruction",
+    "guardian_section_desc": "To prevent spurious data or temporary dropouts from corrupting downstream traffic plans, SYNAPSE operates preventive filters. Outlier readings enter quarantine, high-frequency noise is smoothed, and during brief connection drops, the system projects expected speed (Dead Reckoning):",
+    "section4_title": "### 2.4 Consolidated Summary and Key Attribution Factors (XAI)",
+    "section4_desc": "SYNAPSE algorithmic explainability via Integrated Gradients quantifies the relative influence of each physical variable in arterial traffic estimation. The chart and topics below consolidate the proportional contribution of each variable by station:\n\n> **Parametric Interdependence Notice:** Occupancy, Volume, and Saturation identified with **[Model-Derived]** stem from kinematic transformations of reported speed. Their weights reflect model sensitivity to fundamental traffic flow dynamics (HCM/LWR), rather than orthogonal instrumental measurements.",
+    "global_chart_caption": "Integrated Gradients Attribution Chart — Arterial Network",
+    "consolidated_item": "- **{name} ({c_label} • `{aid}`):** Importance of **{pct_str}** ({imp:.4f}).",
+    "anexo_title": "## PART III — FORENSIC TECHNICAL SHEETS BY MONITORING STATION (ANNEX I)",
+    "section5_title": "## PART IV — TECHNICAL DIRECTIVES AND FORMAL AUDIT OPINION\n\n### 4.1 Active Traffic Engineering and Control Directives",
+    "section5_guidelines": "1. **Active Saturation Monitoring:** Prioritize operational interventions at stations where saturation degree x exceeds critical thresholds;\n2. **Regime Stability and Green Wave Progression:** Maintain arterial progression between adjacent detectors to prevent upstream queue spillback;\n3. **Sensory Maintenance:** Inspect and calibrate detectors with real availability below 90% or persistent quarantine periods.",
+    "section6_title": "### 4.2 Final Considerations and Technical Homologation Opinion",
+    "section6_desc": "This Technical Explainability Audit Report certifies that the **SYNAPSE v2.0 Enterprise (Noxfort Systems)** engine operates with full mathematical transparency, deterministic stability, and absence of non-auditable biases. Traffic perceptions and decisions are 100% grounded on Integrated Gradients and macroscopic traffic flow conservation (LWR), fully satisfying public transparency standards, algorithmic governance, and traffic engineering best practices."
+  },
+  "es_es": {
+    "exec_part_title": "## PARTE I — RESUMEN EJECUTIVO PARA LA GESTIÓN PÚBLICA Y TOMADORES DE DECISIONES",
+    "exec_obj_title": "### 1.1 Objetivo de la Auditoría Institucional",
+    "exec_obj_desc": "Presentar a la Alcaldía y al Centro de Control Operacional (CCO) la rendición de cuentas, auditoría de seguridad y validación de la percepción de tráfico (Protocolo: **{protocol}**, conforme a la norma **ABNT NBR 10719:2015**) generada por el **SYNAPSE v2.0 Enterprise (Noxfort Systems)**, describiendo el comportamiento observado en **{total_agents} puntos de monitoreo** de la red vial, los factores determinantes y las acciones recomendadas.",
+    "exec_highlights_title": "### 1.2 Principales Resultados Operacionales (Impacto Urbano)",
+    "exec_highlights_desc": "- **Comportamiento General de la Red:** La velocidad promedio en el corredor fue de **{network_speed}**, com grado medio de saturación de **{network_saturation}**, operando en **{network_regime}**.\n{critical_bullet}\n- **Salvaguardas Operacionales Aplicadas:** {safeguards_summary}.\n- **Disponibilidade Media Consolidada:** El índice de disponibilidad real fue de **{avg_availability}%**.\n- **Acción Operacional Recomendada:** {action_recommendation}",
+    "exec_table_title": "### 1.3 Cuadro Sintético por Punto de Monitoreo",
+    "exec_thresholds_title": "### 1.4 Criterios de Clasificación y Umbrales de Tráfico (Equivalencia HCM)",
+    "exec_thresholds_desc": "Los regímenes operacionales del corredor se determinan por los siguientes umbrales con equivalencia HCM:\n\n| Nivel Operacional | Velocidad (v) | Grado de Saturación (x) | Nivel de Servicio (HCM) | Estado de Control |\n| :--- | :---: | :---: | :--- | :--- |\n| **Libre / Fluido** | ≥ 35,0 km/h | < 0,60 | Nivel de Servicio A / B | Operación Nominal |\n| **Estable / Moderado** | 20,0 – 34,9 km/h | 0,60 – 0,74 | Nivel de Servicio C / D | Flujo Estable |\n| **Saturado / Retención** | 10,0 – 19,9 km/h | 0,75 – 0,89 | Nivel de Servicio E | Alerta de Retención |\n| **Crítico / Retención Severa** | < 10,0 km/h | ≥ 0,90 | Nivel de Servicio F | Crítico / Retención Severa |\n\n> *Criterio de desempate operacional: habiendo divergencia entre velocidad y saturación, se adopta el nivel de mayor severidad.*\n> *Nota Metrológica: Para fuentes de velocidad puntual, el valor se usa como aproximación de la velocidad espacial.*",
+    "part2_vision_title": "## PARTE II — AUDITORÍA PERICIAL DE INGENIERÍA DE TRÁFICO, TI Y XAI\n\n### 2.1 Telemetría, Fuentes de Muestreo y Calidad de los Datos",
+    "part2_vision_desc": "{sensing_intro_phrase}\n{present_source_types_description}\n\nEn el período analizado, el pipeline recolectó telemetría continua a 1,0 Hz, registrando una disponibilidad real de **{avg_availability}%**.",
+    "section2_title": "### 2.2 Memorial de Cálculo y Formulaciones Matemáticas de Percepción",
+    "section2_intro": "El motor **SYNAPSE v2.0 Enterprise** fundamenta sus estimaciones de estado y explicabilidad en formulaciones matemáticas deterministas basadas en leyes fundamentales de tráfico (LWR/HCM) y métodos de interpretabilidad neuronal:",
+    "guardian_section_title": "### 2.3 Salvaguardas Zero-Trust, Cuarentena y Reconstrucción Cinemática",
+    "guardian_section_desc": "Para evitar que datos espurios distorsionen los planes semafóricos, SYNAPSE opera com filtros preventivos. Las lecturas atípicas entran en cuarentena, los ruidos se suavizan y ante caídas breves se proyecta la velocidad esperada (Dead Reckoning):",
+    "section4_title": "### 2.4 Resumen Consolidado y Factores de Mayor Peso (XAI)",
+    "section4_desc": "La explicabilidad algorítmica de SYNAPSE mediante Gradientes Integrados cuantifica la influencia relativa de cada variable física. El gráfico y los temas siguientes consolidan la contribución proporcional por estación:\n\n> **Aviso de Interdependencia Paramétrica:** Las variables de Ocupación, Volumen y Saturación identificadas con **[Derivado por Modelo]** derivan de transformaciones cinemáticas de la velocidad reportada.",
+    "global_chart_caption": "Gráfico de Atribución por Gradientes Integrados — Red Arterial",
+    "consolidated_item": "- **{name} ({c_label} • `{aid}`):** Importancia de **{pct_str}** ({imp:.4f}).",
+    "anexo_title": "## PARTE III — FICHAS TÉCNICAS PERICIALES POR PUNTO DE MONITORAMENTO (ANEXO I)",
+    "section5_title": "## PARTE IV — DIRECTRICES TÉCNICAS Y DICTAMEN DE HOMOLOGACIÓN\n\n### 4.1 Directrices Operativas de Control de Tráfico",
+    "section5_guidelines": "1. **Monitoreo Activo de Saturación:** Priorizar intervención en puntos críticos;\n2. **Estabilidad y Ola Verde:** Mantener sincronismo arterial;\n3. **Mantenimiento Preventivo:** Inspeccionar sensores con disponibilidad menor al 90%.",
+    "section6_title": "### 4.2 Consideraciones Finales y Dictamen Técnico de Homologación",
+    "section6_desc": "El presente informe certifica que el motor **SYNAPSE v2.0 Enterprise (Noxfort Systems)** opera con total transparencia matemática y estabilidad determinista, conforme a las leyes macroscópicas de flujo (LWR)."
+  }
+}

@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/handlers/source_handler.py
-# Description: Pure Orchestrator for Data Source & Sensor IPC Commands (SOLID: SRP / Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 from typing import Any, Dict, Optional
@@ -208,24 +205,55 @@ class SourceCommandHandler:
 
     def handle_preview_batch_sources(self, msg: IpcMessage) -> Dict[str, Any]:
         csv_content = msg.payload.get("csv_content", "")
+        file_path = msg.payload.get("file_path")
+        if not csv_content and file_path and os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                    csv_content = f.read()
+            except Exception as e:
+                return {
+                    "total": 0,
+                    "valid_count": 0,
+                    "error_count": 1,
+                    "parse_errors": [f"Erro ao ler arquivo CSV: {str(e)}"],
+                    "items": [],
+                }
+
         topology = getattr(self.app_state, "topology", None)
         return SensorBatchService.preview_manifest(csv_content, topology)
 
     def handle_import_batch_sources(self, msg: IpcMessage) -> Dict[str, Any]:
         SourceGuard.check_lockdown(self.security_manager)
         csv_content = msg.payload.get("csv_content", "")
+        file_path = msg.payload.get("file_path")
+        if not csv_content and file_path and os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                    csv_content = f.read()
+            except Exception as e:
+                return {
+                    "success": False,
+                    "imported_count": 0,
+                    "errors": [f"Erro ao ler arquivo CSV: {str(e)}"],
+                    "sensors": [],
+                }
+
         host = msg.payload.get("host")
         port = msg.payload.get("port")
 
-        try:
-            SourceGuard.ensure_local_sensor_prerequisites(True)
-        except ValueError as e:
-            return {
-                "success": False,
-                "imported_count": 0,
-                "errors": [str(e)],
-                "sensors": [],
-            }
+        records, _ = SensorBatchService.parse_csv_records(csv_content)
+        has_local = any(r.get("type") == "local" for r in records)
+
+        if has_local:
+            try:
+                SourceGuard.ensure_local_sensor_prerequisites(True)
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "imported_count": 0,
+                    "errors": [str(e)],
+                    "sensors": [],
+                }
 
         result = SensorBatchService.import_manifest(
             csv_content=csv_content,

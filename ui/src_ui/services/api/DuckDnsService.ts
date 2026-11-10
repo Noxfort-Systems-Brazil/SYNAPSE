@@ -1,10 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/services/api/DuckDnsService.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-27
-// Description: Service for DuckDNS Dynamic DNS and Caddy Reverse Proxy management.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { ITransportClient, getTransportClient } from '../transport';
 

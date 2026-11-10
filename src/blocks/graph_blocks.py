@@ -5,7 +5,11 @@ from typing import Optional, List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.utils.graph_utils import compute_random_walk_transition_matrices
+from src.utils.graph_utils import (
+    SparseGraphTransitions,
+    compute_random_walk_transition_matrices,
+    sparse_edge_propagate,
+)
 
 
 class DiffusionGraphConv(nn.Module):
@@ -58,37 +62,70 @@ class DiffusionGraphConv(nn.Module):
     def forward(
         self, 
         x: torch.Tensor, 
-        p_forward: torch.Tensor, 
-        p_backward: torch.Tensor, 
-        adaptive_adj: Optional[torch.Tensor] = None
+        p_forward: Optional[torch.Tensor] = None, 
+        p_backward: Optional[torch.Tensor] = None, 
+        adaptive_adj: Optional[torch.Tensor] = None,
+        sparse_transitions: Optional[SparseGraphTransitions] = None,
     ) -> torch.Tensor:
         """
         Args:
             x: Node features [Batch, Num_Nodes, In_Channels]
-            p_forward: Forward random-walk matrix [Num_Nodes, Num_Nodes]
-            p_backward: Backward random-walk matrix [Num_Nodes, Num_Nodes]
+            p_forward: Optional dense forward random-walk matrix [Num_Nodes, Num_Nodes]
+            p_backward: Optional dense backward random-walk matrix [Num_Nodes, Num_Nodes]
             adaptive_adj: Learned adaptive adjacency [Num_Nodes, Num_Nodes]
+            sparse_transitions: Optional O(|E|) sparse transition operator
         Returns:
             out: Convolved node features [Batch, Num_Nodes, Out_Channels]
         """
         batch_size, num_nodes, in_channels = x.shape
         states: List[torch.Tensor] = [x]  # Order 0: Identity (current node state)
 
-        # Forward Walk Powers: P_f^k * X
-        x_f = x
-        for _ in range(self.diffusion_steps):
-            x_f = torch.einsum('nm,bmc->bnc', p_forward, x_f)
-            states.append(x_f)
+        if sparse_transitions is not None:
+            # O(K * |E| * C) Sparse Message-Passing Random Walks
+            x_f = x
+            for _ in range(self.diffusion_steps):
+                if not sparse_transitions.is_identity_fallback:
+                    x_f = sparse_edge_propagate(
+                        x_f,
+                        gather_idx=sparse_transitions.dst,
+                        scatter_idx=sparse_transitions.src,
+                        edge_weight=sparse_transitions.w_forward,
+                        num_nodes=num_nodes,
+                    )
+                states.append(x_f)
 
-        # Backward Walk Powers: P_b^k * X
-        x_b = x
-        for _ in range(self.diffusion_steps):
-            x_b = torch.einsum('nm,bmc->bnc', p_backward, x_b)
-            states.append(x_b)
+            x_b = x
+            for _ in range(self.diffusion_steps):
+                if not sparse_transitions.is_identity_fallback:
+                    x_b = sparse_edge_propagate(
+                        x_b,
+                        gather_idx=sparse_transitions.src,
+                        scatter_idx=sparse_transitions.dst,
+                        edge_weight=sparse_transitions.w_backward,
+                        num_nodes=num_nodes,
+                    )
+                states.append(x_b)
+        else:
+            if p_forward is None or p_backward is None:
+                raise ValueError("Either sparse_transitions or (p_forward, p_backward) must be provided.")
+            pf = p_forward.to(dtype=x.dtype)
+            pb = p_backward.to(dtype=x.dtype)
+
+            # Forward Walk Powers: P_f^k * X
+            x_f = x
+            for _ in range(self.diffusion_steps):
+                x_f = torch.einsum('nm,bmc->bnc', pf, x_f)
+                states.append(x_f)
+
+            # Backward Walk Powers: P_b^k * X
+            x_b = x
+            for _ in range(self.diffusion_steps):
+                x_b = torch.einsum('nm,bmc->bnc', pb, x_b)
+                states.append(x_b)
 
         # Adaptive Transition (if available)
         if adaptive_adj is not None:
-            x_adp = torch.einsum('nm,bmc->bnc', adaptive_adj, x)
+            x_adp = torch.einsum('nm,bmc->bnc', adaptive_adj.to(dtype=x.dtype), x)
             if len(states) < (2 * self.diffusion_steps + 1):
                 states.append(x_adp)
             else:
@@ -98,7 +135,7 @@ class DiffusionGraphConv(nn.Module):
         h = torch.cat(states[: (2 * self.diffusion_steps + 1)], dim=-1)
 
         # Linear projection to output channels
-        out = torch.einsum('bnc,cd->bnd', h, self.weights) + self.bias
+        out = torch.einsum('bnc,cd->bnd', h, self.weights.to(dtype=h.dtype)) + self.bias.to(dtype=h.dtype)
         return out
 
 

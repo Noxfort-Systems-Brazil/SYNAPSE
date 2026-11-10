@@ -50,9 +50,10 @@ class JuristDiagnosisGenerator:
                     "networkMeanSaturation": summary.get("networkMeanSaturation", ""),
                     "networkLevelOfService": summary.get("networkLevelOfService", ""),
                     "activeSensors": len(sensors),
-                    "inmetroCalibrationStatus": "100% Aferido e Homologado pelo INMETRO (Resolução CONTRAN nº 798/2020 - Disponibilidade de 98,4%)",
-                    "pinoContinuityResidual": "< 0,05 (Conformidade Integral com a Equação de Conservação LWR)",
-                    "zeroTrustGuardrails": "Filtro Zero-Trust WaveletAE, Denoização PI-DVAE-TCN e Estimador KSE Dead Reckoning ativos",
+                    "sensorsStatus": "Fontes heterogêneas monitoradas com salvaguardas ativas",
+                    "inmetroCalibrationStatus": "Sensores físicos aferidos e feeds de terceiros monitorados",
+                    "pinoContinuityResidual": "< 0,05 (Consistência com a Equação de Conservação LWR)",
+                    "zeroTrustGuardrails": "Salvaguardas ativas: quarentena preventiva, denoização PI-DVAE e projeção cinemática KSE",
                     "sensorsSummary": [
                         {
                             "id": s.get("id", ""),
@@ -60,7 +61,7 @@ class JuristDiagnosisGenerator:
                             "speed": s.get("measuredSpeed", ""),
                             "flow": s.get("measuredFlow", ""),
                             "saturation": s.get("saturationDegree", ""),
-                            "inmetro": s.get("inmetroReport", "Aferição Regular INMETRO"),
+                            "sourceType": s.get("equipmentType", ""),
                         }
                         for s in sensors[:6]
                     ],
@@ -80,11 +81,11 @@ class JuristDiagnosisGenerator:
                 logger.error(f"JuristAgent SLM inference failed: {e}")
 
         return (
-            f"Supervisão operacional contínua em tempo real: o pipeline neural MARKVART™ "
-            f"processou {len(sensors)} detectores ativos na malha viária, aferindo velocidade "
-            f"média espacial de {mean_spd:.1f} km/h ({regime}) e volume global de {summary.get('totalHourlyFlow', 'N/A')} "
-            f"sob {summary.get('networkLevelOfService', 'monitoramento contínuo')}. Todos os instrumentos de sensoriamento "
-            f"operam com aferição metrológica regular pelo INMETRO (Resolução CONTRAN nº 798/2020), tendo a matriz de estado "
-            f"sido sintetizada sob estrita observância da Equação de Conservação de LWR (resíduo PINO < 0,05) e transmitida via "
-            f"HFT-Link gRPC ao controlador CARINA e ao Centro de Controle Operacional (CCO)."
+            f"No período monitorado, o sistema SYNAPSE processou {len(sensors)} fontes de dados ativas "
+            f"na malha viária, registrando velocidade média de {mean_spd:.1f} km/h ({regime}) e volume global "
+            f"de {summary.get('totalHourlyFlow', 'N/A')} sob {summary.get('networkLevelOfService', 'monitoramento contínuo')}. "
+            f"As fontes integraram instrumentos físicos e feeds agregados de terceiros, tendo as leituras sido "
+            f"submetidas a salvaguardas operacionais para contenção de ruídos e quarentena preventiva. A estimativa "
+            f"manteve consistência física com as leis de conservação de fluxo (LWR, resíduo PINO < 0,05), sendo "
+            f"transmitida continuamente via HFT-Link ao controlador CARINA e ao Centro de Controle Operacional (CCO)."
         )

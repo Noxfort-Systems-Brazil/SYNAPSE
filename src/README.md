@@ -23,42 +23,53 @@ The backend of **SYNAPSE CORE** is engineered in Python 3.10+ with PyTorch 2.x, 
 
 ## 📦 Subsystem Directory Breakdown
 
-The `src/` directory contains 35 specialized packages organized into logical architectural layers:
+The `src/` directory contains 48 specialized packages organized into logical architectural layers:
 
 ```text
 src/
 ├── [domain/](../docs/01_domain_entities.md)      # Core business entities, AppState facade, repositories
-├── [models/](../docs/03_neural_models.md)      # PyTorch neural network & operator implementations
+├── [models/](../docs/03_neural_models.md)      # PyTorch neural network & operator implementations (ModernBERT, PINO, DeepONet)
 ├── agents/            # MARKVART™ autonomous neural agents & model wrappers
 ├── blocks/            # Deep learning building blocks (Graph, Spectral, Temporal)
-├── physics/           # Continuum traffic physics, LWR PDEs, fundamental diagrams
+├── controllers/       # System, Project, View, and Phase signal controllers
+├── database/          # Database manager, connection pool proxy, engine, migrator, settings
 ├── engine/            # Real-time inference engine, cycle runner, and routing
-├── node/              # TrafficNode graph vertices, state, and step processing
-├── pipeline/          # Agent-specific execution pipelines
-├── stages/            # ADAGIO execution stages (Auditor, Classification, Sanitization)
-├── strategies/        # Validation, imputation, clustering, and ensemble strategies
-├── [phases/](../docs/04_execution_phases.md)      # ADAGIO™ lifecycle phases (Optimization, Bootstrap, Runtime)
-├── orchestrators/     # HFT and lifecycle orchestrators
-├── workers/           # Background thread workers (Ingestion, XAI, Standby)
-├── ipc/               # Headless StdioDaemon, JSON-RPC protocol, EventBridge
-├── [adapters/](../docs/05_data_ingestion_and_hft.md)    # Ingestion adapters (HTTP Push/Poll, MQTT, WebSocket, Replay)
-├── infrastructure/    # gRPC client, PostgreSQL manager, SafeTensors storage
-├── kse/               # Kinematic State Estimation (Kalman Dead Reckoning)
-├── afb/               # Adaptive Fallback Engine & SensorGuard
-├── meh/               # Micro-Estimation History & Golden Dataset loader
-├── fenix/             # F.E.N.I.X. drift evaluation & out-of-process supervisor
-├── memory/            # Episodic, Semantic, Spatial, and Spatiotemporal memory
-├── optimization/      # Optuna AutoML and Bayesian Hyperparameter Tuning
-├── trainer/           # Neural training routines for agents
 ├── factories/         # Factory methods & ServiceContainer for IoC
-├── handlers/          # Command and database event handlers
-├── managers/          # Graph, Node, Source, Storage, and XAI managers
-├── services/          # Domain services (MapService, LinguistService, FenixService)
+├── fenix/             # F.E.N.I.X. drift evaluation & out-of-process supervisor
+├── formatters/        # ABNT official report formatters (DOCX, HTML preview, Markdown)
+├── go/                # Subprocess lifecycle, anonymous pipe dispatcher, and NDJSON transport for Go Gateway
+├── handlers/          # Command, database, DuckDNS, map, parquet, and system handlers
+├── [hft/](../docs/05_data_ingestion_and_hft.md)             # gRPC connector, streamer, serializers, and self-healing recovery loop
+├── infrastructure/    # PostgreSQL data lake, SafeTensors storage, network services
 ├── interfaces/        # Abstract Base Classes and Typing Protocols
-├── prompts/           # LLM Jinja2 prompt configurations (Multi-language)
-├── templates/         # Prompt templates for Jurist XAI reports
+├── ipc/               # Headless StdioDaemon, JSON-RPC protocol, EventBridge
+├── kse/               # Kinematic State Estimation (Kalman Dead Reckoning)
+├── linguist/          # Global cartographer matcher, compass reconciler, local topology matcher
 ├── logging/           # Centralized logging facade and interceptors
-└── utils/             # Hardware acceleration, geometry, normalization helpers
+├── managers/          # Graph, Node, Source, Storage, and XAI managers
+├── meh/               # Micro-Estimation History & Golden Dataset loader
+├── memory/            # Episodic, Semantic, Spatial, and Spatiotemporal memory
+├── mlops/             # Drift engine, loss engine, and automated MLOps pipelines
+├── node/              # TrafficNode graph vertices, state, and step processing
+├── optimization/      # Optuna AutoML and Bayesian Hyperparameter Tuning
+├── orchestrators/     # HFT and lifecycle orchestrators
+├── [phases/](../docs/04_execution_phases.md)      # ADAGIO™ lifecycle phases (Optimization, Bootstrap, Runtime)
+├── physics/           # Continuum traffic physics, LWR PDEs, fundamental diagrams
+├── pipeline/          # Multi-agent execution pipelines (Fusion, Specialist, Jurist, Imputer)
+├── prompts/           # Multi-language Jinja2 prompt configurations
+├── report/            # Municipal traffic kinematic reporting, jurist diagnosis, and attribution extraction
+├── repositories/      # Sensor dictionary, telemetry reader/writer, and audit repositories
+├── security/          # Master auth, account manager, password policy, lockdown manager, audit logging
+├── services/          # Domain services (MapService, FastMapMatcher, VirtualSensorService)
+├── slm/               # Small Language Model isolation subsystem (IsolatedJuristManager, model loader)
+├── stages/            # ADAGIO execution stages (Auditor, Classification, Sanitization)
+├── storage/           # Checkpoint store, path scaffolder, snapshot store, vault sync
+├── strategies/        # Validation, imputation, clustering, and ensemble strategies
+├── templates/         # Prompt templates for Jurist XAI reports
+├── trainer/           # Neural training routines for agents
+├── transmission/      # Isolated high-frequency transmitter process
+├── utils/             # Hardware acceleration, geometry, normalization helpers
+└── workers/           # Background thread workers (Ingestion, XAI, Standby, HFT bootstrapper)
 ```
 
 ---
@@ -142,6 +153,26 @@ Each agent wraps one or more models from `models/`, managing tensor preparation,
 - **`meh/` (Micro-Estimation History)**: High-resolution historical lookup tables extracted from the Golden Dataset.
 - **`afb/` (Adaptive Fallback System)**: Fault-tolerant sensor protection engine that dynamically downgrades failing sensors from `ACTIVE` to `FALLBACK` and recovers them through `PROBATION`.
 - **`fenix/`**: Long-term model drift monitoring, maintenance scheduling, and out-of-process watchdog supervision (`process_supervisor.py`).
+
+### 11. `security/` — Master Authentication, Accounts & Defense-in-Depth
+- **`master_auth.py` & `security_manager.py`**: Multi-factor master authentication orchestrating session tokens and credential verification.
+- **`account_manager.py` & `password_policy.py`**: Enforces municipal password complexity rules and account lifecycles.
+- **`lockdown_manager.py`**: Active protection triggering timed system lockdowns upon repeated failed authentication attempts.
+- **`audit_logger.py`**: Cryptographically verifiable security event logs tracking operator actions and privilege elevations.
+- **`repositories/`**: Dual persistence (`hybrid_repo.py`) seamlessly switching between PostgreSQL (`postgres_repo.py`) and local encrypted JSON fallback (`json_repo.py`).
+
+### 12. `report/` & `formatters/` — ABNT Municipal Traffic Reporting
+- **`formatters/`**: Generates audit reports formatted strictly to Brazilian ABNT standards (`abnt_docx_exporter.py`, `abnt_html_preview_exporter.py`, `abnt_markdown_formatter.py`).
+- **`report/`**: Gathers traffic kinematics (`traffic_kinematics.py`), sensor health stats (`sensor_extractor.py`), network corridor summaries (`network_summary.py`), and Jurist diagnoses into unified audit documents.
+
+### 13. `slm/` — Small Language Model Fault-Domain Isolation
+- **`process/isolated_jurist_manager.py`**: Runs Qwen3 LLMs inside a separate background OS process (`llm_worker_process.py`, `worker_supervisor.py`), preventing CUDA memory fragmentation from impacting real-time PyTorch loops.
+- **`in_process_engine.py`**: Fallback in-process engine with automatic VRAM unloading when memory pressure is detected.
+- **`model_loader.py`**: Polyglot model loader supporting GGUF 4/6-bit binaries and HuggingFace SafeTensors with automatic GPU/CPU layer offloading.
+
+### 14. `database/` & `storage/` — Connection Pooling & Model Storage
+- **`database/`**: Thread-safe PostgreSQL connection proxy (`connection_pool_proxy.py`), schema migrations (`db_migrator.py`), and real-time telemetry persistence worker (`synapse_telemetry_worker.py`).
+- **`storage/`**: Scaffolds project directories (`path_scaffolder.py`), manages training checkpoints (`checkpoint_store.py`), and verifies neural model integrity against corrupt downloads (`vault_sync_service.py`).
 
 ---
 

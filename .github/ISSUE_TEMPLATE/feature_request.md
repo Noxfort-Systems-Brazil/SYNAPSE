@@ -27,3 +27,9 @@ Explain how this feature fits into the Domain-Driven Design (DDD) and SOLID prin
 
 **Alternatives Considered**
 Describe any alternative implementations or existing models you considered and why this approach is superior.
+
+<!--
+SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+-->
+

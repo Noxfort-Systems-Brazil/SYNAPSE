@@ -122,9 +122,9 @@ def test_jurist_diagnosis_generator():
         comparative={},
         xai_result=None,
     )
-    assert "Supervisão operacional contínua em tempo real" in diag_fallback
-    assert "MARKVART™" in diag_fallback
-    assert "Resolução CONTRAN nº 798/2020" in diag_fallback
+    assert "No período monitorado, o sistema SYNAPSE processou" in diag_fallback
+    assert "leis de conservação de fluxo (LWR" in diag_fallback
+    assert "Centro de Controle Operacional (CCO)" in diag_fallback
 
 
 def test_template_loader_and_municipal_resolver(tmp_path):

@@ -81,7 +81,18 @@
     "tableOrigin": "来源",
     "tableSpeed": "车速",
     "tableOccupancy": "占有率",
-    "tableStatus": "状态"
+    "tableStatus": "状态",
+    "tableSemantic": "语义类型 (NLP)",
+    "tableCurrentValue": "当前值",
+    "tableQualityConfidence": "质量 / 置信度",
+    "clickToInspect": "点击行查看传感器遥测",
+    "noSensorsRegistered": "未注册传感器。请加载 SUMO 路网或添加传感器。",
+    "cycleLatency": "周期延迟",
+    "monitoredSensors": "监控中的传感器",
+    "stable": "稳定",
+    "reconErrorGlobal": "重构 / 全局融合误差 (MSE Loss)",
+    "temporalDriftPsi": "时间统计漂移 (PSI Score)",
+    "agentLabel": "代理:"
   },
   "xai": {
     "title": "可解释性与安全审计",
@@ -112,12 +123,23 @@
     "hftHost": "HFT / CARINA服务器地址",
     "hftPort": "gRPC通信端口",
     "save": "保存设置",
-    "cancel": "取消"
+    "cancel": "取消",
+    "tabs": {
+      "municipal": "市政标识与报告",
+      "db": "数据库",
+      "duckdns": "远程访问 (DuckDNS)",
+      "monitor": "外部遥测",
+      "general": "常规与主题",
+      "accounts": "账户与安全",
+      "audit": "审计与日志"
+    }
   },
   "logs": {
     "title": "系统事件控制台",
     "clear": "清空日志",
-    "filter": "过滤事件..."
+    "filter": "过滤事件...",
+    "events": "个事件",
+    "noEvents": "暂无日志记录。"
   },
   "wizard": {
     "title": "集成数据导入向导",
@@ -175,7 +197,6 @@
     "strengthStrong": "强",
     "strengthVeryStrong": "极强",
     "authenticate": "验证登录",
-
     "authenticating": "验证中...",
     "superuser": "超级用户 / 用户",
     "lockdownTitle": "系统锁定 (LOCKDOWN)",
@@ -194,5 +215,43 @@
     "addUser": "添加用户",
     "removeUser": "删除",
     "refreshList": "刷新列表"
+  },
+  "sensors": {
+    "semantics": {
+      "vehicleCount": "车辆计数",
+      "vehicleSpeed": "车辆速度",
+      "trafficFlow": "交通流量",
+      "trafficDensity": "交通密度",
+      "trafficState": "交通状态",
+      "scanning": "正在识别..."
+    },
+    "status": {
+      "active": "活跃",
+      "quarantine": "隔离",
+      "validating": "验证中",
+      "rejected": "已拒绝",
+      "offline": "离线"
+    }
+  },
+  "status": {
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "standby": "待机",
+    "receiving": "正在接收...",
+    "bootstrap": "离线自举",
+    "onlineHft": "在线 (HFT)",
+    "computing": "计算中",
+    "idle": "空闲"
+  },
+  "roles": {
+    "OPERATOR": "操作员",
+    "SUPERUSER": "超级用户",
+    "MASTER": "主密钥"
+  },
+  "statusBar": {
+    "webBrowser": "网页浏览器 (无本地桥接)",
+    "ipcConnected": "IPC 管道: 已连接",
+    "ipcDisconnected": "IPC 管道: 已断开",
+    "zeroTrustMemory": "ZERO-TRUST 内存"
   }
 }

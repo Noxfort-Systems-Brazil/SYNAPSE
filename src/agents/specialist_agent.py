@@ -163,6 +163,30 @@ class SpecialistAgent(BaseAgent):
 
         return self.pipeline.predict(input_sequence)
 
+    @property
+    def has_step_state(self) -> bool:
+        return bool(getattr(self.pipeline, "has_step_state", False))
+
+    def reset_step_state(self) -> None:
+        """Clears cached causal step state for this isolated specialist."""
+        fn = getattr(self.pipeline, "reset_step_state", None)
+        if callable(fn):
+            fn()
+
+    def warm_step_state(self, input_sequence: Any) -> np.ndarray:
+        """Warms the causal step cache over the clean receptive-field tail of input_sequence."""
+        fn = getattr(self.pipeline, "warm_step_state", None)
+        if callable(fn):
+            return fn(input_sequence)
+        return self.predict(input_sequence)
+
+    def predict_step(self, new_sample: Any) -> np.ndarray:
+        """Executes O(1) incremental causal embedding update for a single scalar/vector reading."""
+        fn = getattr(self.pipeline, "predict_step", None)
+        if callable(fn):
+            return fn(new_sample)
+        return self.predict(new_sample)
+
     def compute_loss(self, input_sequence: Any) -> float:
         """Evaluates reconstruction loss via fast forward-pass without backpropagation."""
         loss_fn = getattr(self.pipeline, "compute_loss", None)
@@ -172,10 +196,12 @@ class SpecialistAgent(BaseAgent):
 
     def train_step(self, batch_data: Any) -> float:
         """Delegates training step to SpecialistTrainer."""
+        self.reset_step_state()
         return self.trainer.train_step(batch_data)
 
     def train(self, inputs: torch.Tensor, targets: torch.Tensor, epochs: int = 1, batch_size: int = 32) -> float:
         """Delegates training loop to SpecialistTrainer and tracks running loss."""
+        self.reset_step_state()
         avg_loss = self.trainer.train(inputs, targets, epochs=epochs, batch_size=batch_size)
         self.running_loss = 0.9 * self.running_loss + 0.1 * avg_loss if self.steps > 0 else avg_loss
         self.steps += 1
@@ -222,6 +248,7 @@ class SpecialistAgent(BaseAgent):
             self.decoder.load_state_dict(weights["decoder"])
         if isinstance(self.reconstruction_head, nn.Module) and "head" in weights:
             self.reconstruction_head.load_state_dict(weights["head"])
+        self.reset_step_state()
 
         conf = state.get("agent_config", {})
         if "lr" in conf:

@@ -13,16 +13,16 @@ The 10 neural models and deterministic spatial indexing engine operate across th
 | Model | Subsystem / Agent | Mathematical Formulation / Paradigm | Primary Responsibility |
 |:---|:---|:---|:---|
 | **PINO-Traffic** | Continuum Operator | Fourier Neural Operator (FNO) + LWR Conservation PDE | Macroscopic density simulation & shockwave propagation. |
-| **PI-DeepONet** | Field Estimator | Dual Branch-Trunk Deep Operator Network | Infinite-dimensional non-linear mapping of velocity fields. |
+| **PI-DeepONet** | Field Estimator & Imputer | Dual Branch-Trunk Deep Operator Network | Infinite-dimensional non-linear mapping of velocity fields & gap imputation. |
 | **iTransformer** | Multivariate Fusion | Inverted Dimension Attention over Time Tokens | Cross-sensor spatial fusion without channel mixing artifacts. |
 | **GATv2 Lite / DiffusionGATv2** | Graph Reasoning | Dynamic Attention with 5D Physical Edge Tensor (`edge_attr`) + Harmonic Diffusion | Propagates congestion across neighboring nodes weighted by physical conductance and road hierarchy. |
 | **WaveletAE-OCC**| Anomaly Gatekeeper | Discrete Wavelet Transform (DWT) + One-Class Autoencoder | High-frequency sensor glitch & tampering detection. |
-| **PatchTST** | Subseries Forecaster| Subseries Patching + Channel-Independent Transformer | Multi-step vehicle speed and occupancy projection. |
+| **ModernBERT & NeuroSymbolic** | Semantic Gatekeeper | ModernBERT Backbone + Decoupled TCNAE + 3D Physics Head | Zero-trust validation of sensor schemas with LWR conservation loss penalties. |
 | **TCNAE** | Latent Compression | Dilated Causal 1D Convolutions with Residual Gates | Compact representation of raw loop sensor series. |
-| **TimesNet** | Periodicity Engine | 2D Fourier Transformation + Inception Blocks | Captures diurnal and seasonal traffic periodicity. |
+| **SpectralFeatureBlock** | Periodicity Engine | 1D Fourier Spectral Convolutions (`SpectralConv1d`) | Captures diurnal and seasonal traffic periodicity (optimized TimesNet drop-in). |
 | **FastMapMatcher** | Spatial Alignment | R-Tree Spatial Index + Fréchet Distance (CPU) | Resolves spatial misalignments between multi-segment Waze/TomTom `jams` polylines and SUMO street topology in sub-microseconds. |
 | **PI-DVAE-TCN** | Uncertainty Estimator | Physics-Constrained Variational Autoencoder | Quantifies epistemic and aleatoric sensor uncertainties. |
-| **Qwen3 Jurist** | Cognitive Justifier| Quantized 4-bit GGUF Small Language Model (SLM) | Generates audit-compliant textual justifications. |
+| **Qwen3 Jurist** | Cognitive Justifier| Quantized GGUF Small Language Model (SLM) with Out-of-Process Isolation | Generates audit-compliant textual justifications without blocking PyTorch threads. |
 
 ---
 
@@ -69,10 +69,11 @@ In `FusionPipeline`, unobserved nodes ($M_i = 0$) are reconstructed by blending 
 
 ---
 
-## 4. Anomaly Detection & Textual Explainability
-
-- **WaveletAE-OCC**: Decomposes high-frequency raw telemetry using Daubechies Wavelets ($\psi_{j, k}$) to isolate impulse noise and cyber-attacks before tensor ingestion.
-- **Qwen3 Jurist**: Operates strictly on local GPU/CPU via llama.cpp (GGUF 4-bit quantization). Formulates forensically defensible textual statements explaining why upstream telemetry triggered a phase alert.
+## 4. Semantic Gatekeeping & Textual Explainability
+ 
+- **ModernBERT & NeuroSymbolicModel (`src/models/modernbert.py`, `src/models/neuro_symbolic.py`)**: Combines a high-throughput ModernBERT transformer backbone (with Tensor Core acceleration, `allow_tf32 = True`) with a decoupled `TCNAE` and a 3D Physics Projection Head $\mathbf{y}_{\text{phys}} = [q, v, \rho]$. Feeds physical states through LWR continuum equations and penalizes schema deviations before promoting quarantined data sources.
+- **WaveletAE-OCC (`src/models/wavelet_ae_occ.py`)**: Decomposes high-frequency raw telemetry using Daubechies Wavelets ($\psi_{j, k}$) to isolate impulse noise and cyber-attacks before tensor ingestion.
+- **Qwen3 Jurist (`src/agents/jurist_agent.py`, `src/slm/`)**: Operates strictly on local GPU/CPU via quantized GGUF/SafeTensors models. Isolated in a dedicated background worker process (`src/slm/process/isolated_jurist_manager.py`) to guarantee that generative SLM latency never degrades the sub-250ms real-time PyTorch inference cycle. Formulates forensically defensible textual statements and mathematical derivations in 6 languages.
 
 ---
 

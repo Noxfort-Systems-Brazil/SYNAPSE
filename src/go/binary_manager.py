@@ -43,7 +43,7 @@ class GoBinaryManager:
         """
         go_compiler = shutil.which("go")
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        go_src = os.path.join(root_dir, "synapse-go")
+        go_src = os.path.join(root_dir, "src_go")
 
         if not (go_compiler and os.path.isdir(go_src)):
             logger.warning(

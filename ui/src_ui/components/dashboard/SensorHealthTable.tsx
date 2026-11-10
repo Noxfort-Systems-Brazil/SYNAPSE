@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { RadioTower } from 'lucide-react';
 import { DataSourceItem } from '../../types/sensors';
 import { useTopologyStore } from '../../stores';
+import { formatSemanticType, formatSensorStatus } from '../../utils/localizationUtils';
 
 interface SensorHealthTableProps {
   sources: DataSourceItem[];
@@ -37,33 +38,38 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
   };
 
   const getStatusBadge = (src: DataSourceItem) => {
+    const statusLabel = formatSensorStatus(src.status, t);
     switch (src.status) {
       case 'Active':
         return (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
-            ACTIVE
+            {statusLabel}
           </span>
         );
       case 'Quarantine':
         return (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-400 border border-amber-500/30">
-            QUARANTINE ({src.quarantine_count ?? 1})
+            {statusLabel} ({src.quarantine_count ?? 1})
           </span>
         );
       case 'Validating':
         return (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-950/80 text-primary-400 border border-primary-500/30">
-            VALIDATING
+            {statusLabel}
           </span>
         );
       case 'Rejected':
         return (
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-400 border border-rose-500/30">
-            REJECTED
+            {statusLabel}
           </span>
         );
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">OFFLINE</span>;
+        return (
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">
+            {statusLabel}
+          </span>
+        );
     }
   };
 
@@ -99,7 +105,9 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
           <RadioTower className="w-4 h-4 text-primary-500 dark:text-primary-400" />
           {t('dashboard.sensorHealth')} (Zero-Trust Monitor)
         </h3>
-        <span className="text-xs text-slate-500 dark:text-slate-400">Clique em uma linha para inspecionar a telemetria do sensor</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {t('dashboard.clickToInspect')}
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border/80">
@@ -107,17 +115,17 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
           <thead className="bg-surface/80 text-slate-500 dark:text-slate-400 border-b border-border/80 uppercase font-mono text-[10px]">
             <tr>
               <th className="py-3 px-4">{t('dashboard.tableSource')}</th>
-              <th className="py-3 px-4">Tipo Semântico (NLP)</th>
+              <th className="py-3 px-4">{t('dashboard.tableSemantic')}</th>
               <th className="py-3 px-4">{t('dashboard.tableStatus')}</th>
-              <th className="py-3 px-4">Valor Atual</th>
-              <th className="py-3 px-4">Qualidade / Confiança</th>
+              <th className="py-3 px-4">{t('dashboard.tableCurrentValue')}</th>
+              <th className="py-3 px-4">{t('dashboard.tableQualityConfidence')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40 font-mono">
             {sources.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs">
-                  Nenhum sensor cadastrado. Carregue uma rede SUMO ou adicione um sensor.
+                  {t('dashboard.noSensorsRegistered')}
                 </td>
               </tr>
             ) : (
@@ -146,7 +154,7 @@ export const SensorHealthTable: React.FC<SensorHealthTableProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-accent-cyan">{src.semantic_type || 'Scanning...'}</td>
+                    <td className="py-3 px-4 text-accent-cyan">{formatSemanticType(src.semantic_type, t)}</td>
                     <td className="py-3 px-4">{getStatusBadge(src)}</td>
                     <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                       {formatSensorValue(src)}

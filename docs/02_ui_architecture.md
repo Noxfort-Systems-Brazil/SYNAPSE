@@ -107,9 +107,23 @@ All UI state is decoupled into modular Zustand stores in `ui/src_ui/stores/`:
 | **`useSensorsStore`** | `useSensorsStore.ts` | Real-time sensor catalog, trust scores, and telemetry buffers. |
 | **`useTopologyStore`** | `useTopologyStore.ts` | Road network geometry (`MapNode`, `MapEdge`), viewport zoom/pan. |
 | **`useSystemStore`** | `useSystemStore.ts` | Operating phase state machine, cycle latency, CPU/VRAM usage. |
+| **`useSecurityStore`** | `useSecurityStore.ts` | Operator login, password policies, session tokens, and lockout timers. |
 | **`useXaiStore`** | `useXaiStore.ts` | Jurist agent explanations, anomaly alerts, KaTeX proofs. |
-| **`useReportStore`** | `useReportStore.ts` | Exportable PDF / DOCX compliance and audit report generation. |
+| **`useReportStore`** | `useReportStore.ts` | Exportable ABNT DOCX / HTML / Markdown traffic audit reports. |
+| **`useReportTypographyStore`** | `useReportTypographyStore.ts` | ABNT report styling, font family, margins, and typography layout. |
 | **`useMunicipalSettingsStore`** | `useMunicipalSettingsStore.ts` | Urban speed limits, yellow clearance intervals, and thresholds. |
+| **`useEtlStore`** | `useEtlStore.ts` | Parquet import wizard state and data lake ingestion pipelines. |
+
+---
+
+## 🎛️ Settings & Scenario Configuration Tabs
+
+The modernized interface provides dedicated management panels:
+- **`DuckDnsSettingsTab`**: Configures Dynamic DNS subdomain, token, and HTTPS port forwarding via the background Go Gateway and Caddy.
+- **`DatabaseSettingsTab`**: Tests PostgreSQL connectivity, connection pool tuning, and manual schema migration execution.
+- **`MonitorSettingsTab`**: Configures Prometheus metrics export endpoints and Grafana telemetry dashboards.
+- **`AccountSettingsTab`**: Manages municipal operator accounts, role-based access control, and password resets.
+- **`ParquetImportModal`**: Interactive 3-step ETL wizard (Select File $\rightarrow$ Inspect Schema & Records $\rightarrow$ Ingest Progress with Ghost-File validation).
 
 ---
 

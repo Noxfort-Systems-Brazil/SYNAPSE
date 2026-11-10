@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/services/linguist_service.py
-# Author: Gabriel Moraes
-# Date: 2026-08-20
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, Optional, List, Any
 import numpy as np
@@ -99,58 +95,83 @@ class LinguistService(QObject):
 
     def _process_quarantine_source(self, source: DataSource, pipeline: Any):
         """Executes the quarantine lifecycle: Collect -> Classify -> Train -> Validate -> Transfer -> Promote."""
-        required_samples = self.decision_gate.get_required_samples(source.id)
+        required_samples = self.decision_gate.get_required_samples(source)
         if not pipeline.has_enough_data(source.id, required_samples):
             return
 
         data_chunk = pipeline.get_quarantine_data(source.id)
         data_np = self.series_extractor.extract(data_chunk)
 
-        sem_type, unit, confidence = self.semantic_classifier.classify(source, data_np, data_chunk)
-        current_attempt = self.learning_attempts.get(source.id, 0)
-        logger.info(
-            f"🔬 [Linguist] {len(data_chunk)} amostras para '{source.name}' ({source.id}). "
-            f"Modalidade: '{sem_type}' [{unit}]. Tentativa {current_attempt+1}..."
-        )
-
-        linguist = self.agent_factory.get_or_create_linguist(source.id)
-        loss = linguist.train_step(data_np.tolist(), epochs=10, semantic_type=sem_type)
+        is_fast_path = self.decision_gate.is_fast_path_eligible(source)
+        if is_fast_path:
+            sem_type = source.semantic_type
+            unit = source.inferred_unit
+            confidence = source.confidence_score or 0.95
+            logger.info(
+                f"⚡ [Linguist: Warm Start] Sensor '{source.name}' ({source.id}) reconhecido na ontologia. "
+                f"Ativando Fast-Path imediato..."
+            )
+            loss = 0.1
+        else:
+            sem_type, unit, confidence = self.semantic_classifier.classify(source, data_np, data_chunk)
+            current_attempt = self.learning_attempts.get(source.id, 0)
+            logger.info(
+                f"🔬 [Linguist] {len(data_chunk)} amostras para '{source.name}' ({source.id}). "
+                f"Modalidade: '{sem_type}' [{unit}]. Tentativa {current_attempt+1}..."
+            )
+            linguist = self.agent_factory.get_or_create_linguist(source.id)
+            loss = linguist.train_step(data_np.tolist(), epochs=10, semantic_type=sem_type)
 
         target_threshold = self.decision_gate.get_grammar_threshold(sem_type)
         if loss < target_threshold:
-            logger.info(
-                f"🧠 [Linguist] Gramática aprendida (loss={loss:.4f} < teto={target_threshold:.4f}). Validando física..."
-            )
-            if self.physics_validator.validate(source, data_np, data_chunk, linguist):
-                logger.info(f"⚖️ [Linguist] ✅ Consistência física APROVADA para '{source.name}'.")
-
-                candidate_edges = self.spatial_reconciler.find_candidate_edges(
-                    source,
-                    agent_factory=self.agent_factory,
-                    data_chunk=data_chunk,
+            linguist = self.agent_factory.get_or_create_linguist(source.id)
+            if not is_fast_path:
+                logger.info(
+                    f"🧠 [Linguist] Gramática aprendida (loss={loss:.4f} < teto={target_threshold:.4f}). Validando física..."
                 )
-                if not candidate_edges:
-                    scope_label = "local" if getattr(source, "is_local", True) else "global"
-                    logger.warning(
-                        f"❌ [Linguist] Sensor {scope_label} '{source.name}' ({source.id}) REJEITADO: "
-                        f"Nenhuma aresta viária encontrada para vinculação na malha (Map Matching vazio ou sem coordenadas)."
-                    )
-                    self.decision_gate.reject_source(
+            if is_fast_path or self.physics_validator.validate(source, data_np, data_chunk, linguist):
+                if not is_fast_path:
+                    logger.info(f"⚖️ [Linguist] ✅ Consistência física APROVADA para '{source.name}'.")
+
+                meta = source.metadata if isinstance(source.metadata, dict) else {}
+                cached_edge = meta.get("matched_edge_id") or meta.get("target_element")
+                if is_fast_path and cached_edge and "orientation" in meta:
+                    candidate_edges = [cached_edge]
+                    orientation_data = {
+                        "orientation": meta.get("orientation", "INDETERMINADO"),
+                        "orientation_vector": tuple(meta.get("orientation_vector", [0.0, 0.0])),
+                        "primary_edge": cached_edge,
+                        "confidence": confidence,
+                        "method": "ontology_warm_start"
+                    }
+                else:
+                    candidate_edges = self.spatial_reconciler.find_candidate_edges(
                         source,
-                        "Nenhuma aresta viária encontrada para vinculação na malha (Map Matching falhou ou inexistente). Descartado.",
-                        self.agent_factory,
-                        pipeline=pipeline
+                        agent_factory=self.agent_factory,
+                        data_chunk=data_chunk,
                     )
-                    return
+                    if not candidate_edges:
+                        scope_label = "local" if getattr(source, "is_local", True) else "global"
+                        logger.warning(
+                            f"❌ [Linguist] Sensor {scope_label} '{source.name}' ({source.id}) REJEITADO: "
+                            f"Nenhuma aresta viária encontrada para vinculação na malha (Map Matching vazio ou sem coordenadas)."
+                        )
+                        self.decision_gate.reject_source(
+                            source,
+                            "Nenhuma aresta viária encontrada para vinculação na malha (Map Matching falhou ou inexistente). Descartado.",
+                            self.agent_factory,
+                            pipeline=pipeline
+                        )
+                        return
 
-                orientation_data = self.spatial_reconciler.reconcile_orientation(
-                    source=source,
-                    candidate_edges=candidate_edges,
-                    agent_factory=self.agent_factory,
-                    data_chunk=data_chunk,
-                    data_np=data_np,
-                    sem_type=sem_type,
-                )
+                    orientation_data = self.spatial_reconciler.reconcile_orientation(
+                        source=source,
+                        candidate_edges=candidate_edges,
+                        agent_factory=self.agent_factory,
+                        data_chunk=data_chunk,
+                        data_np=data_np,
+                        sem_type=sem_type,
+                    )
 
                 specialist = self.agent_factory.get_or_create_specialist(source.id)
                 

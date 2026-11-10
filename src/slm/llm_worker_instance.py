@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/slm/llm_worker_instance.py
-# Author: Gabriel Moraes
-# Date: 2026-09-14
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import gc
@@ -111,6 +107,19 @@ class LLMWorkerInstance:
 
         return {"unloaded": True}
 
+    def clear_cache(self) -> Dict[str, Any]:
+        """Evicts transient KV/activation VRAM caches while keeping loaded model weights resident."""
+        gc.collect()
+        cuda_cleared = False
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                cuda_cleared = True
+        except Exception:
+            pass
+        return {"cache_cleared": True, "cuda_cleared": cuda_cleared, "loaded": self.is_loaded}
+
     def generate_report(self, payload: Dict[str, Any]) -> str:
         """Synthesizes an XAI narrative report."""
         from src.slm.output_sanitizer import SLMOutputSanitizer
@@ -160,6 +169,8 @@ class LLMWorkerInstance:
         finally:
             if auto_unload:
                 self.unload_resources()
+            else:
+                self.clear_cache()
 
     def generate_verdict(self, payload: Dict[str, Any]) -> str:
         """Generates general technical-legal verdict on traffic data."""
@@ -218,3 +229,5 @@ class LLMWorkerInstance:
         finally:
             if auto_unload:
                 self.unload_resources()
+            else:
+                self.clear_cache()

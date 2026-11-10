@@ -58,6 +58,26 @@ class TCNAEEncoder(nn.Module):
         latent = self.latent_proj(features)
         return latent
 
+    def step(
+        self,
+        x_t: torch.Tensor,
+        state: Optional[dict] = None
+    ) -> Tuple[torch.Tensor, dict]:
+        """
+        Incremental step encoding O(1) for a single timestep x_t.
+        """
+        block_states = state.get("blocks") if state is not None else None
+        new_block_states = []
+        feat = x_t
+        for i, block in enumerate(self.network):
+            b_state = block_states[i] if block_states and i < len(block_states) else None
+            feat, next_b_state = block.step(feat, b_state)
+            new_block_states.append(next_b_state)
+
+        latent_t = self.latent_proj(feat)
+        return latent_t, {"blocks": new_block_states}
+
+
 
 class TCNAEDecoder(nn.Module):
     """
@@ -191,6 +211,27 @@ class TCNAE(nn.Module):
             embedding = latent_seq[:, :, -1]
             return reconstructed, embedding
         return reconstructed
+
+    def step(
+        self,
+        x_t: torch.Tensor,
+        state: Optional[dict] = None
+    ) -> Tuple[torch.Tensor, dict]:
+        """
+        Incremental O(1) feature encoding for real-time sensor ingestion.
+        
+        Args:
+            x_t: Tensor [Batch, Channels] or [Batch, Channels, 1]
+            state: Optional cached dict of previous states
+        Returns:
+            latent: [Batch, LatentDim] (matches .encode(x) shape)
+            new_state: Updated state dict for subsequent steps
+        """
+        if x_t.dim() == 2:
+            x_t = x_t.unsqueeze(-1)
+        latent_t, new_state = self.encoder.step(x_t, state=state)
+        return latent_t.squeeze(-1), new_state
+
 
 
 # Compatibility Alias

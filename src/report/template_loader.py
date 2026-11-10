@@ -63,10 +63,11 @@ class MunicipalConfigResolver:
         defaults = {
             "cityHall": tpl.get("cityHall", "PREFEITURA DO MUNICÍPIO DE SÃO PAULO"),
             "department": tpl.get("department", "SECRETARIA MUNICIPAL DE MOBILIDADE URBANA E TRÂNSITO (SMT)"),
-            "authorityName": tpl.get("authorityName", "Gabriel Moraes"),
-            "authorityRole": tpl.get("authorityRole", "Autoridade Municipal de Trânsito / Secretário de Mobilidade"),
-            "registrationNumber": tpl.get("registrationNumber", "Matrícula Funcional nº 84.102-3 • Portaria SMT 142/2025"),
-            "processPrefix": tpl.get("processPrefix", "PA-SMT-2026/"),
+            "authorityName": tpl.get("authorityName", "(A preencher pelo Responsável Técnico)"),
+            "authorityRole": tpl.get("authorityRole", "Engenheiro de Tráfego / Responsável Técnico"),
+            "registrationNumber": tpl.get("registrationNumber", "CREA / ART a vincular"),
+            "processPrefix": tpl.get("processPrefix", "SEI-"),
+            "processNumber": tpl.get("processNumber", "A vincular (Protocolo SEI)"),
         }
         if cfg:
             defaults.update({k: v for k, v in cfg.items() if v is not None})

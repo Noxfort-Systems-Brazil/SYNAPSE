@@ -66,12 +66,13 @@ class OfflineService(QThread):
                 "golden_path": os.path.join(self.golden_dir, "golden_v1.parquet"),
                 "json_path": os.path.join(self.config_dir, "peak_schedule.json"),
                 "linguist_checkpoint_path": os.path.join(self.config_dir, "linguist_calibrated.json"),
-                "auditor_checkpoint_path": os.path.join(self.config_dir, "auditor_calibrated.pth")
+                "auditor_checkpoint_path": os.path.join(self.config_dir, "auditor_calibrated.pth"),
+                "ontology_checkpoint_path": os.path.join(self.config_dir, "ontology.safetensors")
             }
             
             # --- MASTER SKIP LOCK ---
             if self._check_master_lock(shared_context):
-                self._handle_log("[OfflineService] 🏆 All Phase 1 artifacts found and validated (Golden, JSON, Calibrations).")
+                self._handle_log("[OfflineService] 🏆 All Phase 1 artifacts found and validated (Golden, JSON, Calibrations, Ontology).")
                 self._handle_log("[OfflineService] ⏩ Skipping Offline Phase entirely.")
                 self.progress_update.emit(100)
                 self.bootstrap_finished.emit()
@@ -110,7 +111,12 @@ class OfflineService(QThread):
         json_valid = os.path.exists(ctx["json_path"]) and os.path.getsize(ctx["json_path"]) > 0
         linguist_valid = os.path.exists(ctx["linguist_checkpoint_path"]) and os.path.getsize(ctx["linguist_checkpoint_path"]) > 0
         auditor_valid = os.path.exists(ctx["auditor_checkpoint_path"]) and os.path.getsize(ctx["auditor_checkpoint_path"]) > 0
-        return golden_valid and json_valid and linguist_valid and auditor_valid
+        ontology_valid = (
+            "ontology_checkpoint_path" in ctx
+            and os.path.exists(ctx["ontology_checkpoint_path"])
+            and os.path.getsize(ctx["ontology_checkpoint_path"]) > 0
+        )
+        return golden_valid and json_valid and linguist_valid and auditor_valid and ontology_valid
 
     def _handle_log(self, message: str):
         """Callback to emit logs from the stages to the UI and persist to session log."""

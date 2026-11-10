@@ -25,7 +25,7 @@ export const PasswordRequirementsChecklist: React.FC<PasswordRequirementsCheckli
         ) : (
           <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
         )}
-        <span>{t('security.passwordRequirements', 'Critérios Obrigatórios de Segurança:')}</span>
+        <span>{t('security.passwordRequirements')}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5 text-[10px]">
@@ -45,7 +45,7 @@ export const PasswordRequirementsChecklist: React.FC<PasswordRequirementsCheckli
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
               </div>
             )}
-            <span>{t(req.labelKey, req.fallbackLabel)}</span>
+            <span>{t(req.labelKey)}</span>
           </div>
         ))}
       </div>

@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/services/report/trafficAuditMockData.ts
-// Description: Static mock dataset fixtures for the Traffic Audit Report backend simulator.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import {
   TrafficSensorItem,
@@ -204,11 +201,11 @@ export const MOCK_QUESITOS: PeritialQuesitoItem[] = [
 export const MOCK_LEGAL_FRAMING: LegalFramingItem[] = [
   {
     article: 'Art. 1º, § 2º da Lei Federal nº 9.503/1997 (Código de Trânsito Brasileiro - CTB)',
-    desc: 'Estabelece que o trânsito em condições seguras é um direito de todos e dever prioritário dos órgãos do Sistema Nacional de Trânsito.',
+    desc: 'Estabelece que o trânsito em condições seguras é um direito de todos e dever dos órgãos e entidades componentes do Sistema Nacional de Trânsito.',
   },
   {
     article: 'Art. 24, Incisos II e III da Lei Federal nº 9.503/1997 (CTB)',
-    desc: 'Define a competência expressa dos órgãos e entidades executivos de trânsito dos municípios para planejar, projetar, regulamentar e operar o trânsito de veículos e pedestres.',
+    desc: 'Atribui expressamente ao órgão executivo municipal de trânsito a competência para planejar, projetar, regulamentar e operar o trânsito de veículos e pedestres (inciso II), bem como implantar, manter e operar o sistema de sinalização, os dispositivos e os equipamentos de controle viário (inciso III).',
   },
   {
     article: 'Art. 80 da Lei Federal nº 9.503/1997 (CTB)',

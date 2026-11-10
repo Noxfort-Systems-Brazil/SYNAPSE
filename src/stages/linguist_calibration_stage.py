@@ -50,11 +50,29 @@ class LinguistCalibrationStage(BaseStage):
             config_dir = shared_context.get("config_dir", "")
             checkpoint_path = os.path.join(config_dir, "linguist_calibrated.json")
 
+        ontology_path = shared_context.get("ontology_checkpoint_path")
+        if not ontology_path:
+            config_dir = shared_context.get("config_dir", "")
+            ontology_path = os.path.join(config_dir, "ontology.safetensors")
+
+        has_checkpoint = bool(checkpoint_path and os.path.exists(checkpoint_path) and os.path.getsize(checkpoint_path) > 0)
+        has_ontology = bool(ontology_path and os.path.exists(ontology_path) and os.path.getsize(ontology_path) > 0)
+
         # ── SKIP LOCK / WARM START ──
-        if checkpoint_path and os.path.exists(checkpoint_path) and os.path.getsize(checkpoint_path) > 0:
-            self.log("[LinguistCalibrationStage] 🏆 Calibrated checkpoint found. Skipping training.")
+        if has_checkpoint and has_ontology:
+            self.log("[LinguistCalibrationStage] 🏆 Calibrated checkpoint and ontology found. Skipping training.")
             self.progress(85)
             return True
+
+        if has_checkpoint and not has_ontology and golden_path and os.path.exists(golden_path):
+            self.log("[LinguistCalibrationStage] 💡 Checkpoint exists, but ontology.safetensors is missing. Generating ontology...")
+            try:
+                df = pd.read_parquet(golden_path)
+                self._generate_and_save_ontology(ontology_path, df)
+                self.progress(85)
+                return True
+            except Exception as e:
+                self.log(f"[LinguistCalibrationStage] ⚠️ Failed generating ontology: {e}")
 
         # ── VALIDATE GOLDEN DATASET ──
         if not golden_path or not os.path.exists(golden_path):
@@ -139,6 +157,9 @@ class LinguistCalibrationStage(BaseStage):
             for mod, val in modalities_calibrated.items():
                 self.log(f"[LinguistCalibrationStage]   • {mod}: {val:.4f}")
 
+            # ── BUILD & PERSIST ONTOLOGY SAFETENSORS ──
+            self._generate_and_save_ontology(ontology_path, df)
+
             self.progress(88)
             return True
 
@@ -146,3 +167,66 @@ class LinguistCalibrationStage(BaseStage):
             self.log(f"[LinguistCalibrationStage] ❌ Calibration failed: {e}")
             logger.exception("Linguist calibration failed")
             return True  # Non-fatal to allow downstream stages to attempt execution
+
+    def _generate_and_save_ontology(self, ontology_path: str, df: pd.DataFrame) -> None:
+        """Extracts and serializes ModernBERT semantic concepts to ontology.safetensors."""
+        from src.infrastructure.safetensors_repository import SafetensorsRepository
+        from src.models.modernbert import ModernBertEmbeddingModel
+        from src.utils.model_paths import get_modernbert_path
+        from transformers import AutoTokenizer
+        import torch
+        import torch.nn.functional as F
+
+        try:
+            model_path = get_modernbert_path()
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=os.path.isdir(model_path))
+            model = ModernBertEmbeddingModel(model_name=model_path).to(device)
+            model.eval()
+
+            def embed_texts(texts: List[str]) -> torch.Tensor:
+                encoded = tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(device)
+                with torch.no_grad():
+                    device_type = "cuda" if device.type == "cuda" else "cpu"
+                    with torch.autocast(device_type=device_type, dtype=torch.float16 if device_type == "cuda" else torch.bfloat16):
+                        pooled = model(encoded["input_ids"], encoded["attention_mask"])
+                emb = torch.mean(pooled, dim=0, keepdim=True)
+                return F.normalize(emb, p=2, dim=1).contiguous().cpu()
+
+            tensors: Dict[str, torch.Tensor] = {}
+
+            # Canonical modality definitions
+            modality_descriptions = {
+                "Vehicle Count": ["vehicle count", "camera detection", "contagem veicular", "detected vehicles", "intensity_val"],
+                "Traffic Flow": ["traffic flow", "vehicle flow", "fluxo de tráfego", "veículos por hora", "flow_val"],
+                "Vehicle Speed": ["vehicle speed", "velocidade média", "radar speed", "speed_val", "current speed kmh"],
+                "Traffic Density": ["traffic density", "densidade de tráfego", "veículos por km", "occupancy", "ocupação viária"],
+            }
+
+            for mod_name, desc_texts in modality_descriptions.items():
+                tensors[f"modality_{mod_name.lower().replace(' ', '_')}"] = embed_texts(desc_texts)
+
+            # Historical sensors detected in the Golden dataset
+            if "sensor_id" in df.columns:
+                detected_sensors = [s for s in df["sensor_id"].dropna().unique().tolist() if str(s).strip()]
+                for sid in detected_sensors:
+                    sensor_texts = [f"sensor id {sid}", f"traffic sensor {sid}"]
+                    for s_id, col, mod in self.SENSOR_MODALITY_MAPPING:
+                        if sid == s_id:
+                            sensor_texts.extend([f"{mod} measurement", f"sensor column {col}"])
+                    tensors[f"sensor_{sid}"] = embed_texts(sensor_texts)
+
+            repo = SafetensorsRepository(logger=logger)
+            if os.path.exists(ontology_path) and os.path.getsize(ontology_path) > 0:
+                existing = repo.load_tensors(ontology_path)
+                for k, v in existing.items():
+                    if k not in tensors:
+                        tensors[k] = v
+
+            os.makedirs(os.path.dirname(os.path.abspath(ontology_path)), exist_ok=True)
+            saved = repo.save_tensors(tensors, ontology_path)
+            if saved:
+                self.log(f"[LinguistCalibrationStage] 📚 Generated and saved ontology: {ontology_path} ({len(tensors)} concepts)")
+        except Exception as e:
+            self.log(f"[LinguistCalibrationStage] ⚠️ Failed to generate ontology.safetensors: {e}")
+            logger.warning(f"Could not generate ontology.safetensors: {e}")

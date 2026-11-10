@@ -1,9 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/components/wizard/parquet/useParquetImport.ts
-// Author: Gabriel Moraes
-// Date: 2026-09-14
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { useState, useRef } from 'react';
 import { useEtlStore } from '../../../stores';

@@ -74,8 +74,10 @@ ui/
 │   ├── Cargo.toml             # Rust package configuration
 │   ├── tauri.conf.json        # Tauri v2 application window & security capabilities
 │   └── src/
-│       ├── backend/           # Sidecar process manager & Stdio pipes
-│       ├── commands/          # Rust Tauri commands exposed to React
+│       ├── backend/           # Sidecar process manager, IPC pipes & state
+│       ├── commands/          # Rust Tauri commands (dialog, window, commands)
+│       ├── services/          # Modular native services (native file dialogs)
+│       ├── utils/             # Base64 serialization & native helpers
 │       ├── tray/              # System tray integration
 │       ├── lib.rs             # Application setup and event bindings
 │       └── main.rs            # Desktop native binary entrypoint
@@ -88,12 +90,13 @@ ui/
     │   ├── dashboard/         # Real-time metric cards, speed/density charts
     │   ├── layout/            # Sidebar, Header, Status bar, Dock panels
     │   ├── map/               # Interactive road network topology & heatmap canvas
-    │   ├── settings/          # Municipal parameters, language & theme config
-    │   ├── wizard/            # Scenario configuration & sensor import wizard
-    │   └── xai/               # Jurist explanation modal & audit report viewer
+    │   ├── sensors/           # Live sensor cards, filter chips, and EditSensorModal
+    │   ├── settings/          # Settings tabs (DuckDNS, Database, Monitor, Account, Municipal)
+    │   ├── wizard/            # Scenario wizard, AddSourceModal & ParquetImportModal
+    │   └── xai/               # Jurist explanation modal & ABNT audit report viewer
     ├── hooks/                 # Custom React hooks (telemetry, window resize)
     ├── i18n/                  # Multi-language translation dictionaries
-    ├── services/              # Tauri IPC bridge client & RPC command wrappers
+    ├── services/              # Tauri IPC bridge client & RPC command wrappers (DuckDnsService)
     ├── stores/                # Zustand Reactive State Stores
     │   ├── useBridgeManager.ts        # IPC transport coordinator & event listener
     │   ├── useSensorsStore.ts         # Sensor catalog, live values, trust scores
@@ -101,6 +104,8 @@ ui/
     │   ├── useTopologyStore.ts        # SUMO road network nodes, edges & traffic lights
     │   ├── useXaiStore.ts             # Jurist explanations & anomaly alerts
     │   ├── useReportStore.ts          # Exportable audit reports & PDF generation
+    │   ├── useReportTypographyStore.ts# Typography and styling controls for ABNT reports
+    │   ├── useSecurityStore.ts        # Operator authentication, session tokens & lockout state
     │   ├── useEtlStore.ts             # Data ingestion wizard state
     │   └── useMunicipalSettingsStore.ts # City speed limits & thresholds
     ├── theme/                 # Dark/Light theme definitions
@@ -125,7 +130,13 @@ ui/
    - Stores the active SUMO `.net.xml` road geometry, intersections ([`MapNode`](../docs/01_domain_entities.md#1-mapnode)), and road edges ([`MapEdge`](../docs/01_domain_entities.md#2-mapedge)).
    - Powers the interactive canvas rendering engine.
 
-4. **`useXaiStore`**:
+4. **`useSecurityStore`**:
+   - Coordinates operator authentication, login sessions, password complexity policies, and lockout timeouts triggered by the backend `LockdownManager`.
+
+5. **`useReportStore` & `useReportTypographyStore`**:
+   - Coordinates generated forensic audit reports formatted to Brazilian ABNT standards with dynamic typography, margins, and HTML previews.
+
+6. **`useXaiStore`**:
    - Holds legal explanations produced by the [`Qwen3 Jurist Agent`](../docs/03_neural_models.md#11-qwen3-explainable-ai--legal-jurist).
    - Renders KaTeX mathematical formulas explaining why a specific traffic phase was prioritized.
 

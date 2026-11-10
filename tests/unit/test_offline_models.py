@@ -49,6 +49,7 @@ def test_model_vault_paths():
     assert gguf_path.endswith(".gguf")
 
 
+@pytest.mark.heavy_memory
 def test_modernbert_embedding_model_offline():
     emb_model = ModernBertEmbeddingModel()
     assert emb_model.model_name == get_modernbert_path()
@@ -67,6 +68,7 @@ def test_modernbert_embedding_model_offline():
     assert pytest.approx(norm.item(), abs=1e-4) == 1.0
 
 
+@pytest.mark.heavy_memory
 def test_modernbert_semantic_extractor_offline():
     extractor = ModernBertSemanticExtractor()
     concept, is_new = extractor.learn_and_map_semantics(["sensor de velocidade"])
@@ -79,6 +81,7 @@ def test_modernbert_semantic_extractor_offline():
     assert is_new2 is False
 
 
+@pytest.mark.heavy_memory
 def test_neuro_symbolic_model_offline():
     model = NeuroSymbolicModel()
     assert model.model_name == get_modernbert_path()
@@ -86,6 +89,7 @@ def test_neuro_symbolic_model_offline():
         assert p.requires_grad is False
 
 
+@pytest.mark.heavy_memory
 def test_linguist_pipeline_and_agent_offline():
     agent = LinguistFactory.create()
     assert isinstance(agent, LinguistAgent)
@@ -96,37 +100,39 @@ def test_linguist_pipeline_and_agent_offline():
     assert "error_score" in res
 
 
+@pytest.mark.heavy_memory
 def test_jurist_factory_and_agent_gguf_integration():
     jurist = JuristFactory.create()
     assert isinstance(jurist, JuristAgent)
     assert jurist.is_gguf is True
     assert jurist.model_id == get_qwen_gguf_path()
 
-    jurist.load_resources()
-    assert jurist.is_loaded is True
+    try:
+        jurist.load_resources()
+        assert jurist.is_loaded is True
 
-    verdict = jurist.generate_verdict({
-        "source_id": "sensor_01",
-        "status": "NORMAL",
-        "values": ["fluxo: 100", "velocidade: 60"],
-        "language": "pt_BR"
-    })
-    assert isinstance(verdict, str)
-    assert len(verdict) > 0
-    assert "<think>" not in verdict  # PromptRegistry cleans reasoning tags
+        verdict = jurist.generate_verdict({
+            "source_id": "sensor_01",
+            "status": "NORMAL",
+            "values": ["fluxo: 100", "velocidade: 60"],
+            "language": "pt_BR"
+        })
+        assert isinstance(verdict, str)
+        assert len(verdict) > 0
+        assert "<think>" not in verdict  # PromptRegistry cleans reasoning tags
 
-    report = jurist.generate_report(
-        tensor_data={"fluxo": 100.0, "velocidade": 60.0},
-        timestamp="2026-08-28T18:00:00",
-        locale="pt_BR"
-    )
-    assert isinstance(report, str)
-    assert len(report) > 0
-
-    jurist.unload_resources()
-    assert jurist.is_loaded is False
-    
-    import gc
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        report = jurist.generate_report(
+            tensor_data={"fluxo": 100.0, "velocidade": 60.0},
+            timestamp="2026-08-28T18:00:00",
+            locale="pt_BR"
+        )
+        assert isinstance(report, str)
+        assert len(report) > 0
+    finally:
+        jurist.unload_resources()
+        assert jurist.is_loaded is False
+        
+        import gc
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()

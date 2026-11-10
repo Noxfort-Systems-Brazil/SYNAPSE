@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/strategies/calibration/tri_modal_ensemble.py
-# Description: Tri-Modal statistical and EVT consensus threshold computer (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Tuple, Optional
 import numpy as np

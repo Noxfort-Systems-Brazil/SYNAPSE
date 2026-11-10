@@ -20,12 +20,12 @@ The **Modular Adaptive Reasoning Kernel with Variational Attention & Recurrent T
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          MARKVART™ NEURAL STACK                             │
 │                                                                             │
-│  [Ingestion & Gatekeeping]   DistilRoBERTa + GMM  │  WaveletAE-OCC          │
-│  [Local Representation]      TCNAE                │  PatchTST               │
-│  [Spatial Reasoning]         GATv2 Lite           │  FastMapMatcher (RTree) │
-│  [Temporal Periodicity]      TimesNet             │  PI-DVAE-TCN            │
-│  [Continuum Operators]       PINO-Traffic         │  PI-DeepONet            │
-│  [Global Fusion & XAI]       iTransformer         │  Qwen3 Jurist (GGUF)    │
+│  [Ingestion & Gatekeeping]   ModernBERT + NeuroSymbolic │  WaveletAE-OCC     │
+│  [Local Representation]      TCNAE                      │  PI-DeepONet       │
+│  [Spatial Reasoning]         GATv2 Lite                 │  FastMapMatcher    │
+│  [Temporal Periodicity]      SpectralFeatureBlock       │  PI-DVAE-TCN       │
+│  [Continuum Operators]       PINO-Traffic               │  PI-DeepONet       │
+│  [Global Fusion & XAI]       iTransformer               │  Qwen3 Jurist(SLM) │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,23 +110,23 @@ Where:
 
 ---
 
-## 7. TimesNet (Multi-Period Frequency Decomposition)
-- **Module**: [`src/models/timesnet.py`](../src/models/timesnet.py)
-- **Agent**: `TranslationAgent`
-- **FFT Periodicity Transform**:
-  Transposes 1D time-series into 2D spatio-temporal representations based on top-$k$ frequency periods detected by 1D FFT:
+## 7. SpectralFeatureBlock (Multi-Period Frequency Decomposition)
+- **Module**: [`src/blocks/feature_blocks.py`](../src/blocks/feature_blocks.py), [`src/blocks/spectral_blocks.py`](../src/blocks/spectral_blocks.py)
+- **Agent**: `TranslationAgent`, `PeakClassifierAgent`
+- **Fourier Spectral Feature Extraction**:
+  Acts as an optimized drop-in replacement for TimesNet in `PeakClassifierAgent` and `PeakPipeline`. Applies 1D Fast Fourier Convolutions (`SpectralConv1d`) across multi-scale frequency bands to extract periodic patterns:
   $$A = \text{FFT}(X), \quad f_1, \dots, f_k = \text{argtopk}(|A|)$$
-  Processes intraday (rush hour) and intraweek (weekend dip) periodic patterns through 2D Inception blocks.
+  Processes intraday (rush hour) and intraweek (weekend dip) periodic patterns, feeding spectral representations into GMM temporal clustering.
 
 ---
 
-## 8. PatchTST (Long-Sequence Imputation)
-- **Module**: [`src/models/patch_tst.py`](../src/models/patch_tst.py)
+## 8. PI-DeepONet (Continuous Operator Gap Imputation)
+- **Module**: [`src/models/pi_deeponet.py`](../src/models/pi_deeponet.py), [`src/pipeline/imputer_pipeline.py`](../src/pipeline/imputer_pipeline.py)
 - **Agent**: `ImputerAgent`
-- **Patch Extraction**:
-  Splits continuous sensor signals into overlapping sub-patches of length $P$ with stride $S$:
-  $$X_{\text{patch}} \in \mathbb{R}^{N \times P}$$
-  Maintains temporal autocorrelation integrity during extended sensor outages ($> 2\text{ hours}$) without error accumulation.
+- **Infinite-Dimensional Field Reconstruction**:
+  Instead of discrete autoregressive patching, the `ImputerPipeline` leverages `PIDeepONet` with sliding-window chunking and Z-score normalization (`TensorNormalizer`).
+  - Evaluates non-linear continuous operators to reconstruct missing traffic telemetry during prolonged sensor outages ($> 2\text{ hours}$).
+  - Guarantees smooth, physically sound velocity/density interpolations across temporal gaps without compounding cumulative errors.
 
 ---
 
@@ -140,20 +140,25 @@ Where:
 
 ---
 
-## 10. DistilRoBERTa + GMM (Zero-Trust Linguist & Peak Scheduler)
-- **Module**: [`src/models/distilroberta.py`](../src/models/distilroberta.py), [`src/models/neuro_symbolic.py`](../src/models/neuro_symbolic.py)
+## 10. ModernBERT & NeuroSymbolicModel (Zero-Trust Semantic Gatekeeping)
+- **Module**: [`src/models/modernbert.py`](../src/models/modernbert.py), [`src/models/neuro_symbolic.py`](../src/models/neuro_symbolic.py)
 - **Agent**: `LinguistAgent`, `PeakClassifierAgent`
-- **Semantic Schema Encoding**:
-  Pre-trained transformer embeddings extract latent vectors from incoming raw JSON telemetry schemas. Unsupervised Gaussian Mixture Models (GMM) segment urban schedules into dynamic peak-hour regimes.
-- **Assets**: Weights stored in [`Model_Vault/distilroberta/`](../Model_Vault/README.md).
+- **Neuro-Symbolic Architecture & Tensor Core Acceleration**:
+  - **ModernBert Backbone**: Fast transformer embedding model with native PyTorch SDPA attention and global Tensor Core acceleration (`allow_tf32 = True`). Extracts continuous semantic representations from heterogeneous sensor schemas.
+  - **Decoupled TCNAE**: Temporal Convolutional Autoencoder compressing representations into a low-dimensional manifold.
+  - **Physics Projection Head**: Translates latent embeddings directly into physical macroscopic traffic states:
+    $$\mathbf{y}_{\text{phys}} = [q \text{ (flow)}, v \text{ (speed)}, \rho \text{ (density)}]$$
+  - Constrained by the LWR continuum equation $q = \rho \cdot v(\rho)$ and Greenshields boundary parameters.
+- **Assets**: Weights stored in [`Model_Vault/`](../Model_Vault/README.md).
 
 ---
 
 ## 11. Qwen3 (Explainable AI & Legal Jurist)
-- **Module**: `src/agents/jurist_agent.py`, `src/prompts/`
+- **Module**: [`src/agents/jurist_agent.py`](../src/agents/jurist_agent.py), [`src/pipeline/jurist_pipeline.py`](../src/pipeline/jurist_pipeline.py), [`src/slm/`](../src/README.md)
 - **Agent**: `JuristAgent`
-- **Edge LLM Inference**:
-  Executes quantized 6-bit GGUF models (`Qwen3.5-2B-UD-Q6_K_XL.gguf`) via `llama-cpp-python` with Zero Cloud API reliance.
+- **Edge SLM Inference & Fault Isolation**:
+  - Executes quantized 6-bit GGUF models (`Qwen3.5-2B-UD-Q6_K_XL.gguf` or SafeTensors) via `llama-cpp-python` with Zero Cloud API reliance.
+  - **Out-of-Process Isolation**: Operates by default in a dedicated sub-process via `IsolatedJuristManager` (`src/slm/process/isolated_jurist_manager.py`), ensuring that memory spikes or LLM execution never interrupt real-time PyTorch inference threads.
 - **Explainable AI (XAI)**:
   Synthesizes mathematical gradient attribution bars and writes natural language legal reports explaining neural sensor fusion attributions and telemetry integrity in 6 languages.
 - **Assets**: Quantized binary in [`Model_Vault/`](../Model_Vault/README.md).

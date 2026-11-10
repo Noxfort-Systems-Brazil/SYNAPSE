@@ -7,6 +7,8 @@ import numpy as np
 from typing import Optional, Any, Union, Tuple, Dict
 from torch.amp import autocast
 from src.interfaces.pipelines import IFusionPipeline
+from src.utils.graph_utils import sparse_edge_propagate
+from src.utils.hardware import get_optimal_amp_dtype
 
 
 class FusionPipeline(IFusionPipeline):
@@ -98,8 +100,9 @@ class FusionPipeline(IFusionPipeline):
                     coords_tensor = coords_tensor.unsqueeze(0)
 
             device_type = device.type if device.type != 'mps' else 'cpu'
+            amp_dtype = get_optimal_amp_dtype(device)
 
-            with autocast(device_type=device_type, enabled=(device.type == 'cuda')):
+            with autocast(device_type=device_type, dtype=amp_dtype, enabled=(device.type == 'cuda')):
                 if return_physics_residual:
                     out, res = self.deeponet(
                         u=tensor_x,
@@ -146,8 +149,9 @@ class FusionPipeline(IFusionPipeline):
             spatial_feat = self._prepare_spatial_tensor(spatial_context, num_nodes, device)
 
             device_type = device.type if device.type != 'mps' else 'cpu'
+            amp_dtype = get_optimal_amp_dtype(device)
 
-            with autocast(device_type=device_type, enabled=(device.type == 'cuda')):
+            with autocast(device_type=device_type, dtype=amp_dtype, enabled=(device.type == 'cuda')):
                 # Step 1: Graph Diffusion Extrapolation with hierarchy conductance & GATv2 attention
                 diffused_spatial, _ = self.diffusion(
                     x=spatial_feat,
@@ -170,17 +174,53 @@ class FusionPipeline(IFusionPipeline):
                     spatial_context=refined_spatial
                 )
 
-                raw_vec = refined_state.view(-1)
+            raw_vec = refined_state.float().view(-1)
+            sparse_trans = getattr(self.diffusion, "last_sparse_transitions", None)
+            if (
+                mask_tensor is not None
+                and cur_edge_index.numel() > 0
+                and sparse_trans is not None
+            ):
+                m = (mask_tensor.view(-1) > 0.5).float()
+                y_last = tensor_x[0, -1, :].float().view(-1)
+                if m.numel() == y_last.numel() and (m <= 0.5).any():
+                    node_cond = 0.5 * (sparse_trans.p_b_row_sum + sparse_trans.p_f_row_sum)
+                    deg_in = sparse_trans.deg_in_pos
+                    deg_out = sparse_trans.deg_out_pos
+                    y_bg = 3.2 + 4.0 * torch.clamp(node_cond, 0.0, 1.5) + 0.45 * (deg_in + deg_out)
+                    if (m > 0.5).any() and (y_last * m).max() > 0.0:
+                        y_diff = m * y_last + (1.0 - m) * y_bg
+                        for _ in range(8):
+                            if sparse_trans.is_identity_fallback:
+                                pb_y = y_diff
+                                pf_y = y_diff
+                            else:
+                                pb_y = sparse_edge_propagate(
+                                    y_diff,
+                                    gather_idx=sparse_trans.src,
+                                    scatter_idx=sparse_trans.dst,
+                                    edge_weight=sparse_trans.w_backward,
+                                    num_nodes=sparse_trans.num_nodes,
+                                )
+                                pf_y = sparse_edge_propagate(
+                                    y_diff,
+                                    gather_idx=sparse_trans.dst,
+                                    scatter_idx=sparse_trans.src,
+                                    edge_weight=sparse_trans.w_forward,
+                                    num_nodes=sparse_trans.num_nodes,
+                                )
+                            propagated = 0.55 * pb_y + 0.45 * pf_y + 0.12 * y_bg
+                            y_diff = m * y_last + (1.0 - m) * propagated
+                    else:
+                        y_diff = y_bg
+                    neural_mod = 1.0 + 0.15 * torch.tanh(raw_vec)
+                    raw_vec = m * raw_vec + (1.0 - m) * torch.clamp(y_diff * neural_mod, min=2.0)
+            elif mask_tensor is not None and cur_edge_index.numel() > 0:
                 p_f = getattr(self.diffusion, "last_p_forward", None)
                 p_b = getattr(self.diffusion, "last_p_backward", None)
-                if (
-                    mask_tensor is not None
-                    and cur_edge_index.numel() > 0
-                    and p_f is not None
-                    and p_b is not None
-                ):
+                if p_f is not None and p_b is not None:
                     m = (mask_tensor.view(-1) > 0.5).float()
-                    y_last = tensor_x[0, -1, :].view(-1)
+                    y_last = tensor_x[0, -1, :].float().view(-1)
                     if m.numel() == y_last.numel() and (m <= 0.5).any():
                         node_cond = 0.5 * (p_b.sum(dim=1) + p_f.sum(dim=1))
                         deg_in = (p_b > 0).float().sum(dim=1)

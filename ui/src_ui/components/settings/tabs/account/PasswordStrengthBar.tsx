@@ -30,13 +30,13 @@ export const PasswordStrengthBar: React.FC<PasswordStrengthBarProps> = ({
   const getStrengthLabel = () => {
     switch (strength) {
       case 'weak':
-        return { label: t('security.strengthWeak', 'Fraca'), color: 'text-rose-500' };
+        return { label: t('security.strengthWeak'), color: 'text-rose-500' };
       case 'medium':
-        return { label: t('security.strengthMedium', 'Média'), color: 'text-amber-500' };
+        return { label: t('security.strengthMedium'), color: 'text-amber-500' };
       case 'strong':
-        return { label: t('security.strengthStrong', 'Forte'), color: 'text-blue-500' };
+        return { label: t('security.strengthStrong'), color: 'text-blue-500' };
       case 'veryStrong':
-        return { label: t('security.strengthVeryStrong', 'Excelente'), color: 'text-emerald-500' };
+        return { label: t('security.strengthVeryStrong'), color: 'text-emerald-500' };
       default:
         return { label: '', color: '' };
     }

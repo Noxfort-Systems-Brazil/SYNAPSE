@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/pipeline/series/recipe_compiler.py
-# Description: O(1) time-series extraction recipe compiler and SI unit converter (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 

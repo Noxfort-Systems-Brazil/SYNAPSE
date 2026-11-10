@@ -3,16 +3,18 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface MapZoomControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onResetView?: () => void;
 }
 
 export const MapZoomControls: React.FC<MapZoomControlsProps> = ({
   onZoomIn,
   onZoomOut,
+  onResetView,
 }) => {
   const { t } = useTranslation();
 
@@ -32,6 +34,15 @@ export const MapZoomControls: React.FC<MapZoomControlsProps> = ({
       >
         <ZoomOut className="w-4 h-4" />
       </button>
+      {onResetView && (
+        <button
+          onClick={onResetView}
+          title={t('map.resetView')}
+          className="p-2.5 rounded-xl glass-panel text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white glass-panel-hover transition-colors"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 };

@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 
 from src.domain.app_state import AppState
 from src.domain.entities import DataSource, SourceType
@@ -21,9 +21,9 @@ from src.ipc.ipc_protocol import IpcMessage
 
 @pytest.fixture(scope="module")
 def qapp():
-    app = QApplication.instance()
+    app = QCoreApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QCoreApplication([])
     yield app
 
 

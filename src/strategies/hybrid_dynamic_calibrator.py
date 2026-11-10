@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/strategies/hybrid_dynamic_calibrator.py
-# Description: Pure Orchestrator for Tri-Modal Hybrid Dynamic Calibration (SOLID: SRP & Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from collections import deque
 import logging

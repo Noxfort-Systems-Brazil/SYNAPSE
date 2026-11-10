@@ -185,6 +185,21 @@ class NeuralFactory:
                     to_fn = getattr(agent_model, "to", None) if agent_model is not None else None
                     if callable(to_fn):
                         to_fn(self.device)
+
+            # --- Selective In-Place Torch Inductor Compilation (Pure-PyTorch Backbones Only) ---
+            from src.utils.hardware import maybe_compile_module
+            spec_agent = self.agents.get("specialist")
+            spec_model = getattr(spec_agent, "model", None) if spec_agent is not None else None
+            if isinstance(spec_model, torch.nn.Module):
+                maybe_compile_module(spec_model, device=self.device, dynamic=True)
+
+            fuser_agent = self.agents.get("fuser")
+            fuser_pipe = getattr(fuser_agent, "pipeline", None) if fuser_agent is not None else None
+            fuser_mods = getattr(fuser_pipe, "module_dict", None) if fuser_pipe is not None else None
+            if isinstance(fuser_mods, torch.nn.ModuleDict):
+                for sub_name in ("itransformer", "pinn", "deeponet"):
+                    if sub_name in fuser_mods and isinstance(fuser_mods[sub_name], torch.nn.Module):
+                        maybe_compile_module(fuser_mods[sub_name], device=self.device, dynamic=True)
             
             self.logger.info(f"Neural Factory: Successfully initialized {len(self.agents)} Runtime Agents on {self.device}.")
             return self.agents

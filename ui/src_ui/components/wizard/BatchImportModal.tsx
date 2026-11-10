@@ -26,6 +26,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({ isOpen, onCl
     errorMessage,
     setErrorMessage,
     handleFile,
+    handleFilePath,
     confirmImport,
     downloadSample,
     downloadExportConfig,
@@ -47,12 +48,12 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({ isOpen, onCl
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <Layers className="w-5 h-5 text-primary-500 dark:text-primary-400" />
-              <span>Importação em Lote de Sensores Locais (CSV)</span>
+              <span>Importação em Lote de Sensores (CSV)</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Provisione dezenas ou centenas de câmeras/laços a partir de um arquivo com colunas{' '}
-              <code className="px-1 py-0.5 bg-surfaceHover rounded font-mono text-[11px] text-primary-500">
-                name,location
+              Provisione sensores locais e globais em lote com colunas{' '}
+              <code className="px-1 py-0.5 bg-surfaceHover rounded font-mono text-[11px] text-primary-500 font-semibold">
+                name,type,id,address
               </code>
             </p>
           </div>
@@ -78,6 +79,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({ isOpen, onCl
             <BatchDropzone
               fileName={fileName}
               onFileSelected={handleFile}
+              onFilePathSelected={handleFilePath}
               onDownloadSample={downloadSample}
               onError={(msg) => setErrorMessage(msg)}
             />

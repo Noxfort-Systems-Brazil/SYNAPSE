@@ -1,11 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/handlers/duckdns_handler.py
-# Author: Gabriel Moraes
-# Date: 2026-09-27
-# Description: IPC command handler for DuckDNS remote access and Caddy reverse proxy.
-# Pure UI-to-Go IPC Bridge (Zero Python Sockets, Zero urllib, 100% Go Networking).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import logging
 from typing import Dict, Any, Optional

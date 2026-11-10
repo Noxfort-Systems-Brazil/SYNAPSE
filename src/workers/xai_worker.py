@@ -119,7 +119,7 @@ class XAIWorker(QObject):
     
     Responsibilities:
     - Coordinates asynchronous execution via ephemeral worker threads.
-    - Exposes PyQt signals for UI and controller layers.
+    - Exposes Qt signals for IPC event bridge and controller layers.
     - Delegates domain logic to injected strategy registry, explainer, and reporter services.
     """
 

@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/services/traffic_report_service.py
-# Description: Pure Orchestrator for Official Traffic Audit Reports (SOLID / Clean Architecture).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import random
 from datetime import datetime
@@ -13,6 +10,7 @@ from src.formatters.abnt_markdown_formatter import AbntMarkdownReportFormatter
 from src.formatters.abnt_docx_exporter import AbntDocxExporter
 from src.formatters.abnt_html_preview_exporter import AbntHtmlPreviewExporter
 from src.storage.traffic_snapshot_store import TrafficSnapshotStore
+from src.validation import ReportValidationError
 from src.utils.logging_setup import get_logger
 
 # Delegated Data Collectors (SOLID / Flat Architecture)
@@ -78,7 +76,7 @@ class TrafficReportService(ITrafficReportService):
                 "Os dados de telemetria e fusão neural estão sendo gerados na malha viária. "
                 "Nenhum detector com telemetria ativa foi identificado no momento."
             )
-        return (True, "READY", "Dados prontos para emissão de laudo pericial oficial.")
+        return (True, "READY", "Dados prontos para emissão do relatório explicativo.")
 
     def build_report(
         self,
@@ -87,8 +85,11 @@ class TrafficReportService(ITrafficReportService):
         xai_result: Optional[Dict[str, Any]] = None,
         typography_options: Optional[Dict[str, Any]] = None,
         override_sensors: Optional[List[Dict[str, Any]]] = None,
+        override_safety_interventions: Optional[List[Dict[str, Any]]] = None,
+        language: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Synthesizes OfficialReportData, Markdown, and A4 HTML preview."""
+        lang = (language or (municipal_config.get("language") if municipal_config else None) or "pt_br").lower().replace("-", "_")
         sensors = override_sensors if override_sensors is not None else self._extract_sensors()
         if not sensors:
             _, status, msg = self.is_data_ready(xai_result)
@@ -97,7 +98,7 @@ class TrafficReportService(ITrafficReportService):
                 "status": status,
                 "message": msg,
                 "report": None,
-                "formatted_markdown": f"# LAUDO OFICIAL EM PROCESSAMENTO\n\n{msg}",
+                "formatted_markdown": f"# RELATÓRIO TÉCNICO EM PROCESSAMENTO\n\n{msg}",
                 "preview_html": None,
             }
 
@@ -105,7 +106,16 @@ class TrafficReportService(ITrafficReportService):
         municipal = TrafficReportDataCollector.resolve_municipal_config(municipal_config, template)
         random_seq = random.randint(1000, 9999)
         protocol = f"RELATORIO-TRAFEGO-2026-{random_seq}"
-        process_number = f"{municipal['processPrefix']}0{random_seq}"
+        if municipal_config and municipal_config.get("processNumber"):
+            process_number = municipal_config["processNumber"]
+        elif municipal_config and municipal_config.get("processPrefix"):
+            process_number = f"{municipal_config['processPrefix']}0{random_seq}"
+        elif municipal.get("processNumber"):
+            process_number = municipal["processNumber"]
+        elif municipal.get("processPrefix"):
+            process_number = f"{municipal['processPrefix']}0{random_seq}"
+        else:
+            process_number = "A vincular (Protocolo SEI)"
         timestamp_str = datetime.now().isoformat()
 
         network_summary = TrafficReportDataCollector.compute_network_summary(sensors)
@@ -125,6 +135,7 @@ class TrafficReportService(ITrafficReportService):
 
         report_data = {
             "protocol": protocol,
+            "language": lang,
             "processNumber": process_number,
             "registrationNumber": municipal["registrationNumber"],
             "authorityName": municipal["authorityName"],
@@ -140,7 +151,7 @@ class TrafficReportService(ITrafficReportService):
             "comparativeEvolution": comparative,
             "adaptiveActionExecuted": "Fusão neural multi-sensorial por iTransformer + GATv2 com filtragem PI-DVAE-TCN via HFT-Link gRPC.",
             "sensors": sensors,
-            "safetyInterventions": template.get("safetyInterventions", []),
+            "safetyInterventions": override_safety_interventions if override_safety_interventions is not None else template.get("safetyInterventions", []),
             "attributions": attributions,
             "counterfactualAnalysis": template.get("counterfactualAnalysis", ""),
             "quesitos": template.get("quesitos", []),
@@ -150,16 +161,29 @@ class TrafficReportService(ITrafficReportService):
             "digitalCertification": template.get("digitalCertification", ""),
         }
 
-        formatted_markdown = self.formatter.format(report_data)
-        preview_html = self.preview_exporter.generate_html(report_data, typography_options)
+        try:
+            formatted_markdown = self.formatter.format(report_data)
+            report_data["formatted_markdown"] = formatted_markdown
+            preview_html = self.preview_exporter.generate_html(report_data, typography_options)
 
-        return {
-            "ready": True,
-            "status": "READY",
-            "report": report_data,
-            "formatted_markdown": formatted_markdown,
-            "preview_html": preview_html,
-        }
+            return {
+                "ready": True,
+                "status": "READY",
+                "report": report_data,
+                "formatted_markdown": formatted_markdown,
+                "preview_html": preview_html,
+            }
+        except ReportValidationError as val_err:
+            logger.error(f"ReportValidationGate blocked report emission: {val_err.violation_summary}")
+            return {
+                "ready": False,
+                "status": "VALIDATION_FAILED",
+                "message": val_err.violation_summary,
+                "violations": [v.to_dict() for v in val_err.violations],
+                "report": report_data,
+                "formatted_markdown": f"# EMISSÃO BLOQUEADA POR VIOLAÇÃO DE INTEGRIDADE\n\n{val_err.violation_summary}",
+                "preview_html": None,
+            }
 
     def export_docx(self, report_data: Dict[str, Any], output_path: str, typography_options: Optional[Dict[str, Any]] = None) -> str:
         return self.docx_exporter.export_to_file(report_data, output_path, typography_options)

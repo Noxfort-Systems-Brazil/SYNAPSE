@@ -52,14 +52,18 @@ class PacketBuilder:
         _ts_start = datetime.now().strftime('%H:%M:%S.%f')[:-3]
         _iso_start = datetime.now().isoformat()
 
-        # Log Raw Input to JSONL dump
+        # Log Raw Input to JSONL dump (strip 32-dim latent embeddings to avoid redundant bloat)
         try:
+            slim_input = {
+                k: ({ik: iv for ik, iv in v.items() if ik != "embedding"} if isinstance(v, dict) and "embedding" in v else v)
+                for k, v in data.items()
+            }
             carina_input_logger.log({
                 "timestamp": _build_start,
                 "iso_time": _iso_start,
                 "source": source,
                 "total_inputs": len(data),
-                "data": data,
+                "data": slim_input,
             })
         except Exception:
             pass
@@ -69,6 +73,7 @@ class PacketBuilder:
         veh_effective_len = DEFAULT_VEHICLE_EFFECTIVE_LEN_M
 
         all_edges = []
+        get_node_fn = None
         if app_state is not None:
             get_all_edges_fn = getattr(app_state, "get_all_edges", None)
             if callable(get_all_edges_fn):
@@ -79,30 +84,36 @@ class PacketBuilder:
                 if callable(topo_edges_fn):
                     all_edges = topo_edges_fn() or []
 
+            cand_node_fn = getattr(app_state, "get_node", None)
+            if callable(cand_node_fn):
+                get_node_fn = cand_node_fn
+            else:
+                topo = getattr(app_state, "topology", None)
+                topo_node_fn = getattr(topo, "get_node", None)
+                if callable(topo_node_fn):
+                    get_node_fn = topo_node_fn
+
         if all_edges:
+            tls_cache: Dict[str, bool] = {}
             for edge in all_edges:
                 edge_id = str(edge.id)
                 edge_len = getattr(edge, "length", 100.0)
                 edge_lanes = getattr(edge, "lanes", 1)
                 signal_group = getattr(edge, "signal_group_id", -1)
                 is_controlled = (signal_group != -1)
-                if not is_controlled and app_state is not None:
+                if not is_controlled and get_node_fn is not None:
                     to_node_id = getattr(edge, "to_node", None)
                     if to_node_id:
-                        node = None
-                        get_node_fn = getattr(app_state, "get_node", None)
-                        if callable(get_node_fn):
+                        cached_tls = tls_cache.get(to_node_id)
+                        if cached_tls is None:
                             node = get_node_fn(to_node_id)
-                        else:
-                            topo = getattr(app_state, "topology", None)
-                            topo_node_fn = getattr(topo, "get_node", None)
-                            if callable(topo_node_fn):
-                                node = topo_node_fn(to_node_id)
-                        if node is not None:
-                            tl_id = getattr(node, "tl_logic_id", None)
-                            node_type = str(getattr(node, "node_type", "")).lower()
-                            if tl_id or node_type.startswith("traffic_light"):
-                                is_controlled = True
+                            cached_tls = False
+                            if node is not None:
+                                tl_id = getattr(node, "tl_logic_id", None)
+                                node_type = str(getattr(node, "node_type", "")).lower()
+                                cached_tls = bool(tl_id or node_type.startswith("traffic_light"))
+                            tls_cache[to_node_id] = cached_tls
+                        is_controlled = cached_tls
 
                 v_free = getattr(edge, "max_speed", 13.89)
                 max_capacity = TrafficQueueCalculator.calculate_storage_capacity(

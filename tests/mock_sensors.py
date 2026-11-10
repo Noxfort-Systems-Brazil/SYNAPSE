@@ -8,11 +8,11 @@ import time
 # Allow importing from root directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 from src.factories.controller_factory import ControllerFactory
 
 def run_stress_test(num_sensors):
-    app = QApplication(sys.argv)
+    app = QCoreApplication(sys.argv)
     app.setApplicationName("SYNAPSE_STRESS")
     
     print(f"\n[Stress Test] Inicializando MainController via ControllerFactory...")

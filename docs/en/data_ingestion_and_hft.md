@@ -29,26 +29,24 @@ syntax = "proto3";
 
 package synapse.hft;
 
-service HftLinkService {
-  rpc StreamSnapshots(SnapshotRequest) returns (stream TrafficSnapshot);
-  rpc SendTelemetryBatch(TelemetryBatch) returns (IngestionResponse);
+service HFTLink {
+  rpc Ping (Empty) returns (SystemState);
+  rpc LoadScenario (ScenarioDefinition) returns (ScenarioStatus);
+  rpc SystemControl (ControlCommand) returns (CommandResponse);
+  rpc StreamTraffic (stream TrafficFrame) returns (SystemState);
 }
 
-message TrafficSnapshot {
-  int64 timestamp_ns = 1;
-  string snapshot_id = 2;
-  repeated EdgeMetrics edges = 3;
-  repeated NodeMetrics nodes = 4;
-  repeated float density_matrix = 5;
-  int32 confidence_score = 6;
+message TrafficFrame {
+  double timestamp = 1;
+  uint64 sequence_id = 2;
+  map<string, EdgeState> edges = 3;
 }
 
-message EdgeMetrics {
-  string edge_id = 1;
-  float density_veh_km = 2;
-  float mean_speed_kmh = 3;
-  float occupancy_ratio = 4;
-  int32 source_status = 5;
+message EdgeState {
+  float occupancy = 1;
+  float mean_speed = 2;
+  int32 queue_length = 3;
+  float density = 4;
 }
 ```
 
@@ -56,7 +54,7 @@ message EdgeMetrics {
 
 ## 3. High-Frequency Streaming to CARINA
 
-The `HftStreamer` establishes an HTTP/2 persistent gRPC channel directly into downstream traffic light controllers like **CARINA CORE**:
+The `HftStreamer` (`src/hft/hft_streamer.py`, `src/hft/grpc_connector.py`) establishes an HTTP/2 persistent gRPC channel directly into downstream traffic light controllers like **CARINA CORE**:
 
 - **Latency Guarantee**: End-to-end pipeline latency (sensor ingestion $\rightarrow$ neural inference $\rightarrow$ gRPC delivery) operates strictly below **250 ms**.
 - **Zero-Copy Serialization**: Tensors are flattened directly into Protobuf byte buffers to avoid memory allocation bottlenecks.
@@ -66,12 +64,20 @@ The `HftStreamer` establishes an HTTP/2 persistent gRPC channel directly into do
 
 ## 4. Self-Healing Resilience & Circuit Breaker
 
-The auto-recovery engine (`src/infrastructure/hft_recovery.py`) guards against network interruptions:
+The auto-recovery engine (`src/hft/hft_recovery.py`) guards against network interruptions:
 
 1. **Exponential Backoff with Full Jitter**:
    $$T_{\text{wait}} = \min(T_{\max}, T_{\text{base}} \cdot 2^{\text{attempt}}) \cdot \mathcal{U}(0.5, 1.5)$$
-2. **Circuit Breaker Pattern**: If 5 consecutive transmission attempts fail, the circuit trips to `OPEN`, immediately diverting data to local ring buffers and alerting the `FenixProcessSupervisor`.
+2. **Circuit Breaker Pattern**: If consecutive transmission attempts fail, the circuit trips to `OPEN`, immediately diverting data to local ring buffers and alerting the `FenixProcessSupervisor`.
 3. **Seamless Resynchronization**: Once connectivity is restored, the circuit transitions to `HALF-OPEN`, flushing accumulated critical telemetry before resuming live streaming.
+
+---
+
+## 5. High-Throughput Go Gateway & Reverse Tunnel
+
+1. **Go Gateway Daemon (`src_go`)**: Standalone binary (`bin/synapse-gateway`) processing raw network sockets and communicating via zero-port anonymous pipes (`STDIN`/`STDOUT`) with `src/go/subprocess_transport.py`.
+2. **Dynamic DNS (DuckDNS)**: Embedded updater (`src_go/internal/tunnel/duckdns.go`) refreshing global IPv4/IPv6 addresses every 10 minutes, coordinated with `src/handlers/duckdns_handler.py`.
+3. **Automated HTTPS Reverse Proxy (Caddy)**: Pre-compiled binary (`bin/caddy`) orchestrated by `src_go/internal/tunnel/caddy.go`, dynamically managing `config/Caddyfile` with automated Let's Encrypt / ZeroSSL TLS certificates.
 
 ---
 

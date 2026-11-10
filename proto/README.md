@@ -91,7 +91,7 @@ This updates:
 
 ## 🚀 Performance & Network Tuning
 
-1. **Max Message Size**: gRPC channels in [`src/infrastructure/grpc_connector.py`](../src/infrastructure/grpc_connector.py) are initialized with:
+1. **Max Message Size**: gRPC channels in [`src/hft/grpc_connector.py`](../src/hft/grpc_connector.py) are initialized with:
    ```python
    options = [
        ('grpc.max_send_message_length', 50 * 1024 * 1024),    # 50 MB Send Limit
@@ -101,7 +101,7 @@ This updates:
        ('grpc.http2.max_pings_without_data', 0),              # Continuous Keepalive
    ]
    ```
-2. **Auto-Recovery**: If the downstream controller restarts, [`src/infrastructure/hft_recovery.py`](../src/infrastructure/hft_recovery.py) intercepts `grpc.RpcError`, re-establishes the HTTP/2 channel, and automatically re-invokes `LoadScenario` before re-opening `StreamTraffic`.
+2. **Auto-Recovery**: If the downstream controller restarts, [`src/hft/hft_recovery.py`](../src/hft/hft_recovery.py) intercepts `grpc.RpcError`, re-establishes the HTTP/2 channel, and automatically re-invokes `LoadScenario` before re-opening `StreamTraffic`.
 
 ---
 

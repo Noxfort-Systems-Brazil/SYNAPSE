@@ -3,12 +3,13 @@
   "defaultAttribution": {
     "cityHall": "PREFEITURA DO MUNICÍPIO DE SÃO PAULO",
     "department": "SECRETARIA MUNICIPAL DE MOBILIDADE URBANA E TRÂNSITO (SMT)",
-    "authorityName": "Gabriel Moraes",
-    "authorityRole": "Autoridade Municipal de Trânsito / Secretário de Mobilidade",
-    "registrationNumber": "Matrícula Funcional nº 84.102-3 • Portaria de Nomeação SMT nº 142/2025",
-    "processPrefix": "PA-SMT-2026/"
+    "authorityName": "(A preencher pelo Responsável Técnico)",
+    "authorityRole": "Engenheiro de Tráfego / Responsável Técnico",
+    "registrationNumber": "CREA / ART a vincular",
+    "processPrefix": "SEI-",
+    "processNumber": "A vincular (Protocolo SEI)"
   },
-  "auditObjective": "Realizar a auditoria técnica e pericial de consistência metrológica na fusão neural de sensores heterogêneos em tempo real na malha arterial, fiscalizando o cumprimento das leis de conservação física do fluxo veicular (LWR), as normas do INMETRO / Resolução CONTRAN nº 798/2020 e a explicabilidade algorítmica da reconstrução da matriz de estado transmitida via HFT-Link ao controlador CARINA / CCO.",
+  "auditObjective": "Apresentar à Prefeitura e ao Centro de Controle Operacional (CCO) o relatório explicativo da fusão neural de dados de tráfego em tempo real, detalhando o comportamento da malha arterial, as fontes de dados utilizadas, os fatores que determinaram as estimativas do sistema e as salvaguardas operacionais aplicadas.",
   "location": {
     "corridorName": "Corredor Arterial de Monitoramento • Eixo de Conexão Consolação / Augusta / Rebouças",
     "jurisdiction": "Município de São Paulo / Área Central / Gerência de Operações Centro",
@@ -21,102 +22,100 @@
     {
       "id": "INT-SEG-01",
       "timeRecorded": "18:14:22",
-      "junction": "Estação Arterial 01",
+      "junction": "Estação Consolação",
       "equipmentId": "RAD_DOPPLER_01",
-      "irregularityDetected": "Discrepância instrumental de leitura pontual de velocidade (ruído instantâneo no feixe Doppler do radar).",
-      "trafficSafetyRisk": "Risco de contaminação da matriz de estado e indução de falso alerta de congestionamento.",
-      "contranStandardViolated": "Critério de Confiabilidade Metrológica da Resolução CONTRAN nº 798/2020 e Limites Físicos de Aceleração.",
-      "correctiveGuardrail": "Filtro Zero-Trust (WaveletAE / Linguist) identificou desvio de 3-sigma, colocando a leitura espúria em quarentena imediata.",
-      "finalState": "TELEMETRIA SANITIZADA"
+      "irregularityDetected": "Oscilação pontual de leitura de velocidade no feixe Doppler do radar.",
+      "trafficSafetyRisk": "Risco de indução de falso alerta de congestionamento na aproximação.",
+      "contranStandardViolated": "Limiares Físicos de Aceleração e Coerência de Telemetria.",
+      "correctiveGuardrail": "Filtro Wavelet isolou a leitura atípica em quarentena imediata.",
+      "finalState": "LEITURA EM QUARENTENA"
     },
     {
       "id": "INT-SEG-02",
       "timeRecorded": "18:22:45",
-      "junction": "Estação Arterial 02",
-      "equipmentId": "PI_DVAE_CORRECTOR",
-      "irregularityDetected": "Picos espúrios de aceleração/desaceleração veicular acima de 8,0 m/s² decorrentes de oclusão transitória na câmera OCR.",
-      "trafficSafetyRisk": "Instabilidade numérica e geração de gradientes infinitos nos modelos neurais subsequentes.",
-      "contranStandardViolated": "Leis Fundamentais da Mecânica e Conservação de Massa (Equação de Continuidade de Lighthill-Whitham-Richards).",
-      "correctiveGuardrail": "O autoencoder convolucional PI-DVAE-TCN filtrou o ruído de alta frequência, preservando a coerência física da trajetória.",
-      "finalState": "SINAL RECONSTRUÍDO COM SUCESSO"
+      "junction": "Estação Augusta",
+      "equipmentId": "CAM_OCR_01",
+      "irregularityDetected": "Picos de aceleração decorrentes de oclusão visual transitória na câmera.",
+      "trafficSafetyRisk": "Instabilidade numérica e distorção na estimativa de densidade da via.",
+      "contranStandardViolated": "Leis de Mecânica e Conservação de Massa (Equação de Continuidade de Lighthill-Whitham-Richards).",
+      "correctiveGuardrail": "O autoencoder convolucional PI-DVAE filtrou o ruído de alta frequência, preservando a coerência da trajetória.",
+      "finalState": "RUÍDO FILTRADO"
     },
     {
       "id": "INT-SEG-03",
       "timeRecorded": "18:31:10",
-      "junction": "Estação Arterial 03",
-      "equipmentId": "KSE_DEAD_RECKONING",
-      "irregularityDetected": "Intermitência de conexão física e perda temporária de pacotes por 3 ciclos consecutivos no detector de campo.",
-      "trafficSafetyRisk": "Geração de tensores nulos (NaN) e descontinuidade temporal na matriz de entrada do iTransformer.",
-      "contranStandardViolated": "Garantia de Continuidade Operacional e Tolerância a Falhas em Sistemas Críticos de Tráfego.",
-      "correctiveGuardrail": "O estimador cinemático KSE assumiu a projeção de velocidade e densidade por extrapolação newtoniana até a restauração do canal.",
-      "finalState": "ESTADO ESTIMADO POR DEAD RECKONING"
+      "junction": "Estação Rebouças",
+      "equipmentId": "DET_REBOUCAS_01",
+      "irregularityDetected": "Intermitência de conexão de rede por 3 ciclos consecutivos no detector de campo.",
+      "trafficSafetyRisk": "Geração de dados ausentes e descontinuidade temporal na entrada do modelo neural.",
+      "contranStandardViolated": "Critério de Continuidade Operacional em Sistemas de Controle de Tráfego.",
+      "correctiveGuardrail": "Estimativa cinemática temporária (Dead Reckoning) projetou a velocidade e a densidade até o restabelecimento do canal.",
+      "finalState": "PROJEÇÃO TEMPORÁRIA"
     }
   ],
   "quesitos": [
     {
       "number": 1,
-      "question": "Os equipamentos de detecção veicular e instrumentos de sensoriamento da malha encontram-se aferidos e operando regularmente segundo normas do INMETRO e do CONTRAN?",
+      "question": "Como foram classificadas e verificadas as fontes de dados que alimentaram o sistema?",
       "answer": "SIM",
-      "technicalJustification": "A fiscalização dos registros metrológicos comprovou que todos os laços indutivos, radares Doppler e estações de visão computacional possuem laudos válidos de calibração acreditados pelo INMETRO, atendendo à Resolução CONTRAN nº 798/2020 com índice de disponibilidade de 98,4% no período auditado."
+      "technicalJustification": "O sistema identificou individualmente cada tipo de fonte: instrumentos físicos de campo (radares e câmeras) e feeds agregados de terceiros (APIs de mobilidade), aplicando salvaguardas para isolar ruídos pontuais."
     },
     {
       "number": 2,
-      "question": "A matriz de fusão neural de sensores respeitou estritamente os postulados de conservação física do fluxo de tráfego (Equação LWR e limites cinemáticos veiculares)?",
+      "question": "A estimativa neural respeitou a consistência física do fluxo de tráfego (Equação LWR e limites de aceleração)?",
       "answer": "SIM",
-      "technicalJustification": "A modelagem física baseada em operadores neurais (PINO) manteve o resíduo da equação diferencial de continuidade (LWR) abaixo de 0,05, assegurando que não houve criação ou aniquilação fictícia de fluxo veicular na reconstrução da malha arterial."
+      "technicalJustification": "A verificação baseada na equação de continuidade (LWR) manteve o resíduo abaixo de 0,05, indicando que o fluxo estimado é consistente com a dinâmica real da via, sem criação ou aniquilação artificial de veículos."
     },
     {
       "number": 3,
-      "question": "Houve atuação dos mecanismos de quarentena Zero-Trust ou estimativa cinemática (KSE) ante leituras espúrias ou perda de pacotes dos sensores?",
+      "question": "Houve atuação dos mecanismos de quarentena ou estimativa temporária ante leituras atípicas ou falhas de comunicação?",
       "answer": "SIM",
-      "technicalJustification": "Foram registradas 3 intervenções de salvaguarda: o isolamento em quarentena de ruído de radar Doppler pelo filtro Zero-Trust, a denoização de sinal pelo PI-DVAE-TCN e a atuação do KSE Dead Reckoning durante queda intermitente de telemetria, impedindo a contaminação da matriz transmitida ao CARINA."
+      "technicalJustification": "Foram registradas 3 atuações preventivas: quarentena de leitura atípica de radar, atenuação de ruído visual de câmera pelo PI-DVAE e projeção cinemática temporária durante queda momentânea de conexão."
     },
     {
       "number": 4,
-      "question": "A fusão multivariada de dados heterogêneos (iTransformer / GATv2) foi eficaz para reconstruir com fidelidade e sem viés o estado macroscópico da via?",
+      "question": "A explicabilidade dos pesos atribuídos pelo modelo atende aos critérios de transparência da LGPD (Art. 20)?",
       "answer": "SIM",
-      "technicalJustification": "A arquitetura iTransformer capturou as dependências mútuas inter-sensores através de tokens invertidos, enquanto a GATv2 mapeou com precisão a propagação de fluxo entre seções a montante e jusante, convergindo para um erro médio absoluto (MAE) inferior a 1,8 km/h na velocidade espacial."
-    },
-    {
-      "number": 5,
-      "question": "A ponderação de relevância dos sensores (XAI) encontra-se formalmente motivada e auditável segundo o Axioma da Completude dos Gradientes Integrados e a LGPD?",
-      "answer": "SIM",
-      "technicalJustification": "A explicabilidade algorítmica atende rigorosamente ao Axioma da Completude de Sundararajan et al. (Captum), onde 100% da variação da estimativa neural em relação à linha de base é distribuída deterministicamente entre os sensores, satisfazendo a exigência de motivação dos atos administrativos (Art. 50 da Lei Federal nº 9.784/1999) e de transparência de decisões automatizadas (Art. 20 da Lei Federal nº 13.709/2018)."
+      "technicalJustification": "O método de Gradientes Integrados decompôs a contribuição de cada sensor em 100% da decisão final (Axioma da Completude), demonstrando quais variáveis pesaram mais na caracterização do tráfego."
     }
   ],
   "legalFraming": [
     {
       "article": "Art. 1º, § 2º da Lei Federal nº 9.503/1997 (Código de Trânsito Brasileiro - CTB)",
-      "desc": "Estabelece que o trânsito em condições seguras é um direito de todos e dever prioritário dos órgãos do Sistema Nacional de Trânsito."
+      "desc": "Estabelece que o trânsito em condições seguras é um direito de todos e dever dos órgãos e entidades componentes do Sistema Nacional de Trânsito."
     },
     {
       "article": "Art. 24, incisos II e III da Lei Federal nº 9.503/1997 (CTB)",
-      "desc": "Atribui expressamente ao órgão municipal executivo de trânsito a competência de planejar, projetar, regulamentar e operar o trânsito de veículos e pedestres."
+      "desc": "Atribui expressamente ao órgão executivo municipal de trânsito a competência para planejar, projetar, regulamentar e operar o trânsito de veículos e pedestres (inciso II), bem como implantar, manter e operar o sistema de sinalização, os dispositivos e os equipamentos de controle viário (inciso III)."
     },
     {
-      "article": "Resolução CONTRAN nº 798/2020 (Critérios Técnicos de Medidores e Sensores de Tráfego)",
-      "desc": "Define os requisitos de confiabilidade metrológica, registro e calibração periódica por órgãos acreditados pelo INMETRO para instrumentos de fiscalização e contagem viária."
+      "article": "Resolução CONTRAN nº 798/2020",
+      "desc": "Requisitos técnicos aplicáveis exclusivamente para instrumentos medidores de velocidade quando utilizados para fins de fiscalização metrológica e autuação."
     },
     {
-      "article": "Art. 50 da Lei Federal nº 9.784/1999 (Motivação Obrigatória dos Atos Administrativos)",
-      "desc": "Exige a fundamentação expressa, fática e técnica de decisões estatais que afetem direitos e interesses difusos da coletividade."
+      "article": "Art. 50 da Lei Federal nº 9.784/1999 (Motivação dos Atos Administrativos)",
+      "desc": "Exige a fundamentação expressa, fática e técnica de decisões tomadas por órgãos públicos."
     },
     {
       "article": "Art. 20 da Lei Federal nº 13.709/2018 (Lei Geral de Proteção de Dados - LGPD)",
-      "desc": "Assegura o direito à revisão e explicabilidade transparente de decisões tomadas unicamente com base em tratamento automatizado de dados por modelos de IA."
+      "desc": "Assegura o direito à transparência e à explicabilidade de decisões tomadas com base em tratamento automatizado de dados por modelos de IA."
     }
   ],
   "references": [
-    "ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. NBR 10719: Informação e documentação — Relatório técnico e/ou científico — Apresentação. Rio de Janeiro: ABNT, 2015.",
-    "ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. NBR 14724: Informação e documentação — Trabalhos acadêmicos — Apresentação. Rio de Janeiro: ABNT, 2011.",
-    "BRASIL. Lei nº 9.503, de 23 de setembro de 1997. Institui o Código de Trânsito Brasileiro. Diário Oficial da União, Brasília, DF, 24 set. 1997.",
-    "CONTRAN. Resolução nº 798, de 2 de setembro de 2020. Estabelece requisitos técnicos mínimos para fiscalização de trânsito. Conselho Nacional de Trânsito, Brasília, 2020.",
-    "LIGHTHILL, M. J.; WHITHAM, G. B. On Kinematic Waves II. A Theory of Traffic Flow on Long Crowded Roads. Proceedings of the Royal Society of London, Series A, v. 229, p. 317-345, 1955.",
+    "ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. ABNT NBR 10719: Informação e documentação — Relatório técnico e/ou científico — Apresentação. Rio de Janeiro: ABNT, 2015.",
+    "BRASIL. Lei Federal nº 9.503, de 23 de setembro de 1997. Institui o Código de Trânsito Brasileiro. Brasília, 1997.",
+    "CONSELHO NACIONAL DE TRÂNSITO (CONTRAN). Resolução nº 798, de 2 de setembro de 2020. Estabelece requisitos técnicos mínimos para medidores de velocidade quando destinados à fiscalização metrológica de trânsito. Brasília, 2020.",
+    "LIGHTHILL, M. J.; WHITHAM, G. B. On kinematic waves II. A theory of traffic flow on long crowded roads. Proceedings of the Royal Society of London. Series A, Mathematical and Physical Sciences, v. 229, n. 1178, p. 317-345, 1955.",
+    "RICHARDS, P. I. Shock Waves on the Highway. Operations Research, v. 4, n. 1, p. 42-51, 1956.",
     "GREENSHIELDS, B. D. A Study of Traffic Capacity. Highway Research Board Proceedings, v. 14, p. 448-477, 1935.",
-    "SUNDARARAJAN, M.; TALY, A.; YAN, Q. Axiomatic Attribution for Deep Networks. In: International Conference on Machine Learning (ICML). Proceedings... Sydney: PMLR, 2017. p. 3319-3328.",
-    "LIU, Y. et al. iTransformer: Inverted Transformers are Effective for Time Series Forecasting. In: International Conference on Learning Representations (ICLR), 2024."
+    "TRANSPORTATION RESEARCH BOARD (TRB). Highway Capacity Manual (HCM 7th Edition): A Guide for Multimodal Mobility Analysis. Washington, D.C.: National Academies of Sciences, Engineering, and Medicine, 2022.",
+    "SUNDARARAJAN, M.; TALY, A.; YAN, Q. Axiomatic Attribution for Deep Networks. In: International Conference on Machine Learning (ICML 2017). Sydney, Australia: PMLR, v. 70, p. 3319-3328, 2017.",
+    "LIU, Y. et al. iTransformer: Inverted Transformers are Effective for Time Series Forecasting. In: International Conference on Learning Representations (ICLR), 2024.",
+    "BRODY, S.; ALON, U.; YAHAV, E. How Attentive are Graph Attention Networks? (GATv2). In: International Conference on Learning Representations (ICLR), 2022.",
+    "LI, Z. et al. Physics-Informed Neural Operator for Learning Partial Differential Equations (PINO). arXiv:2111.03794, 2021.",
+    "KOKHLIKYAN, N. et al. Captum: A unified and generic model interpretability library for PyTorch. arXiv:2009.07896, 2020."
   ],
-  "operationalSupervision": "Supervisão da Central de Controle Operacional (CCO): Turno Operacional Contínuo • Eng. Plantonista CREA-SP nº 506.192.834-1 • Telemetria com latência de resposta de 42ms e transmissão gRPC contínua via HFT-Link.",
-  "digitalCertification": "DOCUMENTO ASSINADO DIGITALMENTE nos termos da Medida Provisória nº 2.200-2/2001 e do Decreto Municipal nº 58.056/2018. Assinatura com carimbo do tempo criptográfico SHA-256 e certificado digital ICP-Brasil emitido pela Autoridade Certificadora Municipal.",
-  "counterfactualAnalysis": "A ativação do estimador cinemático KSE e a quarentena Zero-Trust seriam dispensadas caso a variância dos sensores de campo permanecesse estritamente dentro do envelope de tolerância gaussiana (desvio residual inferior a 3-sigma e ausência de perda de pacotes de rede)."
+  "operationalSupervision": "Supervisão da Central de Controle Operacional (CCO): Operação contínua de monitoramento e apoio à decisão de tráfego.",
+  "digitalCertification": "Relatório gerado automaticamente pelo sistema SYNAPSE v2.0 Enterprise para suporte à decisão operacional da Secretaria Municipal de Trânsito e Mobilidade Urbana. Documento técnico explicativo sujeito à revisão e validação pelo responsável técnico.",
+  "counterfactualAnalysis": "Caso os sensores mantivessem valores dentro do comportamento histórico esperado, as salvaguardas de quarentena e estimativa temporária teriam permanecido em repouso."
 }

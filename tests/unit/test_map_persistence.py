@@ -5,7 +5,7 @@ import os
 import json
 import pytest
 from unittest.mock import MagicMock, patch
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QCoreApplication
 
 from src.domain.entities import DataSource, SourceType, SourceStatus
 from src.domain.source_repository import SourceRepository
@@ -17,10 +17,10 @@ from src.managers.storage_manager import StorageManager
 
 @pytest.fixture(scope="module")
 def qapp():
-    """Ensure a single QApplication instance exists for Qt tests."""
-    app = QApplication.instance()
+    """Ensure a single QCoreApplication instance exists for Qt tests."""
+    app = QCoreApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QCoreApplication([])
     yield app
 
 

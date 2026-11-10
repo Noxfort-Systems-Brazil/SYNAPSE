@@ -12,6 +12,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.0] - 2026-10-21
+
+### Added
+- **Dynamic Reverse Tunneling with DuckDNS & Caddy HTTPS (`src_go/internal/tunnel/`)**:
+  - Embedded high-throughput DuckDNS periodic registration driver (`duckdns.go`) updating global IPv4/IPv6 addresses every 10 minutes.
+  - Native Caddy HTTPS process supervisor (`caddy.go`) dynamically compiling `config/Caddyfile` with automated Let's Encrypt / ZeroSSL TLS termination on port 443.
+  - Python IPC dispatcher (`src/handlers/duckdns_handler.py`) and Desktop UI settings tab (`DuckDnsSettingsTab.tsx`).
+- **ModernBERT & NeuroSymbolic Neural Pipeline (`src/models/`)**:
+  - Replaced legacy DistilRoBERTa with `ModernBertEmbeddingModel` (`modernbert.py`) featuring native PyTorch SDPA attention and global Tensor Core acceleration (`allow_tf32 = True`).
+  - Implemented `NeuroSymbolicModel` (`neuro_symbolic.py`) combining the ModernBERT semantic backbone with a decoupled `TCNAE` and a 3D Physics Projection Head $\mathbf{y}_{\text{phys}} = [q, v, \rho]$ bounded by LWR conservation laws.
+- **Dedicated HFT Package (`src/hft/`)**:
+  - Reorganized gRPC transport, streaming queue, Protobuf serializers, and self-healing auto-recovery loop into a clean architecture package (`src/hft/`).
+- **Corporate Governance & Security Subsystem (`src/security/`)**:
+  - Implemented multi-factor master authentication (`MasterAuth`), municipal account lifecycle (`AccountManager`), and password policy validation (`PasswordPolicy`).
+  - Added brute-force lockout protection (`LockdownManager`), cryptographic security auditing (`AuditLogger`), and dual storage (`HybridSecurityRepo`).
+- **ABNT Official Traffic Audit Reporting (`src/formatters/` & `src/report/`)**:
+  - Automated generation of technical traffic audit documents complying with Brazilian ABNT formatting standards (`abnt_docx_exporter.py`, `abnt_html_preview_exporter.py`, `abnt_markdown_formatter.py`).
+  - Dynamic typography, margins, and font configuration via `useReportTypographyStore`.
+- **Small Language Model Out-of-Process Isolation (`src/slm/`)**:
+  - Isolated Qwen3 LLM execution in a separate OS worker process (`IsolatedJuristManager`), ensuring generative language latency never blocks real-time PyTorch inference threads.
+- **Interactive Parquet ETL Wizard & Modular Rust Services (`ui/`)**:
+  - 3-step interactive import wizard (`ParquetImportModal`) with schema inspection and Ghost-File verification.
+  - Modularized Tauri v2 Rust backend with dedicated native dialog services (`dialog_service.rs`) and Base64 utilities (`base64.rs`).
+
+### Changed
+- Harmonized all documentation domain entity specifications (`MapNode`, `MapEdge`, `DataSource`) with exact field signatures from `src/domain/entities.py`.
+- Replaced references to legacy TimesNet with `SpectralFeatureBlock` (`src/blocks/feature_blocks.py`).
+- Standardized gap imputation on `PIDeepONet` continuous operator sliding windows (`src/pipeline/imputer_pipeline.py`).
+
+---
+
 ## [2.1.0] - 2026-10-19
 
 ### Added

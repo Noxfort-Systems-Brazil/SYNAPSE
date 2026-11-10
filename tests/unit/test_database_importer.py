@@ -7,14 +7,15 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from unittest.mock import MagicMock
+from PyQt6.QtCore import QCoreApplication
 from src.services.database_importer import DatabaseImporter
 
 @pytest.fixture(scope="module")
 def qapp():
-    """Ensure a single QApplication instance exists for Qt tests."""
-    app = QApplication.instance()
+    """Ensure a single QCoreApplication instance exists for Qt tests."""
+    app = QCoreApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QCoreApplication([])
     yield app
 
 @pytest.fixture

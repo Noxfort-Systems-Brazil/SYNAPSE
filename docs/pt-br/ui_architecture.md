@@ -43,7 +43,21 @@ A interface utiliza stores modulares **Zustand** para manter alta responsividade
 - **`useSensorsStore`**: Rastreia sensores ativos, taxa de pacotes, scores Bayesianos de confiança e status (`ACTIVE`, `QUARANTINE`, `FALLBACK`).
 - **`useTopologyStore`**: Gerencia o grafo carregado ($V, E$), coordenadas geográficas e capacidades de via.
 - **`useSystemStore`**: Monitora uso de CPU/GPU, VRAM, latência de ciclo de inferência ($< 15\text{ ms}$) e saúde do supervisor F.E.N.I.X.
+- **`useSecurityStore`**: Gerencia autenticação de operadores municipais, tokens de sessão, políticas de senha e bloqueios automáticos.
+- **`useReportStore` & `useReportTypographyStore`**: Controla relatórios periciais de tráfego formatados segundo normas ABNT, com pré-visualização HTML e personalização tipográfica.
 - **`useXaiStore`**: Armazena laudos gerados pelo Qwen3 Jurist e alertas de anomalias viárias.
+- **`useEtlStore`**: Coordena o assistente de importação de arquivos Parquet (`ParquetImportModal`) e ingestão no Data Lake histórico.
+
+---
+
+## 3. Abas de Configuração e Painéis Operacionais
+
+A interface gráfica moderna oferece abas especializadas para operação municipal:
+- **`DuckDnsSettingsTab`**: Configura o domínio dinâmico e encaminhamento de porta HTTPS via túnel do Go Gateway e proxy Caddy.
+- **`DatabaseSettingsTab`**: Valida a conexão com o PostgreSQL, ajusta parâmetros de pool de conexões e aplica migrações de esquema.
+- **`MonitorSettingsTab`**: Ajusta as portas de exportação de métricas Prometheus e painéis de telemetria Grafana.
+- **`AccountSettingsTab`**: Gerencia usuários operadores, níveis de permissão e redefinição de senhas.
+- **`ParquetImportModal`**: Assistente interativo de 3 etapas para importação ETL com validação anti-arquivos fantasma.
 
 ---
 

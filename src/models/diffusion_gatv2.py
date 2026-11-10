@@ -11,7 +11,9 @@ torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 from src.utils.graph_utils import (
+    SparseGraphTransitions,
     compute_random_walk_transition_matrices,
+    compute_sparse_transition_matrices,
     batch_offset_edge_index
 )
 from src.blocks.graph_blocks import (
@@ -94,6 +96,47 @@ class DiffusionGATv2(nn.Module):
         
         # 5. Observability Gate Block (SRP/ISP)
         self.observability_gate = ObservabilityGate(in_channels=out_channels, out_channels=out_channels)
+        self.last_sparse_transitions: Optional[SparseGraphTransitions] = None
+        self._last_p_forward_cache: Optional[torch.Tensor] = None
+        self._last_p_backward_cache: Optional[torch.Tensor] = None
+
+    @property
+    def last_p_forward(self) -> Optional[torch.Tensor]:
+        if self._last_p_forward_cache is not None:
+            return self._last_p_forward_cache
+        st = self.last_sparse_transitions
+        if st is None:
+            return None
+        if st.is_identity_fallback:
+            self._last_p_forward_cache = torch.eye(st.num_nodes, device=st.w_forward.device)
+        else:
+            pf = torch.zeros((st.num_nodes, st.num_nodes), dtype=st.w_forward.dtype, device=st.w_forward.device)
+            pf.index_put_((st.src, st.dst), st.w_forward)
+            self._last_p_forward_cache = pf
+        return self._last_p_forward_cache
+
+    @last_p_forward.setter
+    def last_p_forward(self, value: Optional[torch.Tensor]) -> None:
+        self._last_p_forward_cache = value
+
+    @property
+    def last_p_backward(self) -> Optional[torch.Tensor]:
+        if self._last_p_backward_cache is not None:
+            return self._last_p_backward_cache
+        st = self.last_sparse_transitions
+        if st is None:
+            return None
+        if st.is_identity_fallback:
+            self._last_p_backward_cache = torch.eye(st.num_nodes, device=st.w_backward.device)
+        else:
+            pb = torch.zeros((st.num_nodes, st.num_nodes), dtype=st.w_backward.dtype, device=st.w_backward.device)
+            pb.index_put_((st.dst, st.src), st.w_backward)
+            self._last_p_backward_cache = pb
+        return self._last_p_backward_cache
+
+    @last_p_backward.setter
+    def last_p_backward(self, value: Optional[torch.Tensor]) -> None:
+        self._last_p_backward_cache = value
 
     def get_adaptive_adjacency(self) -> torch.Tensor:
         """
@@ -175,7 +218,7 @@ class DiffusionGATv2(nn.Module):
             except Exception:
                 pass
         
-        # 2. Compute dynamic transition matrices with damping \gamma (absorption/sinks/sources)
+        # 2. Compute O(|E|) dynamic sparse transition operator with damping \gamma
         if learned_edge_weights is not None:
             edge_weights = F.relu(learned_edge_weights)
         elif global_speed_factor is not None and edge_index.numel() > 0 and global_speed_factor.size(0) == edge_index.size(1):
@@ -185,31 +228,44 @@ class DiffusionGATv2(nn.Module):
         else:
             edge_weights = None
         
-        p_forward, p_backward = compute_random_walk_transition_matrices(
+        sparse_trans = compute_sparse_transition_matrices(
             num_nodes=num_nodes,
             edge_index=edge_index,
             edge_weight=edge_weights,
             device=device,
             damping_factor=self.damping_factor
         )
-        self.last_p_forward = p_forward.detach()
-        self.last_p_backward = p_backward.detach()
+        self.last_sparse_transitions = SparseGraphTransitions(
+            num_nodes=sparse_trans.num_nodes,
+            src=sparse_trans.src.detach(),
+            dst=sparse_trans.dst.detach(),
+            w_forward=sparse_trans.w_forward.detach(),
+            w_backward=sparse_trans.w_backward.detach(),
+            p_f_row_sum=sparse_trans.p_f_row_sum.detach(),
+            p_b_row_sum=sparse_trans.p_b_row_sum.detach(),
+            deg_out_pos=sparse_trans.deg_out_pos.detach(),
+            deg_in_pos=sparse_trans.deg_in_pos.detach(),
+            is_identity_fallback=sparse_trans.is_identity_fallback,
+        )
+        self._last_p_forward_cache = None
+        self._last_p_backward_cache = None
         
-        # 3. Adaptive Graph Adjacency
-        adp_adj = self.adaptive_block().to(device)
+        # 3. Adaptive Graph Adjacency (guarded for dynamic topology resizing)
+        adp_adj = self.adaptive_block().to(device) if num_nodes == self.num_nodes else None
         
-        # 4. Bidirectional Diffusion Graph Convolutions
-        h1 = self.diff_conv1(x, p_forward, p_backward, adaptive_adj=adp_adj)
+        # 4. Bidirectional O(|E|) Diffusion Graph Convolutions
+        h1 = self.diff_conv1(x, adaptive_adj=adp_adj, sparse_transitions=sparse_trans)
         h1 = self.norm1(F.relu(h1))
         h1 = self.dropout(h1)
         
-        h2 = self.diff_conv2(h1, p_forward, p_backward, adaptive_adj=adp_adj)
+        h2 = self.diff_conv2(h1, adaptive_adj=adp_adj, sparse_transitions=sparse_trans)
         h2 = self.norm2(F.relu(h2))
             
         # 5. Observability Gate (Dynamic Calibration & Anchor preservation)
         h2 = self.observability_gate(h=h2, x_raw=x, observability_mask=observability_mask)
 
-        return h2, adp_adj
+        out_adj = adp_adj if adp_adj is not None else torch.eye(num_nodes, device=device)
+        return h2, out_adj
 
 
 __all__ = [

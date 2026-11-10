@@ -29,26 +29,24 @@ syntax = "proto3";
 
 package synapse.hft;
 
-service HftLinkService {
-  rpc StreamSnapshots(SnapshotRequest) returns (stream TrafficSnapshot);
-  rpc SendTelemetryBatch(TelemetryBatch) returns (IngestionResponse);
+service HFTLink {
+  rpc Ping (Empty) returns (SystemState);
+  rpc LoadScenario (ScenarioDefinition) returns (ScenarioStatus);
+  rpc SystemControl (ControlCommand) returns (CommandResponse);
+  rpc StreamTraffic (stream TrafficFrame) returns (SystemState);
 }
 
-message TrafficSnapshot {
-  int64 timestamp_ns = 1;
-  string snapshot_id = 2;
-  repeated EdgeMetrics edges = 3;
-  repeated NodeMetrics nodes = 4;
-  repeated float density_matrix = 5;
-  int32 confidence_score = 6;
+message TrafficFrame {
+  double timestamp = 1;
+  uint64 sequence_id = 2;
+  map<string, EdgeState> edges = 3;
 }
 
-message EdgeMetrics {
-  string edge_id = 1;
-  float density_veh_km = 2;
-  float mean_speed_kmh = 3;
-  float occupancy_ratio = 4;
-  int32 source_status = 5;
+message EdgeState {
+  float occupancy = 1;
+  float mean_speed = 2;
+  int32 queue_length = 3;
+  float density = 4;
 }
 ```
 
@@ -56,7 +54,7 @@ message EdgeMetrics {
 
 ## 3. Streaming de Alta Frequência para o CARINA
 
-O módulo `HftStreamer` gerencia conexões HTTP/2 gRPC contínuas para alimentar os controladores semafóricos **CARINA CORE**:
+O módulo `HftStreamer` (`src/hft/hft_streamer.py`, `src/hft/grpc_connector.py`) gerencia conexões HTTP/2 gRPC contínuas para alimentar os controladores semafóricos **CARINA CORE**:
 
 - **Garantia de Latência**: O atraso ponta a ponta (ingestão sensorial $\rightarrow$ inferência neural $\rightarrow$ entrega gRPC) permanece rigorosamente inferior a **250 ms**.
 - **Serialização de Cópia Zero**: Tensores PyTorch são achatados diretamente em buffers Protobuf, minimizando alocações de memória.
@@ -66,12 +64,20 @@ O módulo `HftStreamer` gerencia conexões HTTP/2 gRPC contínuas para alimentar
 
 ## 4. Resiliência Autônoma e Circuit Breaker
 
-O mecanismo de recuperação (`src/infrastructure/hft_recovery.py`) protege contra indisponibilidades de rede:
+O mecanismo de recuperação (`src/hft/hft_recovery.py`) protege contra indisponibilidades de rede:
 
 1. **Backoff Exponencial com Jitter Completo**:
    $$T_{\text{espera}} = \min(T_{\max}, T_{\text{base}} \cdot 2^{\text{tentativa}}) \cdot \mathcal{U}(0.5, 1.5)$$
-2. **Padrão Circuit Breaker**: Após 5 falhas consecutivas de envio, o circuito abre (`OPEN`), retendo dados em buffers circulares de contingência e notificando o supervisor.
+2. **Padrão Circuit Breaker**: Se tentativas consecutivas falharem, o circuito abre (`OPEN`), retendo dados em buffers circulares de contingência e notificando o `FenixProcessSupervisor`.
 3. **Ressincronização Automática**: Ao restabelecer a conectividade, o circuito entra em `HALF-OPEN`, transmitindo a telemetria acumulada antes de normalizar o fluxo.
+
+---
+
+## 5. Gateway de Alta Performance em Go & Túnel Reverso Seguro
+
+1. **Daemon do Go Gateway (`src_go`)**: Binário compilado (`bin/synapse-gateway`) para processamento de sockets em alta taxa com transmissão zero-port via pipes anônimos (`STDIN`/`STDOUT`) para `src/go/subprocess_transport.py`.
+2. **DNS Dinâmico (DuckDNS)**: Driver nativo em Go (`src_go/internal/tunnel/duckdns.go`) atualizando endereços globais IPv4/IPv6 a cada 10 minutos em coordenação com `src/handlers/duckdns_handler.py`.
+3. **Proxy Reverso HTTPS Automatizado (Caddy)**: Binário (`bin/caddy`) coordenado por `src_go/internal/tunnel/caddy.go`, gerenciando dinamicamente o `config/Caddyfile` com emissão automática de certificados TLS (Let's Encrypt / ZeroSSL) para conexões externas seguras.
 
 ---
 

@@ -61,8 +61,11 @@ export interface EngineDataPayload {
 export interface BatchPreviewItem {
   line: number;
   name: string;
-  location: string;
-  resolved_type: 'NODE' | 'EDGE' | 'UNKNOWN' | 'INVALID';
+  type: 'local' | 'global';
+  id: string;
+  address: string;
+  location?: string;
+  resolved_type: 'NODE' | 'EDGE' | 'GLOBAL_API' | 'UNKNOWN' | 'INVALID';
   error?: string | null;
 }
 
@@ -77,7 +80,9 @@ export interface BatchPreviewResult {
 export interface BatchExportItem {
   id: string;
   name: string;
+  type: 'local' | 'global';
   location: string;
+  address: string;
   resolved_type: string;
   push_url: string;
 }

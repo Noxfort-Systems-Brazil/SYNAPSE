@@ -44,7 +44,7 @@ export const XaiHeaderControls: React.FC<XaiHeaderControlsProps> = ({
           ) : (
             <Sparkles className="w-3.5 h-3.5 text-primary-500 dark:text-primary-400" />
           )}
-          <span>{isExplaining ? t('xai.explaining', 'Explicando...') : t('xai.explainDecision', 'Explicar Decisão Atual')}</span>
+          <span>{isExplaining ? t('xai.explaining') : t('xai.explainDecision')}</span>
         </button>
 
         {/* Action 2: Official Municipal Report (Laudo da Prefeitura) */}
@@ -54,7 +54,7 @@ export const XaiHeaderControls: React.FC<XaiHeaderControlsProps> = ({
           title="Abrir laudo pericial oficial para prefeitura e órgãos reguladores"
         >
           <FileCheck className="w-4 h-4" />
-          <span>{t('xai.generateReport', 'Gerar Laudo Oficial')}</span>
+          <span>{t('xai.generateReport')}</span>
         </button>
       </div>
     </div>

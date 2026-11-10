@@ -10,8 +10,8 @@ Native Microsoft Word (.docx) Exporter in strict compliance with ABNT Standards:
 - IBGE Standard: Tables with open vertical borders and clean horizontal demarcations
 
 SOLID Architecture:
-- [SRP] Single Responsibility: Pure orchestrator assembling styles and sections into a .docx document.
-- [OCP] Delegated section builders (abnt_docx_sections.py) and styles (abnt_docx_styles.py).
+- [SRP] Single Responsibility: Pure orchestrator assembling styles and compiling Markdown to .docx.
+- [OCP] Delegated universal compiler (markdown_to_docx.py) with legacy section fallback.
 """
 
 import io
@@ -50,6 +50,7 @@ class AbntDocxExporter:
     ) -> Document:
         """
         Builds a complete Document instance from report data and typography options.
+        Compiles the authoritative Markdown report directly into ABNT-styled DOCX.
         """
         opts = typography_options or {}
         font_family = opts.get("fontFamily", "Times New Roman")
@@ -73,7 +74,38 @@ class AbntDocxExporter:
         except Exception:
             dt_str = str(timestamp_raw)
 
-        # 2. Render Document Sections (SRP: abnt_docx_sections)
+        # 2. Render Document Content via Universal Markdown-to-DOCX Compiler
+        markdown_text = report_data.get("formatted_markdown")
+        if not markdown_text:
+            try:
+                from src.formatters.abnt_markdown_formatter import AbntMarkdownReportFormatter
+                markdown_text = AbntMarkdownReportFormatter().format(report_data)
+            except Exception as e:
+                logger.warning(f"[AbntDocxExporter] Could not synthesize markdown from report_data: {e}")
+
+        if markdown_text:
+            try:
+                from src.xai.docx_header_cover_renderer import DocxHeaderCoverRenderer
+                DocxHeaderCoverRenderer().render(doc, report_data, font_family, base_font_size_pt, dt_str)
+                doc.add_page_break()
+
+                from src.formatters.markdown_to_docx import render_markdown_to_docx
+                render_markdown_to_docx(
+                    doc=doc,
+                    markdown_text=markdown_text,
+                    default_font_size=base_font_size_pt,
+                    font_name=font_family,
+                    context={"report_data": report_data},
+                    config=opts,
+                )
+                return doc
+            except Exception as err:
+                logger.error(f"[AbntDocxExporter] Error rendering via markdown_to_docx: {err}. Falling back to legacy sections.", exc_info=True)
+                doc = Document()
+                apply_abnt_page_margins(doc)
+                apply_abnt_normal_style(doc, font_family, base_font_size_pt, line_spacing_multiplier, align_mode)
+
+        # 3. Legacy procedural fallback
         render_header_and_cover(doc, report_data, font_family, base_font_size_pt, dt_str)
         render_part_1_executive_summary(doc, report_data, font_family, base_font_size_pt, align_mode, line_spacing_multiplier)
         render_part_2_and_3_diagnosis_and_telemetry(doc, report_data, font_family, base_font_size_pt, align_mode, line_spacing_multiplier)

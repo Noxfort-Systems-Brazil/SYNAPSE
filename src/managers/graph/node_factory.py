@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/managers/graph/node_factory.py
-# Description: Factory for assembling TrafficNode aggregates and neural agents (SOLID: SRP/DIP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Dict, Any, Optional
 import torch
@@ -29,10 +26,12 @@ class TrafficNodeFactory:
         # A. Memory Buffer
         mem = TemporalMemory(feature_dim=1, max_len=60)
 
-        # B. Specialist Neural Agent (TCN)
-        agent = SpecialistAgent(input_dim=1, output_dim=32, num_channels=[16, 32])
-        agent.to(device)
-        agent.freeze()
+        # B. Specialist Neural Agent (TCN) — Lazily instantiated per active/historical sensor
+        def _build_isolated_agent() -> SpecialistAgent:
+            agent = SpecialistAgent(input_dim=1, output_dim=32, num_channels=[16, 32])
+            agent.to(device)
+            agent.freeze()
+            return agent
 
         # C. Physics Engine / Kalman Filter
         profile = PROFILES["DEFAULT"]
@@ -47,7 +46,9 @@ class TrafficNodeFactory:
         return TrafficNode(
             source_id=map_node.id,
             memory=mem,
-            agent=agent,
+            agent=None,
+            agent_factory=_build_isolated_agent,
+            output_dim=32,
             historical_manager=historical_manager,
             physics_engine=kse,
             graph_manager=graph_manager

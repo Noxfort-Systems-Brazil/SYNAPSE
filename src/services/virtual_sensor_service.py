@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/services/virtual_sensor_service.py
-# Description: Pure Orchestrator for Virtual Sensor Fallbacks (SOLID / Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 from PyQt6.QtCore import QObject, pyqtSignal

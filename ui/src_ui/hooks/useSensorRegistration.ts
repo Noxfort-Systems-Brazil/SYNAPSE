@@ -1,8 +1,5 @@
-// SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-// Copyright (C) 2026 Noxfort Systems
-//
-// File: ui/src_ui/hooks/useSensorRegistration.ts
-// Description: Pure custom hook orchestrating sensor registration state and actions.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSensorsStore, useSecurityStore, useTopologyStore } from '../stores';

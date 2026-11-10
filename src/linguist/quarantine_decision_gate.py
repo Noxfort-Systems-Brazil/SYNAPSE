@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/linguist/quarantine_decision_gate.py
-# Author: Gabriel Moraes
-# Date: 2026-09-14
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
 import json
@@ -30,6 +26,7 @@ class QuarantineDecisionGate:
         max_attempts: int = 2,
         grammar_loss_threshold: float = 2.5,
         calibration_path: Optional[str] = None,
+        ontology_path: Optional[str] = None,
     ):
         self.app_state = app_state
         self.sample_chunk_size = sample_chunk_size
@@ -39,6 +36,44 @@ class QuarantineDecisionGate:
         self.calibrated_thresholds: Dict[str, Any] = {}
         
         self._load_calibrated_thresholds(calibration_path)
+        self.ontology_path = ontology_path or self._resolve_ontology_path()
+        self.ontology_tensors: Dict[str, Any] = {}
+        self._load_ontology()
+
+    def _resolve_ontology_path(self) -> str:
+        env_path = os.environ.get("SYNAPSE_ONTOLOGY_PATH")
+        if env_path:
+            return env_path
+        from src.storage.path_scaffolder import PathScaffolder
+        return PathScaffolder().get_config_file("ontology.safetensors")
+
+    def _load_ontology(self) -> None:
+        """Loads learned semantic concepts from ontology.safetensors if present."""
+        if self.ontology_path and os.path.exists(self.ontology_path) and os.path.getsize(self.ontology_path) > 0:
+            try:
+                from safetensors.torch import load_file
+                self.ontology_tensors = load_file(self.ontology_path)
+                logger.info(f"📚 [DecisionGate] Loaded {len(self.ontology_tensors)} ontology concepts from {self.ontology_path}")
+            except Exception as e:
+                logger.warning(f"⚠️ [DecisionGate] Could not load ontology from {self.ontology_path}: {e}")
+
+    def is_fast_path_eligible(self, source: DataSource) -> bool:
+        """
+        Determines if a sensor can bypass full quarantine (Fast-Path).
+        A sensor is eligible if:
+        1. It is cataloged with valid semantic type, unit, and positive confidence score.
+        2. Its concept/modality or sensor ID exists in the loaded ontology.safetensors.
+        """
+        if not self.ontology_tensors:
+            return False
+
+        has_semantic = bool(source.semantic_type and source.inferred_unit and (source.confidence_score or 0.0) >= 0.80)
+        if not has_semantic:
+            return False
+
+        sensor_key = f"sensor_{source.id}"
+        mod_key = f"modality_{str(source.semantic_type).lower().replace(' ', '_')}"
+        return bool(sensor_key in self.ontology_tensors or mod_key in self.ontology_tensors)
 
     def _load_calibrated_thresholds(self, path: Optional[str] = None):
         """Loads data-driven thresholds calibrated from the Golden Dataset if available."""
@@ -81,7 +116,15 @@ class QuarantineDecisionGate:
                 return float(self.calibrated_thresholds["default_grammar_threshold"])
         return self.grammar_loss_threshold
 
-    def get_required_samples(self, source_id: str) -> int:
+    def get_required_samples(self, source: Any) -> int:
+        source_obj = source if isinstance(source, DataSource) else None
+        if source_obj is None and hasattr(self.app_state, "get_source_by_device_id"):
+            source_obj = self.app_state.get_source_by_device_id(str(source))
+
+        if source_obj and self.is_fast_path_eligible(source_obj):
+            return 1
+
+        source_id = source_obj.id if source_obj else str(source)
         current_attempt = self.learning_attempts.get(source_id, 0)
         return self.sample_chunk_size * (current_attempt + 1)
 
@@ -139,6 +182,7 @@ class QuarantineDecisionGate:
             update_signal.emit(source.name, sem_type, confidence)
 
         self.persist_source_state(source)
+        self._update_ontology_for_source(source, sem_type)
 
         if agent_factory is not None:
             agent_factory.release_linguist(source.id)
@@ -174,4 +218,48 @@ class QuarantineDecisionGate:
     def persist_source_state(self, source: DataSource) -> None:
         if self.app_state is not None:
             self.app_state.notify_source_updated(source)
+
+    def _update_ontology_for_source(self, source: DataSource, sem_type: str) -> None:
+        """Registers the promoted source into ontology.safetensors."""
+        if not self.ontology_path:
+            return
+
+        sensor_key = f"sensor_{source.id}"
+        mod_key = f"modality_{str(sem_type).lower().replace(' ', '_')}"
+        if sensor_key in self.ontology_tensors:
+            return
+
+        try:
+            from src.infrastructure.safetensors_repository import SafetensorsRepository
+            from src.models.modernbert import ModernBertEmbeddingModel
+            from src.utils.model_paths import get_modernbert_path
+            from transformers import AutoTokenizer
+            import torch
+            import torch.nn.functional as F
+
+            model_path = get_modernbert_path()
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=os.path.isdir(model_path))
+            model = ModernBertEmbeddingModel(model_name=model_path).to(device)
+            model.eval()
+
+            texts = [f"sensor id {source.id}", f"{source.name}", f"modality {sem_type}"]
+            encoded = tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(device)
+            with torch.no_grad():
+                device_type = "cuda" if device.type == "cuda" else "cpu"
+                with torch.autocast(device_type=device_type, dtype=torch.float16 if device_type == "cuda" else torch.bfloat16):
+                    pooled = model(encoded["input_ids"], encoded["attention_mask"])
+            emb = torch.mean(pooled, dim=0, keepdim=True)
+            norm_emb = F.normalize(emb, p=2, dim=1).contiguous().cpu()
+
+            self.ontology_tensors[sensor_key] = norm_emb
+            if mod_key not in self.ontology_tensors:
+                self.ontology_tensors[mod_key] = norm_emb
+
+            repo = SafetensorsRepository(logger=logger)
+            os.makedirs(os.path.dirname(os.path.abspath(self.ontology_path)), exist_ok=True)
+            repo.save_tensors(self.ontology_tensors, self.ontology_path)
+            logger.info(f"💾 [DecisionGate] Updated ontology with '{source.name}' ({sensor_key}) at {self.ontology_path}")
+        except Exception as e:
+            logger.warning(f"⚠️ [DecisionGate] Could not update ontology for {source.id}: {e}")
 

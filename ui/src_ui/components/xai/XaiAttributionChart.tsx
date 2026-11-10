@@ -21,7 +21,7 @@ export const XaiAttributionChart: React.FC<XaiAttributionChartProps> = ({
   const theme = useSystemStore((s) => s.theme);
   const isDark = theme === 'dark';
 
-  const otherLabel = t('xai.otherSensors', 'Demais Sensores (Agregados)');
+  const otherLabel = t('xai.otherSensors');
 
   const attributionOption = useMemo(
     () => createAttributionChartOption(attributions, isDark, featureNames, otherLabel),
@@ -34,11 +34,11 @@ export const XaiAttributionChart: React.FC<XaiAttributionChartProps> = ({
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-primary-500 dark:text-primary-400" />
           <h3 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
-            {t('xai.sensorInfluence', 'Influência dos Sensores na Decisão Atual')}
+            {t('xai.sensorInfluence')}
           </h3>
         </div>
         <span className="text-[11px] text-slate-500 dark:text-slate-400 font-sans">
-          {t('xai.topSensorsSubtitle', 'Top Sensores Determinantes — Contribuição Relativa da Malha Viária')}
+          {t('xai.topSensorsSubtitle')}
         </span>
       </div>
       <div className="h-72 w-full">

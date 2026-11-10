@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+
 version: 2
 updates:
   # Maintain GitHub Actions dependencies
@@ -23,7 +26,7 @@ updates:
 
   # Maintain Go Ingestion Gateway dependencies
   - package-ecosystem: "gomod"
-    directory: "/synapse-go"
+    directory: "/src_go"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5

@@ -47,7 +47,7 @@ def test_traffic_report_service_lock_guard_when_no_sensors():
     assert output["ready"] is False
     assert output["status"] == "DATA_GENERATING"
     assert output["report"] is None
-    assert "LAUDO OFICIAL EM PROCESSAMENTO" in output["formatted_markdown"]
+    assert "RELATÓRIO TÉCNICO EM PROCESSAMENTO" in output["formatted_markdown"]
 
 
 def test_traffic_report_service_build_with_real_sensors():
@@ -70,14 +70,14 @@ def test_traffic_report_service_build_with_real_sensors():
     report = output["report"]
 
     assert report["protocol"].startswith("RELATORIO-TRAFEGO-2026-")
-    assert report["processNumber"].startswith("PA-SMT-2026/")
+    assert report["processNumber"] == "A vincular (Protocolo SEI)" or report["processNumber"].startswith("PA-SMT-2026/")
     assert report["cityHall"] == "PREFEITURA DO MUNICÍPIO DE SÃO PAULO"
     assert len(report["sensors"]) == 1
     assert report["sensors"][0]["id"] == "DET-MOCK-01"
     assert "24.5 km/h" in report["sensors"][0]["measuredSpeed"]
 
     # Observed diagnosis is dynamically computed from live telemetry
-    assert "MARKVART™ processou 1 detectores ativos" in report["observedTrafficDiagnosis"]
+    assert "processou 1 fontes de dados ativas" in report["observedTrafficDiagnosis"]
     assert "24.5 km/h" in report["observedTrafficDiagnosis"]
 
     # Markdown output verification

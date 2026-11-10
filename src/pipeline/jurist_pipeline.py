@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/pipeline/jurist_pipeline.py
-# Description: Pure Orchestrator Pipeline for Jurist SLM Execution (SOLID / Clean Architecture).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import threading
 from typing import Dict, Any, Optional

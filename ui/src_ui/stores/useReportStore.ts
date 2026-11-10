@@ -7,6 +7,7 @@ import { xaiService } from '../services/api/XaiService';
 import { useMunicipalSettingsStore } from './useMunicipalSettingsStore';
 import { useReportTypographyStore } from './useReportTypographyStore';
 import { useSystemStore } from './useSystemStore';
+import i18n from '../i18n/config';
 
 interface ReportStoreState {
   selectedReport: OfficialReportData | null;
@@ -92,6 +93,7 @@ export const useReportStore = create<ReportStoreState>((set, get) => ({
           lineSpacing: typography.lineSpacing,
           alignment: typography.alignment,
         },
+        language: i18n.language || 'pt_BR',
       });
 
       if (res && res.ready === false) {
@@ -165,6 +167,7 @@ export const useReportStore = create<ReportStoreState>((set, get) => ({
           lineSpacing: typography.lineSpacing,
           alignment: typography.alignment,
         },
+        language: i18n.language || 'pt_BR',
       });
 
       set({ isExportingDocx: false });

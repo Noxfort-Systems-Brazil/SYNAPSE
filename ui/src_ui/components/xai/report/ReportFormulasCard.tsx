@@ -13,105 +13,89 @@ export const ReportFormulasCard: React.FC<ReportFormulasCardProps> = () => {
     <div className="space-y-3 font-serif text-black">
       <div className="border-b border-black pb-0.5">
         <h3 className="text-[11px] font-bold uppercase text-black">
-          6. Memorial de Cálculo e Formulação Matemática da Engenharia de Tráfego
+          ANEXO TÉCNICO: Memorial de Cálculo e Formulações de Percepção
         </h3>
         <p className="text-[10px] text-black italic">
-          Equações canônicas de dimensionamento semafórico, saturação, segurança e hidrodinâmica viária (ABNT NBR 10719).
+          Formulações canônicas de dinâmica macroscópica, conservação física PINO, fusão neural e explicabilidade.
         </p>
       </div>
 
       <div className="space-y-2.5 text-xs text-justify leading-relaxed">
-        {/* Equação 1: Grau de Saturação (HCM) */}
+        {/* Equação A.1: Grau de Saturação e Fluxo Fundamental (HCM) */}
         <div className="space-y-0.5">
           <p className="font-bold text-[10.5px] text-black">
-            6.1. Grau de Saturação da Aproximação (Highway Capacity Manual — HCM)
+            A.1. Grau de Saturação e Relação Fundamental de Fluxo (Highway Capacity Manual — HCM)
           </p>
           <p className="indent-4 text-[10px] text-black">
-            O grau de saturação <LatexRenderer math="x" displayMode={false} /> relaciona o volume medido <LatexRenderer math="V" displayMode={false} /> à capacidade real <LatexRenderer math="c = S \cdot (g/C)" displayMode={false} />:
+            A caracterização macroscópica relaciona o volume aferido <LatexRenderer math="V" displayMode={false} /> à capacidade <LatexRenderer math="c" displayMode={false} />, e a taxa de fluxo <LatexRenderer math="q" displayMode={false} /> à densidade espacial <LatexRenderer math="\rho" displayMode={false} /> e velocidade <LatexRenderer math="v" displayMode={false} />:
           </p>
           <div className="py-1 text-center">
             <LatexRenderer
-              math="x = \frac{V}{c} = \frac{V}{S \cdot \left(\frac{g}{C}\right)} \tag{1}"
+              math="x = \frac{V}{c}, \quad q = \rho \cdot v \tag{A.1}"
               displayMode={true}
             />
           </div>
         </div>
 
-        {/* Equação 2: Ciclo Ótimo de Webster */}
+        {/* Equação A.2: Conservação Macroscópica de Tráfego (LWR / PINO) */}
         <div className="space-y-0.5">
           <p className="font-bold text-[10.5px] text-black">
-            6.2. Tempo de Ciclo Ótimo para Minimização de Atrasos (Método de Webster)
+            A.2. Equação Diferencial Parcial de Continuidade de Tráfego (LWR / PINO)
           </p>
           <p className="indent-4 text-[10px] text-black">
-            Minimiza o atraso médio veicular com base no tempo perdido total <LatexRenderer math="L" displayMode={false} /> e na soma das razões críticas <LatexRenderer math="Y" displayMode={false} />:
+            Garante a conservação física estrita de massa veicular sem criação ou destruição fictícia de fluxo ao longo da via:
           </p>
           <div className="py-1 text-center">
             <LatexRenderer
-              math="C_{\text{ótimo}} = \frac{1,5 \cdot L + 5}{1 - Y} \tag{2}"
+              math="\frac{\partial \rho}{\partial t} + \frac{\partial (\rho \cdot v(\rho))}{\partial x} = 0, \quad v(\rho) = v_f \left(1 - \frac{\rho}{\rho_{\text{jam}}}\right) \tag{A.2}"
               displayMode={true}
             />
           </div>
         </div>
 
-        {/* Equação 3: Tempo de Amarelo (Gazis / CONTRAN) */}
+        {/* Equação A.3: Fusão Multivariada por Atenção Cruzada (iTransformer) */}
         <div className="space-y-0.5">
           <p className="font-bold text-[10.5px] text-black">
-            6.3. Cinemática do Tempo de Amarelo (Gazis-Herman / Resolução CONTRAN nº 995/2023)
+            A.3. Fusão Multivariada por Atenção Invertida Inter-Sensores (iTransformer)
           </p>
           <p className="indent-4 text-[10px] text-black">
-            Elimina a zona de dilema para velocidade limite <LatexRenderer math="v_0 = 13,89\text{ m/s}" displayMode={false} />, desaceleração <LatexRenderer math="a = 3,0\text{ m/s}^2" displayMode={false} /> e percepção <LatexRenderer math="t_r = 1,0\text{ s}" displayMode={false} />:
+            Mapeia as correlações mútuas entre séries temporais de detectores heterogêneos da malha arterial:
           </p>
           <div className="py-1 text-center">
             <LatexRenderer
-              math="y = t_r + \frac{v_0}{2a} = 1,0\text{ s} + \frac{13,89}{2 \times 3,0} \approx 3,32\text{ s} \implies y_{\text{adotado}} = 4,0\text{ s} \tag{3}"
+              math="\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_{\text{model}}}}\right) V \tag{A.3}"
               displayMode={true}
             />
           </div>
         </div>
 
-        {/* Equação 4: Vermelho de Limpeza / All-Red */}
+        {/* Equação A.4: Gradientes Integrados e Axioma da Completude (Captum) */}
         <div className="space-y-0.5">
           <p className="font-bold text-[10.5px] text-black">
-            6.4. Intervalo de Vermelho de Limpeza / All-Red (Manual Brasileiro de Sinalização)
+            A.4. Atribuição por Gradientes Integrados e Axioma da Completude (Captum)
           </p>
           <p className="indent-4 text-[10px] text-black">
-            Garante a desobstrução da área de conflito (<LatexRenderer math="w = 18,0\text{ m}" displayMode={false} /> e <LatexRenderer math="L_v = 5,0\text{ m}" displayMode={false} />) antes do estágio conflitante:
+            Decomposição matemática da contribuição de cada variável sensorial para a estimativa de tráfego, distribuindo a variação em relação à linha de base neutra:
           </p>
           <div className="py-1 text-center">
             <LatexRenderer
-              math="r_{\text{limpeza}} = \frac{w + L_v}{v_0} = \frac{18,0 + 5,0}{13,89} \approx 1,66\text{ s} \implies r_{\text{adotado}} = 2,0\text{ s} \tag{4}"
+              math="\sum_{i=1}^{n} \text{IG}_i(x) = \sum_{i=1}^{n} (x_i - x'_i) \cdot \int_{0}^{1} \frac{\partial F(x' + \alpha(x - x'))}{\partial x_i} d\alpha = F(x) - F(x') \tag{A.4}"
               displayMode={true}
             />
           </div>
         </div>
 
-        {/* Equação 5: Tempo de Pedestres NBR 9050 */}
+        {/* Equação A.5: Estimador Cinemático de Estado (Dead Reckoning com Amortecimento) */}
         <div className="space-y-0.5">
           <p className="font-bold text-[10.5px] text-black">
-            6.5. Tempo Mínimo de Travessia para Pedestres (ABNT NBR 9050 / CONTRAN)
+            A.5. Estimador Cinemático de Estado para Tolerância a Falhas (Dead Reckoning com Amortecimento)
           </p>
           <p className="indent-4 text-[10px] text-black">
-            Adota velocidade de caminhada reduzida de <LatexRenderer math="v_p = 1,0\text{ m/s}" displayMode={false} /> para acessibilidade universal:
+            Preserva a continuidade temporal do fluxo por inércia newtoniana amortecida em casos de perda temporária de pacotes de dados:
           </p>
           <div className="py-1 text-center">
             <LatexRenderer
-              math="T_{\text{pedestre}} = t_{\text{reação}} + \frac{D_{\text{largura}}}{v_{\text{pedestre}}} = 3,0\text{ s} + \frac{15,0\text{ m}}{1,0\text{ m/s}} = 18,0\text{ s} \tag{5}"
-              displayMode={true}
-            />
-          </div>
-        </div>
-
-        {/* Equação 6: Onda de Choque LWR */}
-        <div className="space-y-0.5">
-          <p className="font-bold text-[10.5px] text-black">
-            6.6. Propagação da Onda de Choque de Tráfego (Lighthill-Whitham-Richards — LWR)
-          </p>
-          <p className="indent-4 text-[10px] text-black">
-            A velocidade da onda de choque <LatexRenderer math="W" displayMode={false} /> entre seções de fluxo e densidade:
-          </p>
-          <div className="py-1 text-center">
-            <LatexRenderer
-              math="W = \frac{q_2 - q_1}{k_2 - k_1} = \frac{\Delta q}{\Delta k} \tag{6}"
+              math="v_t = v_{t-1} + a_{t-1} \cdot \Delta t \cdot e^{-\lambda \Delta t} \tag{A.5}"
               displayMode={true}
             />
           </div>

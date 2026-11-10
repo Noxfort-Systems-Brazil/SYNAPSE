@@ -24,6 +24,8 @@ class SnapshotBuilder:
         self.app_state = app_state
         self.graph_manager = graph_manager
         self.embedding_dim = embedding_dim
+        self._zero_embedding = np.zeros(self.embedding_dim, dtype=np.float32)
+        self._zero_embedding.flags.writeable = False
         
     def gather_snapshot(self) -> Dict[str, Any]:
         """
@@ -53,9 +55,9 @@ class SnapshotBuilder:
                     and traffic_node.last_value > 0.0
                 )
 
-            # Prepare default payload
+            # Prepare default payload using pre-allocated read-only zero vector
             payload = {
-                "embedding": np.zeros(self.embedding_dim),
+                "embedding": self._zero_embedding,
                 "value": 0.0,
                 "timestamp": 0.0,
                 "type": "real" if is_node_real else "synthetic",

@@ -51,7 +51,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <Landmark className="w-4 h-4" />
-            <span>Identidade Municipal & Laudos</span>
+            <span>{t('settings.tabs.municipal')}</span>
           </button>
 
           <button
@@ -63,7 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <Database className="w-4 h-4" />
-            <span>Banco de Dados</span>
+            <span>{t('settings.tabs.db')}</span>
           </button>
 
           <button
@@ -75,7 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <Cloud className="w-4 h-4" />
-            <span>Acesso Remoto (DuckDNS)</span>
+            <span>{t('settings.tabs.duckdns')}</span>
           </button>
 
           <button
@@ -87,7 +87,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <Radio className="w-4 h-4" />
-            <span>Telemetria Externa</span>
+            <span>{t('settings.tabs.monitor')}</span>
           </button>
 
           <button
@@ -99,7 +99,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <Globe className="w-4 h-4" />
-            <span>Geral & Tema</span>
+            <span>{t('settings.tabs.general')}</span>
           </button>
 
           <button
@@ -111,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            <span>Contas & Segurança</span>
+            <span>{t('settings.tabs.accounts')}</span>
           </button>
 
           <button
@@ -123,7 +123,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}
           >
             <History className="w-4 h-4" />
-            <span>Auditoria & Logs</span>
+            <span>{t('settings.tabs.audit')}</span>
           </button>
         </div>
 

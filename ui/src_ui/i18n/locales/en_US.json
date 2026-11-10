@@ -81,7 +81,18 @@
     "tableOrigin": "Origin",
     "tableSpeed": "Speed",
     "tableOccupancy": "Occupancy",
-    "tableStatus": "Status"
+    "tableStatus": "Status",
+    "tableSemantic": "Semantic Type (NLP)",
+    "tableCurrentValue": "Current Value",
+    "tableQualityConfidence": "Quality / Confidence",
+    "clickToInspect": "Click on a row to inspect sensor telemetry",
+    "noSensorsRegistered": "No sensors registered. Load a SUMO network or add a sensor.",
+    "cycleLatency": "Cycle Latency",
+    "monitoredSensors": "monitored sensors",
+    "stable": "Stable",
+    "reconErrorGlobal": "Global Reconstruction / Fusion Error (MSE Loss)",
+    "temporalDriftPsi": "Temporal Statistical Drift (PSI Score)",
+    "agentLabel": "Agent:"
   },
   "xai": {
     "title": "Interpretability & Security Audit",
@@ -112,12 +123,23 @@
     "hftHost": "HFT / CARINA Server Host",
     "hftPort": "gRPC Port",
     "save": "Save Changes",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "tabs": {
+      "municipal": "Municipal Identity & Reports",
+      "db": "Database",
+      "duckdns": "Remote Access (DuckDNS)",
+      "monitor": "External Telemetry",
+      "general": "General & Theme",
+      "accounts": "Accounts & Security",
+      "audit": "Audit & Logs"
+    }
   },
   "logs": {
     "title": "System Event Console",
     "clear": "Clear Logs",
-    "filter": "Filter events..."
+    "filter": "Filter events...",
+    "events": "events",
+    "noEvents": "No log events recorded yet."
   },
   "wizard": {
     "title": "Integrated Ingestion Wizard",
@@ -175,7 +197,6 @@
     "strengthStrong": "Strong",
     "strengthVeryStrong": "Excellent",
     "authenticate": "Authenticate",
-
     "authenticating": "Authenticating...",
     "superuser": "Super User / User",
     "lockdownTitle": "SYSTEM LOCKED (LOCKDOWN)",
@@ -194,5 +215,43 @@
     "addUser": "Add User",
     "removeUser": "Remove",
     "refreshList": "Refresh List"
+  },
+  "sensors": {
+    "semantics": {
+      "vehicleCount": "Vehicle Count",
+      "vehicleSpeed": "Vehicle Speed",
+      "trafficFlow": "Traffic Flow",
+      "trafficDensity": "Traffic Density",
+      "trafficState": "Traffic State",
+      "scanning": "Scanning..."
+    },
+    "status": {
+      "active": "ACTIVE",
+      "quarantine": "QUARANTINE",
+      "validating": "VALIDATING",
+      "rejected": "REJECTED",
+      "offline": "OFFLINE"
+    }
+  },
+  "status": {
+    "connected": "CONNECTED",
+    "disconnected": "DISCONNECTED",
+    "standby": "STANDBY",
+    "receiving": "RECEIVING...",
+    "bootstrap": "BOOTSTRAP",
+    "onlineHft": "ONLINE (HFT)",
+    "computing": "COMPUTING",
+    "idle": "IDLE"
+  },
+  "roles": {
+    "OPERATOR": "Operator",
+    "SUPERUSER": "Super User",
+    "MASTER": "Master Key"
+  },
+  "statusBar": {
+    "webBrowser": "WEB BROWSER (NO NATIVE BRIDGE)",
+    "ipcConnected": "IPC PIPE: CONNECTED",
+    "ipcDisconnected": "IPC PIPE: DISCONNECTED",
+    "zeroTrustMemory": "ZERO-TRUST MEMORY"
   }
 }

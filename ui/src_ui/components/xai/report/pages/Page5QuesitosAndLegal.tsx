@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { OfficialReportData } from '../../../../types/report';
-import { ReportQuesitosCard } from '../ReportQuesitosCard';
+import { ReportAuditFindingsCard } from '../ReportAuditFindingsCard';
 import { ReportLegalCard } from '../ReportLegalCard';
 
 interface PageProps {
@@ -31,8 +31,8 @@ export const Page5QuesitosAndLegal: React.FC<PageProps> = ({ report, pageNumber,
           <span>{report.processNumber}</span>
         </div>
 
-        {/* 8. Resposta aos Quesitos Técnicos Operacionais */}
-        <ReportQuesitosCard quesitos={report.quesitos} />
+        {/* 8. Constatações Periciais de Auditoria Técnica e Conservação Física */}
+        <ReportAuditFindingsCard />
 
         {/* 9. Enquadramento Normativo e Fundamentação Jurídico-Administrativa */}
         <ReportLegalCard legalFraming={report.legalFraming} />

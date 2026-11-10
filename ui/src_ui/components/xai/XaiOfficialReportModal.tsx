@@ -11,16 +11,15 @@ import {
   FileText,
   Loader2,
   SlidersHorizontal,
-  FolderDown,
   CheckCircle2,
 } from 'lucide-react';
 import { XaiResultItem } from '../../types/xai';
 import { IReportBuilder, OfficialReportData } from '../../types/report';
 import { useReportStore } from '../../stores';
 import { useReportTypographyStore } from '../../stores/useReportTypographyStore';
+import { systemService } from '../../services/api/SystemService';
 import { ReportTypographyToolbar } from './report/ReportTypographyToolbar';
 import { XaiReportPreviewContainer } from './report/XaiReportPreviewContainer';
-import { SaveReportModal } from './report/SaveReportModal';
 
 
 interface XaiOfficialReportModalProps {
@@ -42,7 +41,6 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
 }) => {
   const [exportingDocxLocal, setExportingDocxLocal] = useState(false);
   const [showFormatControls, setShowFormatControls] = useState(false);
-  const [isSaveAsModalOpen, setIsSaveAsModalOpen] = useState(false);
   const [savedPathFeedback, setSavedPathFeedback] = useState<string | null>(null);
 
   const {
@@ -88,6 +86,23 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
       console.error('Error generating DOCX:', e);
     } finally {
       setExportingDocxLocal(false);
+    }
+  };
+
+  const handleSaveDocx = async () => {
+    try {
+      const res = await systemService.saveFile({
+        defaultFilename,
+        title: 'Salvar Laudo Técnico Oficial (.docx)',
+        filterName: 'Documento Word (*.docx)',
+        extensions: ['docx'],
+      });
+
+      if (res.path && !res.cancelled) {
+        await handleExportDocx(res.path);
+      }
+    } catch (err) {
+      console.error('Erro ao acionar diálogo de salvamento do laudo:', err);
     }
   };
 
@@ -158,12 +173,12 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
               <Printer className="w-4 h-4" />
             </button>
 
-            {/* Salvar DOCX Direto (Padrão / Downloads) */}
+            {/* Salvar DOCX (Diálogo nativo para escolher onde salvar) */}
             <button
-              onClick={() => handleExportDocx(undefined)}
+              onClick={handleSaveDocx}
               disabled={!isDataReady || !reportData || isExportingDocx || exportingDocxLocal}
               className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-blue-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={!isDataReady ? "Trava Operacional Ativa: exportação bloqueada enquanto dados são gerados" : "Salvar diretamente na pasta Downloads com o nome padrão oficial"}
+              title={!isDataReady ? "Trava Operacional Ativa: exportação bloqueada enquanto dados são gerados" : "Escolher local e salvar laudo pericial (.docx)"}
             >
               {isExportingDocx || exportingDocxLocal ? (
                 <>
@@ -173,20 +188,9 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
               ) : (
                 <>
                   <FileText className="w-4 h-4" />
-                  <span>Salvar DOCX (Padrão)</span>
+                  <span>Salvar DOCX</span>
                 </>
               )}
-            </button>
-
-            {/* Salvar Como (Escolher Onde Salvar e Qual Nome Salvar) */}
-            <button
-              onClick={() => setIsSaveAsModalOpen(true)}
-              disabled={!isDataReady || !reportData || isExportingDocx || exportingDocxLocal}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Escolher onde salvar e qual nome dar ao laudo pericial (.docx)"
-            >
-              <FolderDown className="w-4 h-4 text-blue-400" />
-              <span>Salvar Como...</span>
             </button>
 
             <button
@@ -268,16 +272,6 @@ export const XaiOfficialReportModal: React.FC<XaiOfficialReportModalProps> = ({
             onRefresh={() => fetchOfficialReport(result?.id, result)}
           />
         </div>
-
-        {/* Modal de Escolha de Nome e Pasta (Salvar Como) */}
-        <SaveReportModal
-          isOpen={isSaveAsModalOpen}
-          onClose={() => setIsSaveAsModalOpen(false)}
-          onSave={handleExportDocx}
-          isSaving={isExportingDocx || exportingDocxLocal}
-          defaultFilename={defaultFilename}
-          protocol={reportData?.protocol}
-        />
 
       </div>
     </div>

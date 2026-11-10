@@ -81,7 +81,18 @@
     "tableOrigin": "Origine",
     "tableSpeed": "Vitesse",
     "tableOccupancy": "Occupation",
-    "tableStatus": "Statut"
+    "tableStatus": "Statut",
+    "tableSemantic": "Type Sémantique (NLP)",
+    "tableCurrentValue": "Valeur Actuelle",
+    "tableQualityConfidence": "Qualité / Confiance",
+    "clickToInspect": "Cliquez sur une ligne pour inspecter la télémétrie du capteur",
+    "noSensorsRegistered": "Aucun capteur enregistré. Chargez un réseau SUMO ou ajoutez un capteur.",
+    "cycleLatency": "Latence de Cycle",
+    "monitoredSensors": "capteurs surveillés",
+    "stable": "Stable",
+    "reconErrorGlobal": "Erreur de Reconstruction / Fusion Globale (MSE Loss)",
+    "temporalDriftPsi": "Dérive Statistique Temporelle (PSI Score)",
+    "agentLabel": "Agent :"
   },
   "xai": {
     "title": "Interprétabilité & Audit de Sécurité",
@@ -112,12 +123,23 @@
     "hftHost": "Hôte du Serveur HFT / CARINA",
     "hftPort": "Port gRPC",
     "save": "Enregistrer Modifications",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "tabs": {
+      "municipal": "Identité Municipale & Rapports",
+      "db": "Base de Données",
+      "duckdns": "Accès Distant (DuckDNS)",
+      "monitor": "Télémétrie Externe",
+      "general": "Général & Thème",
+      "accounts": "Comptes & Sécurité",
+      "audit": "Audit & Journaux"
+    }
   },
   "logs": {
     "title": "Console d'Événements Système",
     "clear": "Effacer Journaux",
-    "filter": "Filtrer les événements..."
+    "filter": "Filtrer les événements...",
+    "events": "événements",
+    "noEvents": "Aucun événement enregistré pour l'instant."
   },
   "wizard": {
     "title": "Assistant d'Ingestion Intégré",
@@ -175,7 +197,6 @@
     "strengthStrong": "Fort",
     "strengthVeryStrong": "Excellent",
     "authenticate": "S'authentifier",
-
     "authenticating": "Authentification en cours...",
     "superuser": "Super Utilisateur / Utilisateur",
     "lockdownTitle": "SYSTÈME VERROUILLÉ (LOCKDOWN)",
@@ -194,5 +215,43 @@
     "addUser": "Ajouter Utilisateur",
     "removeUser": "Supprimer",
     "refreshList": "Actualiser Liste"
+  },
+  "sensors": {
+    "semantics": {
+      "vehicleCount": "Comptage des Véhicules",
+      "vehicleSpeed": "Vitesse des Véhicules",
+      "trafficFlow": "Flux de Trafic",
+      "trafficDensity": "Densité de Trafic",
+      "trafficState": "État du Trafic",
+      "scanning": "Identification..."
+    },
+    "status": {
+      "active": "ACTIF",
+      "quarantine": "QUARANTAINE",
+      "validating": "VALIDATION",
+      "rejected": "REJETÉ",
+      "offline": "DÉCONNECTÉ"
+    }
+  },
+  "status": {
+    "connected": "CONNECTÉ",
+    "disconnected": "DÉCONNECTÉ",
+    "standby": "STANDBY",
+    "receiving": "RÉCEPTION...",
+    "bootstrap": "BOOTSTRAP",
+    "onlineHft": "EN LIGNE (HFT)",
+    "computing": "CALCUL EN COURS",
+    "idle": "INACTIF"
+  },
+  "roles": {
+    "OPERATOR": "Opérateur",
+    "SUPERUSER": "Super-utilisateur",
+    "MASTER": "Clé Maîtresse"
+  },
+  "statusBar": {
+    "webBrowser": "NAVIGATEUR WEB (SANS PONT NATIF)",
+    "ipcConnected": "TUBE IPC : CONNECTÉ",
+    "ipcDisconnected": "TUBE IPC : DÉCONNECTÉ",
+    "zeroTrustMemory": "MÉMOIRE ZERO-TRUST"
   }
 }

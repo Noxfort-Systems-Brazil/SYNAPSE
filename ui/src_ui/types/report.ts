@@ -103,6 +103,7 @@ export interface OfficialReportData {
   cityHall: string;
   department: string;
   system: string;
+  systemVersion?: string;
   timestamp: string;
   location: ReportLocationData;
   networkSummary: TrafficNetworkMacroSummary;

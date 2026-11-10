@@ -37,6 +37,7 @@ export class XaiService {
     report?: OfficialReportData;
     municipal_config?: Record<string, any>;
     typography_options?: Record<string, any>;
+    language?: string;
   }): Promise<{
     success: boolean;
     ready?: boolean;

@@ -44,7 +44,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ isOpen, onClose }) => {
           <Terminal className="w-4 h-4 text-primary-500 dark:text-primary-400" />
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">{t('logs.title')}</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
-            {filteredLogs.length} events
+            {filteredLogs.length} {t('logs.events')}
           </span>
         </div>
 
@@ -71,6 +71,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ isOpen, onClose }) => {
 
           <button
             onClick={onClose}
+            title={t('settings.cancel')}
             className="p-1.5 rounded-lg bg-surface border border-border text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-slate-600 transition-all"
           >
             <X className="w-3.5 h-3.5" />
@@ -81,7 +82,9 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ isOpen, onClose }) => {
       {/* Log Feed */}
       <div className="flex-1 p-3 font-mono text-xs overflow-y-auto space-y-1 select-text">
         {filteredLogs.length === 0 ? (
-          <div className="text-center text-slate-400 dark:text-slate-600 py-8">No log events recorded yet.</div>
+          <div className="text-center text-slate-400 dark:text-slate-600 py-8">
+            {t('logs.noEvents')}
+          </div>
         ) : (
           filteredLogs.map((l) => (
             <div

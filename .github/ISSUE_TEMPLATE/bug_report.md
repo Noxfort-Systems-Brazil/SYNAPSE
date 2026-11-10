@@ -43,3 +43,9 @@ A clear and concise description of what you expected to happen.
 
 **Additional Context**
 Add any other context about the problem here (e.g. sensor schema format, dropped packet frequency, SUMO `.net.xml` size).
+
+<!--
+SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+-->
+

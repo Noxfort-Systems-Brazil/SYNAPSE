@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/handlers/source/source_dto_mapper.py
-# Description: DTO serializing and type resolution for DataSource entities (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Any, Dict, Optional, List
 from src.domain.entities import DataSource, SourceType
@@ -69,4 +66,5 @@ class SourceDtoMapper:
             "confidence_score": getattr(source, "confidence_score", None),
             "associated_element": associated_element,
             "associated_element_name": element_name,
+            "connection_string": getattr(source, "connection_string", "") or "",
         }

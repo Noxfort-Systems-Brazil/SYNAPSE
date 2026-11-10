@@ -1,9 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/slm/process/llm_worker_process.py
-# Author: Gabriel Moraes
-# Date: 2026-09-04
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 """
 Dedicated Out-of-Process LLM Worker Entrypoint (multiprocessing spawn loop).
@@ -68,6 +64,10 @@ def run_llm_worker(
 
                 elif cmd == "unload_resources":
                     res = worker.unload_resources()
+                    pipe_conn.send({"id": msg_id, "success": True, "result": res})
+
+                elif cmd == "clear_cache":
+                    res = worker.clear_cache()
                     pipe_conn.send({"id": msg_id, "success": True, "result": res})
 
                 elif cmd == "generate_report":

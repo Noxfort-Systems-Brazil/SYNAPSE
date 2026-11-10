@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
+
 [build-system]
 requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
@@ -21,9 +24,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers -m 'not heavy_memory'"
 markers = [
     "benchmark: marks tests as latency or performance benchmarks",
+    "heavy_memory: marks tests with heavy memory consumption (e.g. SLM, GGUF or large transformers)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:sipPyTypeDictRef",
@@ -31,6 +35,7 @@ filterwarnings = [
     "ignore:`torch_geometric.distributed` has been deprecated:DeprecationWarning",
     "ignore:datetime.datetime.utcfromtimestamp\\(\\) is deprecated:DeprecationWarning",
     "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks:DeprecationWarning",
+    "ignore:Existing QApplication .* is not an instance of qapp_cls:UserWarning",
 ]
 
 [tool.ruff]

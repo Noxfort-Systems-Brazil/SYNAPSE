@@ -78,8 +78,10 @@ class HierarchicalImputationStrategy:
         # Physical safety: Flow/Density cannot be negative
         final_val = max(0.0, final_val)
 
-        if fallback_steps % 10 == 0:
+        if fallback_steps == 0:
             logger.info(f"[HierarchicalImputation] 🛡️ FALLBACK: {method_used} | Node={source_id} | Val: {final_val:.2f}")
+        elif fallback_steps % 60 == 0:
+            logger.debug(f"[HierarchicalImputation] 🛡️ FALLBACK: {method_used} | Node={source_id} | Val: {final_val:.2f}")
 
         return final_val, method_used
 

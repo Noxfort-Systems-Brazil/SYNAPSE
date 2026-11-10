@@ -49,19 +49,13 @@ export const LockdownOverlay: React.FC = () => {
         {/* Title & Warning Notices */}
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase drop-shadow-lg">
-            {t('security.lockdownTitle', 'SISTEMA BLOQUEADO (LOCKDOWN)')}
+            {t('security.lockdownTitle')}
           </h1>
           <p className="text-sm font-medium text-red-200 max-w-md mx-auto leading-relaxed">
-            {t(
-              'security.lockdownDesc1',
-              'Múltiplas tentativas de acesso inválidas. A infraestrutura física e os motores de IA foram isolados para proteção.'
-            )}
+            {t('security.lockdownDesc1')}
           </p>
           <p className="text-xs text-red-300/80 font-mono">
-            {t(
-              'security.lockdownDesc2',
-              'Apenas um Super Usuário ou a Chave Mestra podem reestabelecer o funcionamento.'
-            )}
+            {t('security.lockdownDesc2')}
           </p>
         </div>
 
@@ -78,7 +72,7 @@ export const LockdownOverlay: React.FC = () => {
           <form onSubmit={handleUnlock} className="space-y-3.5">
             <div className="space-y-1">
               <label className="text-xs font-bold text-red-200 uppercase tracking-wider">
-                {t('security.superuser', 'Super Usuário / Usuário')}
+                {t('security.superuser')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-red-300">
@@ -99,7 +93,7 @@ export const LockdownOverlay: React.FC = () => {
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-red-200 uppercase tracking-wider">
-                {t('security.password', 'Senha')}
+                {t('security.password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-red-300">
@@ -132,12 +126,12 @@ export const LockdownOverlay: React.FC = () => {
               {isAuthenticating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-red-900" />
-                  <span>{t('security.verifyingSuperuser', 'Verificando Superusuário...')}</span>
+                  <span>{t('security.verifyingSuperuser')}</span>
                 </>
               ) : (
                 <>
                   <KeyRound className="w-4 h-4 text-red-900" />
-                  <span>{t('security.unlockSystem', 'DESBLOQUEAR SISTEMA')}</span>
+                  <span>{t('security.unlockSystem')}</span>
                 </>
               )}
             </button>

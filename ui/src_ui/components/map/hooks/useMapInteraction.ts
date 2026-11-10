@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
-import React, { useState, useEffect, RefObject } from 'react';
+import React, { useState, useEffect, useRef, useCallback, RefObject } from 'react';
 import { MapNodeData, MapEdgeData, Point2D } from '../../../types/topology';
 import { DataSourceItem, EngineDataPayload } from '../../../types/sensors';
 import { calculateBoundingBox, calculateFitTransform, screenToSumoCoords, distToSegment, distToPolyline } from '../../../utils/geometry';
@@ -32,21 +32,51 @@ export function useMapInteraction({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<Point2D>({ x: 0, y: 0 });
   const [hoveredInfo, setHoveredInfo] = useState<string | null>(null);
+  const lastMiddleClickRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
 
-  // Auto-fit bounding box on initial map load
-  useEffect(() => {
+  // Center and fit the map within viewport
+  const resetView = useCallback(() => {
     if (nodes.length === 0 || !canvasRef.current) return;
 
-    const box = calculateBoundingBox(nodes);
-    const width = canvasRef.current.width || 800;
-    const height = canvasRef.current.height || 600;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const width = rect.width || canvasRef.current.clientWidth || canvasRef.current.width || 800;
+    const height = rect.height || canvasRef.current.clientHeight || canvasRef.current.height || 600;
 
+    const box = calculateBoundingBox(nodes);
     const { zoom: initialZoom, pan: initialPan } = calculateFitTransform(box, width, height);
     setZoom(initialZoom);
     setPan(initialPan);
   }, [nodes, canvasRef]);
 
+  // Auto-fit bounding box on initial map load
+  useEffect(() => {
+    resetView();
+  }, [resetView]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Middle mouse button (button === 1)
+    if (e.button === 1) {
+      e.preventDefault();
+      const now = Date.now();
+      const dt = now - lastMiddleClickRef.current.time;
+      const dx = Math.abs(e.clientX - lastMiddleClickRef.current.x);
+      const dy = Math.abs(e.clientY - lastMiddleClickRef.current.y);
+
+      const isDoubleClick = (dt < 400 && dx < 15 && dy < 15) || e.detail >= 2;
+
+      if (isDoubleClick) {
+        lastMiddleClickRef.current = { time: 0, x: 0, y: 0 };
+        setIsDragging(false);
+        resetView();
+        return;
+      }
+
+      lastMiddleClickRef.current = { time: now, x: e.clientX, y: e.clientY };
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
     if (e.button === 0 || e.button === 2) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -211,16 +241,28 @@ export function useMapInteraction({
     setHoveredInfo(null);
   };
 
+  const handleAuxClick = (e: React.MouseEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      if (e.detail >= 2) {
+        setIsDragging(false);
+        resetView();
+      }
+    }
+  };
+
   return {
     zoom,
     setZoom,
     pan,
     setPan,
     hoveredInfo,
+    resetView,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     handleWheel,
     handleClick,
+    handleAuxClick,
   };
 }

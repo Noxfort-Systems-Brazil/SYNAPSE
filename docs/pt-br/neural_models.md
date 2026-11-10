@@ -13,16 +13,16 @@ Os 10 modelos neurais e o motor de indexação espacial determinístico operam e
 | Modelo | Subsistema / Agente | Paradigma Matemático | Responsabilidade Primária |
 |:---|:---|:---|:---|
 | **PINO-Traffic** | Operador Contínuo | Operador Neural de Fourier (FNO) + EDP LWR | Simulação de densidade contínua e ondas de choque. |
-| **PI-DeepONet** | Estimador de Campos | Rede Dual Branch-Trunk de Operadores | Mapeamento não-linear de campos de velocidade. |
+| **PI-DeepONet** | Estimador de Campos & Imputador | Rede Dual Branch-Trunk de Operadores | Mapeamento contínuo de campos de velocidade e imputação de lacunas. |
 | **iTransformer** | Fusão Multivariada | Atenção com Dimensão Invertida nos Tokens | Fusão espacial entre sensores sem ruído de canais cruzados. |
 | **GATv2 Lite / DiffusionGATv2** | Raciocínio em Grafo | Atenção Dinâmica com Tensor Físico 5D (`edge_attr`) + Difusão Harmônica | Propagação espacial ponderada por condutância física e hierarquia viária. |
 | **WaveletAE-OCC**| Filtro de Anomalias | Transformada Discreta Wavelet (DWT) + Autoencoder | Detecção de falhas de alta frequência e ataques cibernéticos. |
-| **PatchTST** | Previsão por Blocos | Patching Temporal + Atenção Independente por Canal | Projeção multi-etapas de velocidades e ocupações de via. |
+| **ModernBERT & NeuroSymbolic** | Portão Semântico Zero-Trust | Backbone ModernBERT + TCNAE Desacoplado + Head Físico 3D | Validação semântica e física de esquemas de sensores via perdas LWR. |
 | **TCNAE** | Compressão Latente | Convoluções Causais Dilatadas 1D + Portas Residuais| Representação comprimida de séries temporais de sensores. |
-| **TimesNet** | Periodicidade Urbana | Decomposição 2D por Fourier + Blocos Inception | Captura padrões diários e semanais de fluxo veicular. |
+| **SpectralFeatureBlock** | Periodicidade Urbana | Convoluções Espectrais de Fourier 1D (`SpectralConv1d`) | Captura padrões diários e semanais de fluxo veicular (substituto otimizado do TimesNet). |
 | **FastMapMatcher** | Alinhamento Espacial | Indexação Espacial R-Tree + Distância Fréchet (CPU) | Casamento determinístico sub-microssegundo entre polilinhas multi-segmento Waze/TomTom (`jams`) e eixos viários SUMO. |
 | **PI-DVAE-TCN** | Estimativa de Incerteza | Autoencoder Variacional Guiado por Física | Quantificação de incertezas epistêmicas e aleatórias. |
-| **Qwen3 Jurist** | Justificador Cognitivo| Small Language Model (SLM) quantizado em GGUF | Geração de laudos periciais textuais e justificativas. |
+| **Qwen3 Jurist** | Justificador Cognitivo| Small Language Model (SLM) com Isolamento de Processo | Geração de laudos periciais textuais e auditoria sem travar threads de inferência. |
 
 ---
 
@@ -69,9 +69,11 @@ No `FusionPipeline`, nós não observados ($M_i = 0$) são reconstruídos combin
 
 ---
 
-## 4. Auditoria Pericial Textual com Qwen3 Jurist
+## 4. Portão Semântico, Detecção de Anomalias e Explicabilidade Textual
 
-O modelo **Qwen3 Jurist** é executado 100% offline via llama.cpp em precisão quantizada GGUF (4 bits), gerando parágrafos periciais em conformidade com normas forenses que justificam anomalias ou acionamentos de sinalização prioritária.
+- **ModernBERT & NeuroSymbolicModel (`src/models/modernbert.py`, `src/models/neuro_symbolic.py`)**: Combina o backbone ModernBERT (com aceleração de hardware por Tensor Cores via `allow_tf32 = True`) a um `TCNAE` desacoplado e um Head de Projeção Física 3D $\mathbf{y}_{\text{físico}} = [q, v, \rho]$. Verifica se o fluxo veicular atende às equações de tráfego LWR antes de aprovar dados de sensores em quarentena.
+- **WaveletAE-OCC (`src/models/wavelet_ae_occ.py`)**: Decompõe a telemetria bruta de alta frequência usando Wavelets Daubechies ($\psi_{j, k}$) para isolar ruídos espúrios e ataques cibernéticos.
+- **Qwen3 Jurist (`src/agents/jurist_agent.py`, `src/slm/`)**: Executado 100% offline via modelos quantizados em GGUF/SafeTensors. Isolado em processo worker dedicado (`src/slm/process/isolated_jurist_manager.py`), garantindo que o processamento do LLM nunca cause atrasos no ciclo de inferência em tempo real (< 250ms) do PyTorch. Gera laudos periciais e derivações matemáticas em conformidade com normas ABNT.
 
 ---
 

@@ -50,10 +50,10 @@ export const SecurityModal: React.FC = () => {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              {t('security.authRequired', 'Autenticação Necessária')}
+              {t('security.authRequired')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t('security.authPrompt', 'Ação restrita. Insira suas credenciais para prosseguir.')}
+              {t('security.authPrompt')}
             </p>
           </div>
         </div>
@@ -70,7 +70,7 @@ export const SecurityModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {t('security.username', 'Nome de Usuário')}
+              {t('security.username')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -82,7 +82,7 @@ export const SecurityModal: React.FC = () => {
                 disabled={isAuthenticating}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder={t('security.usernamePlaceholder', 'ex.: admin...')}
+                placeholder={t('security.usernamePlaceholder')}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-background border border-border focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-all text-slate-900 dark:text-white"
                 required
               />
@@ -91,7 +91,7 @@ export const SecurityModal: React.FC = () => {
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {t('security.password', 'Senha')}
+              {t('security.password')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -124,7 +124,7 @@ export const SecurityModal: React.FC = () => {
               disabled={isAuthenticating}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-surfaceHover hover:text-slate-900 dark:hover:text-white transition-all"
             >
-              {t('common.cancel', 'Cancelar')}
+              {t('settings.cancel')}
             </button>
             <button
               type="submit"
@@ -134,10 +134,10 @@ export const SecurityModal: React.FC = () => {
               {isAuthenticating ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t('security.authenticating', 'Autenticando...')}</span>
+                  <span>{t('security.authenticating')}</span>
                 </>
               ) : (
-                <span>{t('security.authenticate', 'Autenticar')}</span>
+                <span>{t('security.authenticate')}</span>
               )}
             </button>
           </div>

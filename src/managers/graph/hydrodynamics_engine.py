@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/managers/graph/hydrodynamics_engine.py
-# Description: Pure hydrodynamic physics calculator for traffic edges (SOLID: SRP).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 from typing import Tuple, Optional
 from src.physics.constants import DEFAULT_JAM_DENSITY_PER_LANE, SpeedConverter, flow_to_density

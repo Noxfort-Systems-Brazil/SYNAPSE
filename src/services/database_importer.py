@@ -27,7 +27,7 @@ class DatabaseImporter(QObject):
     - Validates dataset integrity and minimum historical span (>= 7 days).
     """
     
-    # Qt Signals (for PyQt GUI compatibility)
+    # Qt Signals (Core event notifications)
     log_message = pyqtSignal(str)
     progress_update = pyqtSignal(int)
     import_finished = pyqtSignal(bool, str) # Success, Message

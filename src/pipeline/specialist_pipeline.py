@@ -52,6 +52,7 @@ class SpecialistPipeline:
         self.tcn = self.model["tcn"]
         self.decoder = self.model["decoder"] if "decoder" in self.model else None
         self.reconstruction_head = self.model["reconstruction_head"] if "reconstruction_head" in self.model else None
+        self._step_state: Optional[dict] = None
 
         target_device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(target_device)
@@ -65,6 +66,7 @@ class SpecialistPipeline:
     def to(self, device: Any) -> 'SpecialistPipeline':
         target_device = torch.device(device) if isinstance(device, str) else device
         self.model.to(target_device)
+        self._step_state = None
         return self
 
     def freeze(self) -> 'SpecialistPipeline':
@@ -139,6 +141,83 @@ class SpecialistPipeline:
             if full_seq.ndim == 2:
                 return full_seq[:, -1]
             return full_seq
+
+    @property
+    def has_step_state(self) -> bool:
+        """Returns True if the incremental causal buffer is currently warm for this isolated sensor."""
+        return self._step_state is not None
+
+    def reset_step_state(self) -> None:
+        """Resets the cached incremental state buffer for this isolated sensor."""
+        self._step_state = None
+
+    def _receptive_field(self) -> int:
+        k = int(getattr(self.tcn, "kernel_size", 2))
+        ch = getattr(self.tcn, "num_channels", [16, 32])
+        n_layers = len(ch) if isinstance(ch, (list, tuple)) else 2
+        return 1 + 2 * max(0, k - 1) * ((1 << n_layers) - 1)
+
+    def warm_step_state(self, input_sequence: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+        """
+        Synchronizes the causal state cache from the clean tail of input_sequence (at most R receptive-field steps)
+        and returns the resulting latest embedding vector [output_dim].
+        """
+        self._step_state = None
+        if not hasattr(self.tcn, "step"):
+            return self.predict(input_sequence)
+
+        arr = input_sequence.detach().cpu().numpy() if isinstance(input_sequence, torch.Tensor) else np.asarray(input_sequence, dtype=np.float32)
+        if arr.size == 0:
+            return np.zeros(self.output_dim, dtype=np.float32)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        elif arr.ndim == 2 and arr.shape[0] < arr.shape[1] and arr.shape[0] == self.input_dim:
+            arr = arr.T
+
+        tail = arr[-self._receptive_field() :]
+        last_emb = np.zeros(self.output_dim, dtype=np.float32)
+        for idx in range(tail.shape[0]):
+            sample = float(tail[idx, 0]) if tail.shape[1] == 1 else tail[idx]
+            last_emb = self.predict_step(sample)
+        return last_emb
+
+    def predict_step(self, new_sample: Union[float, int, np.ndarray, torch.Tensor]) -> np.ndarray:
+        """
+        Incremental causal step inference O(1).
+        Consumes a single new sample for this isolated sensor, updating the internal state cache.
+        Returns:
+            embedding: 1D numpy array of shape [output_dim].
+        """
+        self.model.eval()
+        device = self._get_current_device()
+
+        with torch.no_grad():
+            if isinstance(new_sample, (float, int)):
+                tensor_x = torch.tensor([[[float(new_sample)]]], dtype=torch.float, device=device)
+            elif isinstance(new_sample, np.ndarray):
+                tensor_x = torch.from_numpy(new_sample).float().to(device)
+            elif isinstance(new_sample, torch.Tensor):
+                tensor_x = new_sample.float().to(device)
+            else:
+                tensor_x = torch.tensor(new_sample, dtype=torch.float, device=device)
+
+            if tensor_x.dim() == 1:
+                tensor_x = tensor_x.unsqueeze(0).unsqueeze(-1)
+            elif tensor_x.dim() == 2:
+                tensor_x = tensor_x.unsqueeze(-1)
+
+            device_type = device.type if device.type != 'mps' else 'cpu'
+            with autocast(device_type=device_type, enabled=(device.type == 'cuda')):
+                if hasattr(self.tcn, "step"):
+                    latent_t, self._step_state = self.tcn.step(tensor_x, self._step_state)
+                else:
+                    return self.predict(tensor_x)
+
+            out_np = latent_t.cpu().float().numpy().squeeze()
+            if out_np.ndim == 0:
+                out_np = np.expand_dims(out_np, 0)
+            return out_np
+
 
     def compute_loss(self, input_sequence: Union[np.ndarray, torch.Tensor]) -> float:
         """

@@ -81,7 +81,18 @@
     "tableOrigin": "Origem",
     "tableSpeed": "Velocidade",
     "tableOccupancy": "Ocupação",
-    "tableStatus": "Estado"
+    "tableStatus": "Estado",
+    "tableSemantic": "Tipo Semântico (NLP)",
+    "tableCurrentValue": "Valor Atual",
+    "tableQualityConfidence": "Qualidade / Confiança",
+    "clickToInspect": "Clique em uma linha para inspecionar a telemetria do sensor",
+    "noSensorsRegistered": "Nenhum sensor cadastrado. Carregue uma rede SUMO ou adicione um sensor.",
+    "cycleLatency": "Latência de Ciclo",
+    "monitoredSensors": "sensores monitorados",
+    "stable": "Estável",
+    "reconErrorGlobal": "Erro de Reconstrução / Fusão Global (MSE Loss)",
+    "temporalDriftPsi": "Deriva Estatística Temporal (PSI Score)",
+    "agentLabel": "Agente:"
   },
   "xai": {
     "title": "Interpretabilidade e Auditoria de Segurança",
@@ -112,12 +123,23 @@
     "hftHost": "Host do Servidor HFT / CARINA",
     "hftPort": "Porta gRPC",
     "save": "Salvar Alterações",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "tabs": {
+      "municipal": "Identidade Municipal & Laudos",
+      "db": "Banco de Dados",
+      "duckdns": "Acesso Remoto (DuckDNS)",
+      "monitor": "Telemetria Externa",
+      "general": "Geral & Tema",
+      "accounts": "Contas & Segurança",
+      "audit": "Auditoria & Logs"
+    }
   },
   "logs": {
     "title": "Console de Eventos do Sistema",
     "clear": "Limpar Logs",
-    "filter": "Filtrar eventos..."
+    "filter": "Filtrar eventos...",
+    "events": "eventos",
+    "noEvents": "Nenhum evento registrado até o momento."
   },
   "wizard": {
     "title": "Assistente de Ingestão de Dados",
@@ -160,7 +182,6 @@
     "username": "Nome de Usuário",
     "usernamePlaceholder": "ex.: admin...",
     "password": "Senha",
-
     "confirmPassword": "Confirmar Senha",
     "passwordsDoNotMatch": "As senhas não coincidem.",
     "standardProtected": "Padrão Moderno de Segurança",
@@ -176,7 +197,6 @@
     "strengthStrong": "Forte",
     "strengthVeryStrong": "Excelente",
     "authenticate": "Autenticar",
-
     "authenticating": "Autenticando...",
     "superuser": "Super Usuário / Usuário",
     "lockdownTitle": "SISTEMA BLOQUEADO (LOCKDOWN)",
@@ -195,5 +215,43 @@
     "addUser": "Adicionar Usuário",
     "removeUser": "Remover",
     "refreshList": "Atualizar Lista"
+  },
+  "sensors": {
+    "semantics": {
+      "vehicleCount": "Contagem de Veículos",
+      "vehicleSpeed": "Velocidade Veicular",
+      "trafficFlow": "Fluxo de Tráfego",
+      "trafficDensity": "Densidade de Tráfego",
+      "trafficState": "Estado de Tráfego",
+      "scanning": "Identificando..."
+    },
+    "status": {
+      "active": "ATIVO",
+      "quarantine": "QUARENTENA",
+      "validating": "VALIDANDO",
+      "rejected": "REJEITADO",
+      "offline": "DESCONECTADO"
+    }
+  },
+  "status": {
+    "connected": "CONECTADO",
+    "disconnected": "DESCONECTADO",
+    "standby": "STANDBY",
+    "receiving": "RECEBENDO...",
+    "bootstrap": "BOOTSTRAP",
+    "onlineHft": "ONLINE (HFT)",
+    "computing": "PROCESSANDO",
+    "idle": "INATIVO"
+  },
+  "roles": {
+    "OPERATOR": "Operador",
+    "SUPERUSER": "Superusuário",
+    "MASTER": "Chave Mestra"
+  },
+  "statusBar": {
+    "webBrowser": "WEB BROWSER (SEM BRIDGE NATIVA)",
+    "ipcConnected": "IPC PIPE: CONECTADO",
+    "ipcDisconnected": "IPC PIPE: DESCONECTADO",
+    "zeroTrustMemory": "MEMÓRIA ZERO-TRUST"
   }
 }

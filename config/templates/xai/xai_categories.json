@@ -1,0 +1,128 @@
+{
+  "pt_br": {
+    "speed": {
+      "name": "Velocidade Aferida (km/h)",
+      "desc": "Velocidade média dos veículos na seção. Quedas bruscas indicam formação imediata de congestionamento."
+    },
+    "flow": {
+      "name": "Volume de Fluxo Veicular (veíc/h)",
+      "desc": "Quantidade de veículos que cruzam a seção por hora. Mede a demanda de tráfego atendida pela via."
+    },
+    "occupancy": {
+      "name": "Taxa de Ocupação da Faixa (%)",
+      "desc": "Percentual de tempo em que a faixa permaneceu ocupada por veículos. Acima de 35% sinaliza retenção."
+    },
+    "density": {
+      "name": "Densidade Espacial (veíc/km)",
+      "desc": "Concentração de veículos por quilômetro de faixa. Ajuda a quantificar o acúmulo de veículos na via."
+    },
+    "saturation": {
+      "name": "Grau de Saturação da Seção (x = V/c)",
+      "desc": "Relação entre a demanda de tráfego e a capacidade máxima da via. Valores acima de 0,90 indicam via no limite."
+    },
+    "acceleration": {
+      "name": "Gradiente de Aceleração (m/s²)",
+      "desc": "Variação de velocidade entre veículos consecutivos. Variações abruptas indicam frenagens bruscas."
+    },
+    "spatial": {
+      "name": "Correlação Espacial de Tráfego",
+      "desc": "Influência do fluxo veicular de trechos a montante (antes) e a jusante (depois) sobre a estação atual."
+    },
+    "quarantine": {
+      "name": "Filtro de Salvaguarda (Quarentena)",
+      "desc": "Mecanismo que isola leituras anômalas ou ruídos de sensor antes que contaminem a estimativa geral."
+    },
+    "dead_reckoning": {
+      "name": "Estimativa Temporária (Dead Reckoning)",
+      "desc": "Projeção cinemática ativada por poucos segundos quando um sensor perde sinal, mantendo a continuidade."
+    },
+    "other": {
+      "name": "Variáveis Auxiliares de Calibração",
+      "desc": "Indicadores secundários de telemetria e suporte operacional à fusão de dados."
+    }
+  },
+  "en_us": {
+    "speed": {
+      "name": "Measured Speed (km/h)",
+      "desc": "Mean vehicle speed on section. Sudden drops indicate immediate congestion development."
+    },
+    "flow": {
+      "name": "Vehicle Flow Volume (veh/h)",
+      "desc": "Number of vehicles crossing section per hour. Measures traffic demand served by roadway."
+    },
+    "occupancy": {
+      "name": "Lane Occupancy Rate (%)",
+      "desc": "Percentage of time lane was occupied by vehicles. Above 35% indicates traffic retention."
+    },
+    "density": {
+      "name": "Spatial Density (veh/km)",
+      "desc": "Vehicle concentration per kilometer of lane. Quantifies spatial queue build-up."
+    },
+    "saturation": {
+      "name": "Section Saturation Degree (x = V/c)",
+      "desc": "Ratio between traffic demand and maximum roadway capacity. Values above 0.90 indicate critical capacity."
+    },
+    "acceleration": {
+      "name": "Acceleration Gradient (m/s²)",
+      "desc": "Speed variation between consecutive vehicles. Abrupt variations indicate shockwave braking."
+    },
+    "spatial": {
+      "name": "Spatial Traffic Correlation",
+      "desc": "Influence of vehicular flow from upstream and downstream sections on current station."
+    },
+    "quarantine": {
+      "name": "Safeguard Filter (Quarantine)",
+      "desc": "Mechanism isolating anomalous readings or sensor noise before contaminating global estimate."
+    },
+    "dead_reckoning": {
+      "name": "Temporary Estimation (Dead Reckoning)",
+      "desc": "Kinematic projection activated for brief drops to preserve temporal continuity."
+    },
+    "other": {
+      "name": "Auxiliary Calibration Variables",
+      "desc": "Secondary telemetry and operational support indicators."
+    }
+  },
+  "es_es": {
+    "speed": {
+      "name": "Velocidad Medida (km/h)",
+      "desc": "Velocidad promedio de vehículos en la sección. Caídas bruscas indican congestión inmediata."
+    },
+    "flow": {
+      "name": "Volumen de Flujo Vehicular (veh/h)",
+      "desc": "Cantidad de vehículos por hora en la sección. Mide la demanda atendida."
+    },
+    "occupancy": {
+      "name": "Tasa de Ocupación del Carril (%)",
+      "desc": "Porcentaje de tiempo con carril ocupado. Por encima del 35% señala retención."
+    },
+    "density": {
+      "name": "Densidad Espacial (veh/km)",
+      "desc": "Concentración vehicular por kilómetro. Cuantifica la acumulación de vehículos."
+    },
+    "saturation": {
+      "name": "Grado de Saturación (x = V/c)",
+      "desc": "Relación entre demanda y capacidad máxima vial. Valores sobre 0,90 indican vía al límite."
+    },
+    "acceleration": {
+      "name": "Gradiente de Aceleración (m/s²)",
+      "desc": "Variación de velocidad entre vehículos consecutivos. Variaciones abruptas indican frenadas."
+    },
+    "spatial": {
+      "name": "Correlación Espacial de Tráfico",
+      "desc": "Influencia del flujo aguas arriba y aguas abajo sobre la estación actual."
+    },
+    "quarantine": {
+      "name": "Filtro de Salvaguarda (Cuarentena)",
+      "desc": "Mecanismo que aísla lecturas anómalas o ruido instrumental."
+    },
+    "dead_reckoning": {
+      "name": "Estimación Temporal (Dead Reckoning)",
+      "desc": "Proyección cinemática activada ante pérdidas breves de señal."
+    },
+    "other": {
+      "name": "Variables Auxiliares de Calibración",
+      "desc": "Indicadores secundarios de soporte a la fusión de datos."
+    }
+  }
+}

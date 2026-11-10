@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import os
+import threading
 from typing import List, Optional, Tuple, Dict, Any
 import torch
 import torch.nn as nn
@@ -32,10 +33,13 @@ class ModernBertEmbeddingModel(nn.Module):
         self,
         model_name: Optional[str] = None,
         transformer: Optional[nn.Module] = None,
-        freeze_weights: bool = True
+        freeze_weights: bool = True,
+        num_layers: Optional[int] = None
     ):
         super(ModernBertEmbeddingModel, self).__init__()
         self.model_name = model_name or get_modernbert_path()
+        self.default_num_layers = num_layers
+        self._layer_lock = threading.RLock()
         if transformer is not None:
             self.transformer = transformer
         else:
@@ -57,20 +61,45 @@ class ModernBertEmbeddingModel(nn.Module):
                 param.requires_grad = False
             self.transformer.eval()
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        num_layers: Optional[int] = None
+    ) -> torch.Tensor:
         """
-        Forward pass for semantic representation extraction.
-        
-        Args:
-            input_ids: Token indices tensor [Batch, SeqLen]
-            attention_mask: Attention mask tensor [Batch, SeqLen]
-            
-        Returns:
-            normalized_embeddings: Normalized sentence embeddings [Batch, HiddenDim]
+        Forward pass for semantic representation extraction with optional thread-safe layer early-exit.
+        Defaults to full 22-layer semantic depth (num_layers=None) to preserve saved ontology spaces.
         """
-        model_output = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+        active_layers = num_layers if num_layers is not None else getattr(self, "default_num_layers", None)
+
+        if active_layers is None:
+            model_output = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+        else:
+            lock = getattr(self, "_layer_lock", None) or threading.RLock()
+            with lock:
+                layers_holder = None
+                orig_layers = None
+                if hasattr(self.transformer, "layers"):
+                    layers_holder = self.transformer
+                    orig_layers = self.transformer.layers
+                    if active_layers < len(orig_layers):
+                        self.transformer.layers = orig_layers[:active_layers]
+                elif hasattr(self.transformer, "encoder") and hasattr(self.transformer.encoder, "layer"):
+                    layers_holder = self.transformer.encoder
+                    orig_layers = self.transformer.encoder.layer
+                    if active_layers < len(orig_layers):
+                        self.transformer.encoder.layer = orig_layers[:active_layers]
+                try:
+                    model_output = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+                finally:
+                    if layers_holder is not None and orig_layers is not None:
+                        if hasattr(layers_holder, "layers"):
+                            layers_holder.layers = orig_layers
+                        elif hasattr(layers_holder, "layer"):
+                            layers_holder.layer = orig_layers
+
         token_embeddings = model_output[0]
-        
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, dim=1)
         sum_mask = torch.clamp(input_mask_expanded.sum(dim=1), min=1e-9)
@@ -95,7 +124,8 @@ class ModernBertSemanticExtractor:
         tokenizer: Optional[AutoTokenizer] = None,
         model: Optional[ModernBertEmbeddingModel] = None,
         clusterer: Optional[Any] = None,
-        repository: Optional[Any] = None
+        repository: Optional[Any] = None,
+        num_inference_layers: Optional[int] = None
     ):
         from src.strategies.semantic_clustering import CosineSemanticClusterer
         from src.infrastructure.safetensors_repository import SafetensorsRepository
@@ -103,6 +133,7 @@ class ModernBertSemanticExtractor:
 
         self.logger = logging.getLogger(self.__class__.__name__)
         self.similarity_threshold = similarity_threshold
+        self.num_inference_layers = num_inference_layers
         resolved_model_path = model_name or get_modernbert_path()
         self.model_name = resolved_model_path
         
@@ -118,7 +149,10 @@ class ModernBertSemanticExtractor:
                 local_files_only=is_local
             )
 
-        self.model = model or ModernBertEmbeddingModel(model_name=resolved_model_path)
+        self.model = model or ModernBertEmbeddingModel(
+            model_name=resolved_model_path,
+            num_layers=num_inference_layers
+        )
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
@@ -132,13 +166,18 @@ class ModernBertSemanticExtractor:
     def concept_examples(self) -> Dict[str, List[str]]:
         return self.clusterer.get_ontology_report()
 
-    def _get_embedding(self, texts: List[str]) -> torch.Tensor:
+    def _get_embedding(self, texts: List[str], num_layers: Optional[int] = None) -> torch.Tensor:
         encoded_input = self.tokenizer(texts, padding=True, truncation=True, return_tensors='pt').to(self.device)
         device_type = 'cuda' if torch.cuda.is_available() else 'cpu'
+        target_layers = num_layers if num_layers is not None else self.num_inference_layers
         
         with torch.no_grad():
             with torch.autocast(device_type=device_type, dtype=torch.float16 if device_type == 'cuda' else torch.bfloat16):
-                pooled = self.model(encoded_input['input_ids'], encoded_input['attention_mask'])
+                pooled = self.model(
+                    encoded_input['input_ids'],
+                    encoded_input['attention_mask'],
+                    num_layers=target_layers
+                )
                 
         cluster_embedding = torch.mean(pooled, dim=0, keepdim=True)
         return F.normalize(cluster_embedding, p=2, dim=1)
@@ -168,4 +207,14 @@ class ModernBertSemanticExtractor:
     def save_ontology(self, filepath: str) -> None:
         tensors = self.clusterer.get_concept_tensors()
         self.repository.save_tensors(tensors, filepath)
+
+    def load_ontology(self, filepath: str) -> bool:
+        """Restores learned semantic concept centroids from a safetensors file."""
+        if not os.path.exists(filepath):
+            return False
+        tensors = self.repository.load_tensors(filepath)
+        if tensors:
+            self.clusterer.load_concept_tensors(tensors)
+            return True
+        return False
 

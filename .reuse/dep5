@@ -1,0 +1,24 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: SYNAPSE CORE
+Upstream-Contact: Noxfort Systems <contato@noxfort.com>
+Source: https://github.com/noxfort/synapse-core
+
+# Default license and copyright for repository files
+Files: *
+Copyright: 2026 Noxfort Systems <contato@noxfort.com>
+License: AGPL-3.0-or-later
+
+# Graphical assets and binary icons
+Files: docs/assets/* ui/assets/images/* ui/public/* ui/src-tauri/icons/* ui/src-tauri/icons/**
+Copyright: 2026 Noxfort Systems <contato@noxfort.com>
+License: AGPL-3.0-or-later
+
+# Data files and configuration schemas without native comment support
+Files: *.json config/*.json src/prompts/*.json src/templates/*.json ui/src_ui/i18n/locales/*.json ui/src_ui/theme/*.json ui/src-tauri/*.json ui/src-tauri/**/*.json ui/tsconfig.json .vscode/*.json
+Copyright: 2026 Noxfort Systems <contato@noxfort.com>
+License: AGPL-3.0-or-later
+
+# Tool-generated lockfiles and checksum digests
+Files: package-lock.json ui/package-lock.json ui/src-tauri/Cargo.lock src_go/go.sum
+Copyright: 2026 Noxfort Systems <contato@noxfort.com>
+License: AGPL-3.0-or-later

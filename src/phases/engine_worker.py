@@ -92,10 +92,13 @@ class EngineWorker(QObject):
             # ── 3. Wire neural & data output signals (Thread 2) ───────
             self._wire_engine_signals()
 
-            # FENIX Health Check
-            self.inference_engine.drift_update.connect(
-                lambda t, p: self.fenix_service.check_health_metrics(p.get('loss', 0.0))
-            )
+            # FENIX Health Check & Action Handlers
+            if self.fenix_service:
+                self.inference_engine.drift_update.connect(
+                    lambda t, p: self.fenix_service.check_health_metrics(p.get('loss', 0.0))
+                )
+                self.fenix_service.request_neural_reset.connect(self._handle_neural_reset)
+                self.fenix_service.request_model_hot_swap.connect(self._handle_model_hot_swap)
 
             # ── 4. Start Linguist on dedicated thread (Thread 4) ──────
             self._start_linguist()
@@ -183,3 +186,18 @@ class EngineWorker(QObject):
         if self._xai_worker:
             self._xai_worker.unload_resources()
             self._xai_worker = None
+
+    @pyqtSlot()
+    def _handle_neural_reset(self):
+        """Executes neural reset requested by FENIX N1."""
+        if self.inference_engine and hasattr(self.inference_engine, "reset_neural_state"):
+            self.inference_engine.reset_neural_state()
+            self.log_message.emit("[FENIX] 🔄 Neural Reset applied to Inference Engine.")
+
+    @pyqtSlot(str)
+    def _handle_model_hot_swap(self, model_path: str):
+        """Executes model hot-swap requested by FENIX N2."""
+        if self.inference_engine and hasattr(self.inference_engine, "hot_swap_model"):
+            success = self.inference_engine.hot_swap_model(model_path)
+            status = "succeeded" if success else "failed"
+            self.log_message.emit(f"[FENIX] 🔄 Model Hot-Swap {status} for: {model_path}")

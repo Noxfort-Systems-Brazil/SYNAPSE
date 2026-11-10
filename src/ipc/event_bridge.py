@@ -9,7 +9,7 @@ JSON event broadcasts emitted to the frontend.
 """
 
 from typing import Callable, Any, Optional
-from src.ipc.serializers import TopologySerializer
+from src.ipc.serializers import TopologySerializer, TelemetrySerializer
 from src.utils.logging_setup import get_logger
 
 
@@ -47,7 +47,11 @@ class IpcEventBridge:
 
             # 3. Real-time Streams
             self._safe_connect(system, "engine_data_processed", lambda d: self.emit_event("engine_data", d))
-            self._safe_connect(system, "engine_global_results", lambda d: self.emit_event("global_results", d))
+            self._safe_connect(
+                system,
+                "engine_global_results",
+                lambda d: self.emit_event("global_results", TelemetrySerializer.slim_global_results(d)),
+            )
             self._safe_connect(system, "linguist_update", lambda src, typ, conf: self.emit_event("linguist_update", {"source": src, "type": typ, "confidence": conf}))
             self._safe_connect(system, "audit_update", lambda safe, err, thr, vec: self.emit_event("audit_update", {"safe": safe, "error": err, "threshold": thr, "vector": vec}))
             self._safe_connect(system, "drift_update", lambda src, metrics: self.emit_event("drift_update", {"source": src, "metrics": metrics}))
@@ -73,11 +77,12 @@ class IpcEventBridge:
                 "data_association_changed",
                 lambda sid, eid: self.emit_event("source_associated", {"source_id": sid, "element_id": eid}),
             )
-            self._safe_connect(
-                state,
-                "map_data_loaded",
-                lambda: self.emit_event("map_loaded", TopologySerializer.serialize_topology(state)),
-            )
+
+            def _on_map_loaded() -> None:
+                TopologySerializer.invalidate_cache()
+                self.emit_event("map_loaded", TopologySerializer.serialize_topology(state))
+
+            self._safe_connect(state, "map_data_loaded", _on_map_loaded)
 
     def _safe_connect(self, source: Any, signal_name: str, slot: Callable) -> None:
         """Helper to safely connect Qt signals if they exist on the source."""

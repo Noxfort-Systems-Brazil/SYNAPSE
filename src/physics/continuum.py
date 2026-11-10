@@ -80,7 +80,8 @@ class SpatialGraphConservation(nn.Module):
         flow: torch.Tensor,
         edge_index: torch.Tensor,
         edge_flow: Optional[torch.Tensor] = None,
-        edge_weight: Optional[torch.Tensor] = None
+        edge_weight: Optional[torch.Tensor] = None,
+        num_nodes: Optional[int] = None,
     ) -> torch.Tensor:
         """
         Calculates traffic flow along each directed edge/via.
@@ -90,6 +91,7 @@ class SpatialGraphConservation(nn.Module):
             edge_index: [2, Num_Edges]
             edge_flow: Optional explicit edge flow tensor [Batch, Num_Edges, 1]
             edge_weight: Optional edge routing weights [Num_Edges]
+            num_nodes: Optional explicit node count to avoid GPU-to-CPU .item() sync
         Returns:
             q_edges: [Batch, Num_Edges, 1]
         """
@@ -103,23 +105,28 @@ class SpatialGraphConservation(nn.Module):
         src = edge_index[0]
         num_edges = edge_index.size(1)
 
-        # Check if flow is already edge-indexed
-        if flow.size(1) == num_edges and flow.size(1) > 0:
-            max_node = edge_index.max().item() + 1
-            if flow.size(1) != max_node:
+        # Check if flow is already edge-indexed without triggering CUDA stream sync when num_nodes is known
+        if num_nodes is not None:
+            if flow.size(1) != num_nodes and flow.size(1) == num_edges:
                 return flow
+            resolved_nodes = num_nodes
+        else:
+            if flow.size(1) == num_edges and flow.size(1) > 0:
+                max_node = int(edge_index.max().detach().cpu()) + 1
+                if flow.size(1) != max_node:
+                    return flow
+            resolved_nodes = flow.size(1)
 
         # Flow is node-indexed: distribute outflow from source nodes into outgoing edges
-        num_nodes = flow.size(1)
         device = flow.device
 
         # Compute out-degree for each node
-        out_deg = torch.zeros(num_nodes, device=device)
-        out_deg.scatter_add_(0, src, torch.ones_like(src, dtype=torch.float))
+        out_deg = torch.zeros(resolved_nodes, dtype=flow.dtype, device=device)
+        out_deg.scatter_add_(0, src, torch.ones_like(src, dtype=flow.dtype))
 
         if edge_weight is not None:
-            w = edge_weight.to(device)
-            w_sum = torch.zeros(num_nodes, device=device)
+            w = edge_weight.to(device=device, dtype=flow.dtype)
+            w_sum = torch.zeros(resolved_nodes, dtype=flow.dtype, device=device)
             w_sum.scatter_add_(0, src, w)
             w_sum_edge = w_sum[src]
             weight_factor = torch.where(
@@ -157,10 +164,10 @@ class SpatialGraphConservation(nn.Module):
         src = edge_index[0].to(device)
         dst = edge_index[1].to(device)
 
-        q_edges = self.compute_edge_flow(flow, edge_index, edge_flow, edge_weight)
+        q_edges = self.compute_edge_flow(flow, edge_index, edge_flow, edge_weight, num_nodes=num_nodes)
 
-        inflow = torch.zeros(batch_size, num_nodes, 1, device=device)
-        outflow = torch.zeros(batch_size, num_nodes, 1, device=device)
+        inflow = torch.zeros(batch_size, num_nodes, 1, dtype=q_edges.dtype, device=device)
+        outflow = torch.zeros(batch_size, num_nodes, 1, dtype=q_edges.dtype, device=device)
 
         inflow.index_add_(1, dst, q_edges)
         outflow.index_add_(1, src, q_edges)
@@ -212,11 +219,11 @@ class SpatialGraphConservation(nn.Module):
         dst = edge_index[1].to(device)
 
         # 1. Edge flows along directed roads
-        q_edges = self.compute_edge_flow(flow, edge_index, edge_flow, edge_weight)
+        q_edges = self.compute_edge_flow(flow, edge_index, edge_flow, edge_weight, num_nodes=num_nodes)
 
         # 2. Inflow and Outflow per junction node
-        inflow = torch.zeros(batch_size, num_nodes, 1, device=device)
-        outflow = torch.zeros(batch_size, num_nodes, 1, device=device)
+        inflow = torch.zeros(batch_size, num_nodes, 1, dtype=q_edges.dtype, device=device)
+        outflow = torch.zeros(batch_size, num_nodes, 1, dtype=q_edges.dtype, device=device)
 
         inflow.index_add_(1, dst, q_edges)
         outflow.index_add_(1, src, q_edges)

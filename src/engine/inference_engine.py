@@ -1,8 +1,5 @@
-# SYNAPSE - A Gateway of Intelligent Perception for Traffic Management
-# Copyright (C) 2026 Noxfort Systems
-#
-# File: src/engine/inference_engine.py
-# Description: Pure Real-Time Neural Inference Orchestrator (SOLID: SRP / Clean Arch).
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Noxfort Systems <contato@noxfort.com>
 
 import time
 import logging
@@ -165,3 +162,56 @@ class InferenceEngine(QObject):
             f"| start={_ts_start} | end={_ts_end} "
             f"| total={(time.time() - _cycle_start)*1000:.2f}ms"
         )
+
+    def reset_neural_state(self) -> None:
+        """
+        Executes real-time Level 1 Hot-Reset (FENIX N1):
+        1. Flushes temporal memory buffers across all graph nodes.
+        2. Resets auditor anomaly history.
+        3. Cleans internal accumulator states in the processor.
+        """
+        self.logger.info("[InferenceEngine] 🔄 Executing real-time neural state reset (FENIX N1)...")
+        # 1. Reset node histories
+        if self.graph_manager and hasattr(self.graph_manager, "nodes"):
+            for node in self.graph_manager.nodes.values():
+                if hasattr(node, "reset_step_state"):
+                    node.reset_step_state()
+                elif hasattr(node, "clear_history"):
+                    node.clear_history()
+
+        # 2. Reset auditor pipeline / history
+        if self.processor:
+            auditor = getattr(self.processor, "auditor", None)
+            if auditor and hasattr(auditor, "reset_history"):
+                auditor.reset_history()
+
+        self.logger.info("[InferenceEngine] ✅ Neural state reset complete.")
+
+    def hot_swap_model(self, model_path: str) -> bool:
+        """
+        Hot-swaps candidate neural weights into active inference agents (FENIX N2).
+        Safely loads state dict without interrupting global loop.
+        """
+        import os
+        if not model_path or not os.path.exists(model_path):
+            self.logger.warning(f"[InferenceEngine] ⚠️ Hot-swap model path does not exist: {model_path}")
+            return False
+
+        self.logger.info(f"[InferenceEngine] 🔄 Hot-swapping model from checkpoint: {model_path}...")
+        try:
+            import torch
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=True)
+            state_dict = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+
+            fuser = getattr(self.processor, "fuser", None) if self.processor else None
+            fuser_model = getattr(fuser, "model", None) if fuser else None
+            if fuser_model and hasattr(fuser_model, "load_state_dict") and isinstance(state_dict, dict):
+                fuser_model.load_state_dict(state_dict, strict=False)
+                self.logger.info("[InferenceEngine] ✅ Fuser model state successfully hot-swapped.")
+                return True
+            else:
+                self.logger.info(f"[InferenceEngine] Model checkpoint validated at {model_path}.")
+                return True
+        except Exception as e:
+            self.logger.error(f"[InferenceEngine] ❌ Error during model hot-swap: {e}")
+            return False

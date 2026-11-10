@@ -73,7 +73,7 @@ Sensor protocols subclass `BaseAdapter` (`src/interfaces/`):
 
 ## ⚡ 2. The HFT-Link (High-Frequency Transport)
 
-Located in [`src/infrastructure/grpc_connector.py`](../src/infrastructure/grpc_connector.py) and [`src/infrastructure/hft_grpc_client.py`](../src/infrastructure/hft_grpc_client.py), the HFT-Link guarantees uninterrupted, low-jitter perception delivery to CARINA.
+Located in [`src/hft/grpc_connector.py`](../src/hft/grpc_connector.py) and [`src/hft/hft_grpc_client.py`](../src/hft/hft_grpc_client.py), the HFT-Link guarantees uninterrupted, low-jitter perception delivery to CARINA.
 
 ### Channel Configuration & Performance Tuning
 Because urban networks can comprise tens of thousands of intersections and road edges:
@@ -125,7 +125,7 @@ sequenceDiagram
 
 ## 🛡️ 4. Auto-Recovery Self-Healing Loop
 
-In hostile physical networking conditions, edge links drop. SYNAPSE implements an automated self-healing loop in [`src/infrastructure/hft_recovery.py`](../src/infrastructure/hft_recovery.py):
+In hostile physical networking conditions, edge links drop. SYNAPSE implements an automated self-healing loop in [`src/hft/hft_recovery.py`](../src/hft/hft_recovery.py):
 
 1. **In-Memory Scenario Caching**: During Stage 2, SYNAPSE caches the serialized scenario binary payload (`_recovery_payload`).
 2. **Exception Interception**: If gRPC raises `grpc.StatusCode.UNAVAILABLE` or `BrokenPipeError`, the core thread **does not abort**.
@@ -134,6 +134,22 @@ In hostile physical networking conditions, edge links drop. SYNAPSE implements a
    - Re-executes `LoadScenario()` with the cached binary payload.
    - Issues `SystemControl(action=START)`.
    - Seamlessly resumes `StreamTraffic()` without dropping active sensor state or restarting PyTorch models.
+
+---
+
+## 🔒 5. High-Throughput Go Ingestion Gateway & Secure Reverse Tunnel
+
+To handle line-rate raw sensor streams and provide secure external access without compromising host security:
+
+1. **Go Ingestion Gateway (`src_go`)**:
+   - Compiled CGO-free binary ([`bin/synapse-gateway`](../bin/synapse-gateway)) consuming high-velocity roadside cameras and IoT sensors with sub-millisecond socket latency.
+   - Communicates with Python exclusively through zero-port anonymous OS pipes (`STDIN`/`STDOUT`) using NDJSON via [`src/go/subprocess_transport.py`](../src/go/subprocess_transport.py).
+2. **Dynamic DNS (DuckDNS)**:
+   - Automated driver (`src_go/internal/tunnel/duckdns.go`) synchronizing public IPv4/IPv6 addresses with DuckDNS every 10 minutes.
+   - Managed seamlessly via `DuckDnsHandler` ([`src/handlers/duckdns_handler.py`](../src/handlers/duckdns_handler.py)) and the Desktop UI.
+3. **Automated HTTPS Reverse Proxy (Caddy)**:
+   - Embedded Caddy daemon ([`bin/caddy`](../bin/caddy)) orchestrated by `src_go/internal/tunnel/caddy.go`.
+   - Dynamically writes [`config/Caddyfile`](../config/Caddyfile) with automatic TLS certificate issuance (Let's Encrypt / ZeroSSL), terminating HTTPS securely on port 443 before proxying traffic locally to the ingestion port.
 
 ---
 

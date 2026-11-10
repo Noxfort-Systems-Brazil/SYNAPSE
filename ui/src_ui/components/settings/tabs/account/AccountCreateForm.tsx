@@ -61,11 +61,11 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm">
           <UserPlus className="w-4 h-4 text-primary-500" />
-          <span>{t('accounts.addNewAccount', 'Adicionar Nova Conta')}</span>
+          <span>{t('accounts.addNewAccount')}</span>
         </h3>
         <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-primary-500" />
-          {t('security.standardProtected', 'Padrão Moderno de Segurança')}
+          {t('security.standardProtected')}
         </span>
       </div>
 
@@ -74,7 +74,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              {t('security.username', 'Nome de Usuário')} *
+              {t('security.username')} *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
@@ -93,7 +93,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
 
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              {t('accounts.accessLevel', 'Nível de Acesso')}
+              {t('accounts.accessLevel')}
             </label>
             <select
               value={role}
@@ -101,10 +101,10 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
               className="w-full px-3 py-1.5 text-xs rounded-lg bg-background border border-border focus:border-primary-500 outline-none text-slate-900 dark:text-white cursor-pointer transition-colors"
             >
               <option value="OPERATOR">
-                {t('accounts.operator', 'Operador (Acesso Padrão)')}
+                {t('accounts.operator')}
               </option>
               <option value="SUPERUSER">
-                {t('accounts.superuser', 'Super Usuário (Acesso Total)')}
+                {t('accounts.superuser')}
               </option>
             </select>
           </div>
@@ -114,7 +114,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              {t('security.password', 'Senha')} *
+              {t('security.password')} *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
@@ -147,7 +147,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
 
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-              {t('security.confirmPassword', 'Confirmar Senha')} *
+              {t('security.confirmPassword')} *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
@@ -182,7 +182,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
             </div>
             {confirmPassword.length > 0 && !passwordsMatch && (
               <p className="text-[10px] text-rose-500 font-medium">
-                {t('security.passwordsDoNotMatch', 'As senhas não coincidem.')}
+                {t('security.passwordsDoNotMatch')}
               </p>
             )}
           </div>
@@ -206,7 +206,7 @@ export const AccountCreateForm: React.FC<AccountCreateFormProps> = ({
             ) : (
               <UserPlus className="w-3.5 h-3.5" />
             )}
-            <span>{t('accounts.addUser', 'Adicionar Usuário')}</span>
+            <span>{t('accounts.addUser')}</span>
           </button>
         </div>
       </form>

@@ -10,8 +10,10 @@ import warnings
 
 from src.interfaces.trainers import IAuditorTrainer
 from src.models.wavelet_ae_occ import WaveletSpectralAE, WaveletAEOCC
+from src.physics.adaptive_loss_balancer import AdaptivePhysicsLossBalancer
 from src.strategies.deep_svdd_calibrator import DeepSVDDCalibrator
 from src.physics.traffic_loss import TrafficPhysicsLoss
+from src.utils.hardware import get_optimal_amp_dtype, requires_grad_scaler
 from src.utils.normalization import TensorNormalizer
 
 
@@ -30,25 +32,41 @@ class AuditorTrainer(IAuditorTrainer):
         physics_weight: float = 0.5,
         max_acceleration: float = 10.0,
         enable_pinn: bool = True,
-        device: Optional[torch.device] = None
+        device: Optional[torch.device] = None,
+        adaptive_physics_balance: bool = True,
     ):
         self.model = model
         self.learning_rate = learning_rate
         self.physics_weight = physics_weight
         self.enable_pinn = enable_pinn
+        self.adaptive_physics_balance = adaptive_physics_balance
+        self.loss_balancer = AdaptivePhysicsLossBalancer(base_weight=physics_weight)
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
         self.calibrator = calibrator or DeepSVDDCalibrator(latent_dim=getattr(model, "latent_dim", 16))
         self.physics_engine = physics_engine or TrafficPhysicsLoss(max_acceleration=max_acceleration)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate, weight_decay=1e-5)
         self.criterion_rec = nn.MSELoss()
-        self.scaler = GradScaler('cuda' if self.device.type == 'cuda' else 'cpu', enabled=(self.device.type == 'cuda'))
+        self._amp_dtype = get_optimal_amp_dtype(self.device)
+        self.scaler = GradScaler(
+            'cuda' if self.device.type == 'cuda' else 'cpu',
+            enabled=requires_grad_scaler(self.device, self._amp_dtype),
+        )
 
     def to(self, device: Any) -> 'AuditorTrainer':
         self.device = torch.device(device) if isinstance(device, str) else device
         self.model.to(self.device)
-        self.scaler = GradScaler('cuda' if self.device.type == 'cuda' else 'cpu', enabled=(self.device.type == 'cuda'))
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(self.device)
+        self._amp_dtype = get_optimal_amp_dtype(self.device)
+        self.scaler = GradScaler(
+            'cuda' if self.device.type == 'cuda' else 'cpu',
+            enabled=requires_grad_scaler(self.device, self._amp_dtype),
+        )
         return self
 
     def train_step(self, input_data: Union[torch.Tensor, Tuple[torch.Tensor, Any]]) -> float:
@@ -76,8 +94,13 @@ class AuditorTrainer(IAuditorTrainer):
 
         self.optimizer.zero_grad()
         device_type = self.device.type if self.device.type != 'mps' else 'cpu'
+        amp_dtype = get_optimal_amp_dtype(self.device)
 
-        with autocast(device_type=device_type, enabled=(self.device.type == 'cuda')):
+        with autocast(
+            device_type=device_type,
+            dtype=(amp_dtype if self.device.type == 'cuda' else torch.bfloat16),
+            enabled=(self.device.type == 'cuda'),
+        ):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=UserWarning)
                 feats, z, rec_feats, time_recon = self.model(x, return_time_recon=True)
@@ -95,7 +118,16 @@ class AuditorTrainer(IAuditorTrainer):
             physics_res = self.physics_engine.compute_losses(time_recon, orig_x=x)
             loss_physics = physics_res["total_physics_loss"] if self.enable_pinn else torch.tensor(0.0, device=self.device)
 
-            loss = loss_rec + (0.5 * loss_time) + (0.1 * loss_occ) + (self.physics_weight * loss_physics)
+            data_loss = loss_rec + (0.5 * loss_time) + (0.1 * loss_occ)
+            if self.enable_pinn:
+                weighted_phys = (
+                    self.loss_balancer(data_loss, loss_physics)
+                    if self.adaptive_physics_balance
+                    else (self.physics_weight * loss_physics)
+                )
+            else:
+                weighted_phys = 0.0
+            loss = data_loss + weighted_phys
 
         if not torch.isfinite(loss):
             return 100.0

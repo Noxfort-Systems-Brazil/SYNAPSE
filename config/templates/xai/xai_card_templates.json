@@ -1,0 +1,41 @@
+{
+  "pt_br": {
+    "anexo_title": "## PARTE III — FICHAS TÉCNICAS E PERICIAIS POR PONTO DE MONITORAMENTO (ANEXO I)",
+    "anexo_desc": "Apresentação detalhada de cada ponto de monitoramento, discriminando o tipo de dado da fonte, a ponderação calculada pelo modelo SYNAPSE e o registro de eventos/salvaguardas operacionais:",
+    "agent_label": "Detector `{aid}`",
+    "agent_card_header": "#### Estação {idx:02d} — {junc_name} (Fonte: `{aid}` • {tech_str})",
+    "agent_card_intro": "Para o ponto de monitoramento `{aid}`, o modelo SYNAPSE distribuiu os pesos decisórios da seguinte forma:",
+    "agent_card_item": "- **{name}:** Peso de **{pct_str}** ({imp:.4f}). {desc}",
+    "agent_card_missing_data": "Atenção: Intermitência temporária na fonte `{aid}`. A projeção cinemática temporária (Dead Reckoning) manteve a continuidade da estimativa até o restabelecimento do sinal.",
+    "guardian_card_audit": "- **Disponibilidade e Salvaguardas:** Disponibilidade real de **{approved_pct}%** | Filtros de atenuação de ruído: **{temporal_count}** | Leituras anômalas em quarentena: **{critical_count}** | Diagnóstico: *{veto_reason}*.",
+    "pae_card_audit": "- **Verificação de Conservação Física (LWR):** Resíduo da equação de continuidade: **{pino_residual} ({pino_status})** | Variação de aceleração: **{accel_status}** | Avaliação: *Fluxo veicular consistente com as leis macroscópicas de tráfego*.",
+    "agent_card_opinion": "**Síntese Operacional da Estação {idx:02d} (`{aid}`):** {station_narrative}",
+    "agent_card_chart_caption": "Gráfico de Atribuição de Pesos — Ponto `{aid}` ({junc_name})"
+  },
+  "en_us": {
+    "anexo_title": "## PART III — FORENSIC TECHNICAL SHEETS BY MONITORING STATION (ANNEX I)",
+    "anexo_desc": "Detailed presentation of each monitoring station, detailing source data type, weights calculated by SYNAPSE, and operational safeguards events:",
+    "agent_label": "Detector `{aid}`",
+    "agent_card_header": "#### Station {idx:02d} — {junc_name} (Source: `{aid}` • {tech_str})",
+    "agent_card_intro": "For monitoring station `{aid}`, the SYNAPSE model distributed decision weights as follows:",
+    "agent_card_item": "- **{name}:** Weight of **{pct_str}** ({imp:.4f}). {desc}",
+    "agent_card_missing_data": "Notice: Temporary intermittence in source `{aid}`. Temporary kinematic projection (Dead Reckoning) maintained continuous estimation.",
+    "guardian_card_audit": "- **Availability and Safeguards:** Real availability of **{approved_pct}%** | Noise filters: **{temporal_count}** | Quarantined anomalous readings: **{critical_count}** | Diagnosis: *{veto_reason}*.",
+    "pae_card_audit": "- **Physical Conservation Check (LWR):** Continuity equation residual: **{pino_residual} ({pino_status})** | Acceleration variation: **{accel_status}** | Evaluation: *Vehicle flow consistent with macroscopic traffic laws*.",
+    "agent_card_opinion": "**Operational Synthesis for Station {idx:02d} (`{aid}`):** {station_narrative}",
+    "agent_card_chart_caption": "Weight Attribution Chart — Station `{aid}` ({junc_name})"
+  },
+  "es_es": {
+    "anexo_title": "## PARTE III — FICHAS TÉCNICAS PERICIALES POR PUNTO DE MONITOREO (ANEXO I)",
+    "anexo_desc": "Presentación detallada de cada punto de monitoreo, discriminando el tipo de fuente, ponderaciones calculadas por SYNAPSE y eventos de salvaguarda:",
+    "agent_label": "Detector `{aid}`",
+    "agent_card_header": "#### Estación {idx:02d} — {junc_name} (Fuente: `{aid}` • {tech_str})",
+    "agent_card_intro": "Para el punto de monitoreo `{aid}`, el modelo SYNAPSE distribuyó los pesos decisorios de la siguiente forma:",
+    "agent_card_item": "- **{name}:** Peso de **{pct_str}** ({imp:.4f}). {desc}",
+    "agent_card_missing_data": "Atención: Intermitencia temporal en la fuente `{aid}`. La proyección cinemática (Dead Reckoning) mantuvo la continuidad del estado.",
+    "guardian_card_audit": "- **Disponibilidad y Salvaguardas:** Disponibilidad real de **{approved_pct}%** | Filtros de atenuación: **{temporal_count}** | Lecturas en cuarentena: **{critical_count}** | Diagnóstico: *{veto_reason}*.",
+    "pae_card_audit": "- **Verificación de Conservación Física (LWR):** Residuo de continuidad: **{pino_residual} ({pino_status})** | Variación de aceleración: **{accel_status}** | Evaluación: *Flujo vehicular consistente con leyes macroscópicas*.",
+    "agent_card_opinion": "**Síntesis Operativa de la Estación {idx:02d} (`{aid}`):** {station_narrative}",
+    "agent_card_chart_caption": "Gráfico de Atribución de Pesos — Punto `{aid}` ({junc_name})"
+  }
+}
