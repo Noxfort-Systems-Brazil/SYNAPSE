@@ -60,7 +60,7 @@ joblib==1.5.3
 jsonpatch==1.32
 jsonpointer==2.0
 jsonschema==4.10.3
-kafka-python==2.3.0
+kafka-python==3.0.13
 kiwisolver==1.4.9
 kombu==5.6.1
 kymatio==0.3.0
