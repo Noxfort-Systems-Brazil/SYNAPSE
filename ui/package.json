@@ -11,7 +11,7 @@
     "tauri": "LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "@types/jspdf": "^2.0.0",
     "@types/katex": "^0.16.8",
