@@ -84,13 +84,13 @@ jobs:
         run: mkdir -p release_assets
 
       - name: Download Gateway AMD64 Binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: synapse-gateway-linux-amd64
           path: release_assets/
 
       - name: Download Gateway ARM64 Binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: synapse-gateway-linux-arm64
           path: release_assets/
