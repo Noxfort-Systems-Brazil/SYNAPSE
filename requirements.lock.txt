@@ -172,7 +172,7 @@ traitlets==5.14.3
 triton==3.5.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
-tzdata==2025.2
+tzdata==2026.6
 uri-template==1.3.0
 urllib3==2.5.0
 vine==5.1.0
