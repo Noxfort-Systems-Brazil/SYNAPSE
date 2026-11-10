@@ -97,7 +97,7 @@ nvidia-nvshmem-cu12==3.3.20
 nvidia-nvtx-cu12==12.8.90
 oauthlib==3.2.2
 olefile==0.46
-optuna==4.6.0
+optuna==5.0.0
 packaging==24.0
 paho-mqtt==2.1.0
 pandas==2.3.3
