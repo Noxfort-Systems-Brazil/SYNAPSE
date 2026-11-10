@@ -62,7 +62,7 @@ jsonpointer==2.0
 jsonschema==4.10.3
 kafka-python==2.3.0
 kiwisolver==1.4.9
-kombu==5.6.1
+kombu==5.7.0
 kymatio==0.3.0
 llama-cpp-python>=0.3.35
 lxml==6.0.2
